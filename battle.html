@@ -1217,50 +1217,54 @@ let CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
 let DECKS = [];
 
 async function initData(){
-  // 1. cards.json を取得（同フォルダに置いた場合）
-  // Firebase移行時: fetch → Firestore読み込みに差し替え
+  // Wait for Firebase to be ready (max 3s)
+  await new Promise(resolve=>{
+    if(window._FB) return resolve();
+    window.addEventListener('fb-ready', resolve, {once:true});
+    setTimeout(resolve, 3000);
+  });
+  const fb=window._FB;
+
+  // ── 1. Load cards from Firebase ──
   try{
-    const res = await fetch('cards.json');
-    if(res.ok){
-      const data = await res.json();
-      if(Array.isArray(data)&&data.length){
-        CARDS = data.map(c=>({...c,abilities:JSON.parse(JSON.stringify(c.abilities||[])),imageDataUrl:null}));
-        console.log(`cards.json 読み込み完了: ${CARDS.length}件`);
+    if(fb){
+      const snap=await fb.get(fb.ref(fb.db,'cards'));
+      if(snap.exists()){
+        const data=snap.val();
+        const arr=Array.isArray(data)?data:Object.values(data);
+        if(arr.length){
+          CARDS=arr.map(c=>({...c,abilities:JSON.parse(JSON.stringify(c.abilities||[])),imageDataUrl:null}));
+          console.log(`Firebase cards: ${CARDS.length}件`);
+        }
       } else {
-        CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
-        console.log('cards.json 空 → デフォルトカードを使用');
+        console.log('Firebase cards なし → デフォルト使用');
       }
-    } else {
-      CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
-      console.log('cards.json なし → デフォルトカードを使用');
     }
-  } catch(e){
-    CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
-    console.log('cards.json 読み込み失敗 → デフォルトカードを使用', e.message);
+  }catch(e){
+    console.log('Firebase cards 読み込み失敗 → デフォルト使用', e.message);
   }
 
-  // 2. decks.json を取得（同フォルダに置いた場合）
-  // Firebase移行時: fetch → Firestore読み込みに差し替え
+  // ── 2. Load decks: defaultDecks from Firebase + own decks from localStorage ──
   try{
-    const res2 = await fetch('decks.json');
-    if(res2.ok){
-      const fileDecks = await res2.json();
-      // merge with localStorage: localStorage may have newer decks not yet saved to file
-      const s=localStorage.getItem('cg_decks');
-      const lsDecks=s?JSON.parse(s):[];
-      // start with file decks, add any LS-only decks
-      DECKS=[...fileDecks];
-      lsDecks.forEach(ld=>{
-        if(!DECKS.find(d=>d.name===ld.name)) DECKS.push(ld);
-      });
-      console.log(`decks.json 読み込み完了: ${DECKS.length}件`);
-    } else {
-      const s=localStorage.getItem('cg_decks');if(s)DECKS=JSON.parse(s);
-      console.log('decks.json なし → localStorageを使用');
+    let defaultDecks=[];
+    if(fb){
+      const snap=await fb.get(fb.ref(fb.db,'defaultDecks'));
+      if(snap.exists()){
+        const data=snap.val();
+        defaultDecks=Array.isArray(data)?data:Object.values(data);
+        console.log(`Firebase defaultDecks: ${defaultDecks.length}件`);
+      }
     }
-  } catch(e){
+    const s=localStorage.getItem('cg_decks');
+    const myDecks=s?JSON.parse(s):[];
+    DECKS=[...defaultDecks];
+    myDecks.forEach(d=>{
+      if(!DECKS.find(x=>x.name===d.name)) DECKS.push(d);
+    });
+    console.log(`デッキ合計: ${DECKS.length}件`);
+  }catch(e){
     const s=localStorage.getItem('cg_decks');if(s)DECKS=JSON.parse(s);
-    console.log('decks.json 読み込み失敗 → localStorageを使用', e.message);
+    console.log('デッキ読み込み失敗 → localStorage使用', e.message);
   }
 }
 
@@ -1268,7 +1272,30 @@ async function initData(){
 let _cardsFileHandle=null, _decksFileHandle=null;
 
 async function saveCards(){
-  // Firebase移行時: Firestoreへの書き込みに差し替え
+  // Wait for Firebase if not yet ready
+  if(!window._FB){
+    await new Promise(resolve=>{
+      window.addEventListener('fb-ready', resolve, {once:true});
+      setTimeout(resolve, 3000);
+    });
+  }
+  // Save to Firebase
+  const fb=window._FB;
+  if(fb){
+    try{
+      const cardsObj={};
+      CARDS.forEach((c,i)=>{
+        const {imageDataUrl,...rest}=c;
+        cardsObj[c.id||i]=rest;
+      });
+      await fb.set(fb.ref(fb.db,'cards'),cardsObj);
+      eToast('Firebase にカードを保存しました');
+      return;
+    }catch(e){
+      console.error('Firebase save error',e);
+      eToast('Firebase 保存失敗 → ローカルに保存します',true);
+    }
+  }
   const json=JSON.stringify(CARDS.map(({imageDataUrl,...r})=>r),null,2);
   if(_cardsFileHandle){
     try{
@@ -1293,9 +1320,23 @@ async function saveCards(){
   exportCardsJSON();
 }
 async function saveDecks(){
-  // localStorageにもバックアップ
-  try{localStorage.setItem('cg_decks',JSON.stringify(DECKS));}catch{}
-  const json=JSON.stringify(DECKS,null,2);
+  // Own decks → localStorage only (defaultDecks live in Firebase)
+  // Only save decks NOT from Firebase defaultDecks
+  const fb=window._FB;
+  let defaultDeckNames=new Set();
+  if(fb){
+    try{
+      const snap=await fb.get(fb.ref(fb.db,'defaultDecks'));
+      if(snap.exists()){
+        const data=snap.val();
+        const arr=Array.isArray(data)?data:Object.values(data);
+        arr.forEach(d=>defaultDeckNames.add(d.name));
+      }
+    }catch{}
+  }
+  const myDecks=DECKS.filter(d=>!defaultDeckNames.has(d.name));
+  try{localStorage.setItem('cg_decks',JSON.stringify(myDecks));}catch{}
+  const json=JSON.stringify(myDecks,null,2);
   if(_decksFileHandle){
     try{
       const w=await _decksFileHandle.createWritable();
