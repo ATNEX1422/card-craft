@@ -652,6 +652,15 @@ textarea.finput{resize:vertical;min-height:64px;}
   100%{background:transparent;color:#fbbf24;}
 }
 
+/* ── Card ability glow ── */
+@keyframes card-ability-glow{
+  0%  {box-shadow:0 0 0 0 rgba(201,168,76,0);}
+  25% {box-shadow:0 0 0 6px rgba(201,168,76,0.9),0 0 18px rgba(201,168,76,0.6),inset 0 0 10px rgba(201,168,76,0.2);}
+  60% {box-shadow:0 0 0 4px rgba(201,168,76,0.6),0 0 12px rgba(201,168,76,0.4);}
+  100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}
+}
+.card-ability-anim{animation:card-ability-glow 0.9s ease-out;}
+
 /* ── Card attack lunge ── */
 /* P1 attacks upward, P2 attacks downward */
 @keyframes lunge-up{
@@ -1045,7 +1054,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 <!-- Firebase SDK -->
 <script type="module" id="fb-init-module">
   import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import{getDatabase,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction}
+  import{getDatabase,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove}
     from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   const fbCfg={
     apiKey:"AIzaSyCdGOYVHlG69Ca_CsK12Fe1ED4LWz3FUAQ",
@@ -1058,7 +1067,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   };
   const fbApp=initializeApp(fbCfg);
   const fbDb=getDatabase(fbApp);
-  window._FB={db:fbDb,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction};
+  window._FB={db:fbDb,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove};
   window.dispatchEvent(new Event('fb-ready'));
 </script>
 <script>
@@ -1390,6 +1399,8 @@ function showScreen(id){
 function goMenu(){
   G.over=true;
   document.getElementById('gameover').classList.remove('open');
+  // Online: host cleans up room on menu exit
+  if(_onlineRoom&&_onlineRoom.role==='host') _onlineCleanupRoom();
   showScreen('screen-menu');
 }
 
@@ -2534,6 +2545,8 @@ async function triggerAbility(pid, fc, isAI, triggerType='on_enter'){
     const kwOnly=['rush','haste','guard','deathtouch','drain','pierce','stealth','barrier'];
     const isKWEffect=kwOnly.some(k=>ab.effect===k);
     if(!isKWEffect){
+      // glow the triggering card
+      animateAbility(pid, fc._uid);
       if(triggerType==='on_enter'){
         const desc=buildAbilityText({abilities:[ab]})||ab.effect;
         await showAbilityBanner(fc.name, desc.replace('【登場時】',''), 1200);
@@ -3250,6 +3263,8 @@ function gameOver(winner){
   document.getElementById('go-sub').textContent=`Player ${winner} ${winner===1?'(あなた)':'(AI)'} の勝利！`;
   document.getElementById('gameover').classList.add('open');
   log(`★ Player ${winner} 勝利！`,'ll-sys');
+  // Online: host cleans up room on game over
+  if(_onlineRoom&&_onlineRoom.role==='host') _onlineCleanupRoom();
 }
 
 // AI
@@ -3275,7 +3290,7 @@ function waitNotif(){
 async function aiTurn(){
   if(G.over)return;
   aiLock=true;document.getElementById('end-btn').disabled=true;
-  await wait(400);
+  await wait(200);
   const pid=2,opp=1;const p=G.p[pid],op=G.p[opp];
 
   // ── AI Summon: score-based card selection ──────────────
@@ -3302,7 +3317,7 @@ async function aiTurn(){
     if(!playable.length)break;
     // pick highest-score card
     const card=playable.reduce((a,b)=>aiScoreCard(b)>aiScoreCard(a)?b:a);
-    await waitNotif();await wait(200);
+    await waitNotif();await wait(100);
     const idx=p.hand.indexOf(card);if(idx<0)break;
     const cost=calcCost(pid,card);
     p.mana-=cost;p.hand.splice(idx,1);
@@ -3311,7 +3326,7 @@ async function aiTurn(){
     await animateSummon(pid,fc._uid);
     await aiAbility(pid,fc);if(G.over)break;
     await _fireAllyEnter(pid,fc._uid,true);
-    render();await wait(220);changed=true;
+    render();await wait(120);changed=true;
   }
   if(G.over){aiLock=false;document.getElementById('end-btn').disabled=false;return;}
 
@@ -3352,7 +3367,7 @@ async function aiTurn(){
       // prefer leader attack if: no guards, and can do lethal or big damage
       const leaderKillable=op.field.filter(c=>(!isStlth(c)||c._revealed)&&!isIntimidate(c)).length===0;
       if(leaderKillable&&canAtkLeader(atk)){
-        await waitNotif();await wait(200);
+        await waitNotif();await wait(100);
         flashAtk();
         showMidNotif(`⚔ ${pCol(atk.name,pid)} → ${pCol('P1リーダー',opp)}`,'',1000);
         render();await new Promise(r=>requestAnimationFrame(r));
@@ -3362,13 +3377,13 @@ async function aiTurn(){
         const _alpos=getLifeCenter(opp);if(_alpos)showDmgFloat(_alpos.x,_alpos.y,dmg);
         await triggerAbility(pid,atk,true,'on_attack');
         log(`${pCol(atk.name,pid)}→ ${pCol('P1リーダー',opp)}に${dmg}ダメ (残${op.life})`,'');
-        render();await wait(300);didAtk=true;
+        render();await wait(200);didAtk=true;
         if(op.life<=0){gameOver(pid);aiLock=false;return;}
         continue;
       }
 
       if(tgts.length>0&&canAtkUnit(atk)){
-        await waitNotif();await wait(200);
+        await waitNotif();await wait(100);
         const t=aiPickTarget(atk,tgts);
         flashAtk();
         showMidNotif(`⚔ ${pCol(atk.name,pid)} → ${pCol(t.name,opp)}`,'',1800);
@@ -3408,13 +3423,13 @@ async function aiTurn(){
         if(_ad)log(`  ${pCol(atk.name,pid)}撃破！`,'');
         if(_td&&_ad){await Promise.all([animateDestroy(opp,t._uid),animateDestroy(pid,atk._uid)]);removeCard(opp,t._uid);removeCard(pid,atk._uid);}
         else{if(_td){await animateDestroy(opp,t._uid);removeCard(opp,t._uid);}if(_ad){await animateDestroy(pid,atk._uid);removeCard(pid,atk._uid);}}
-        render();await wait(500);didAtk=true;if(G.over)break;
+        render();await wait(300);didAtk=true;if(G.over)break;
       }
     }
   }
   if(G.over){aiLock=false;return;}
 
-  await wait(480);log('AI: ターン終了','ll-ai');
+  await wait(280);log('AI: ターン終了','ll-ai');
   G.cp=1;
   // only increment turn when returning to P1 after P1 had a turn
   // endTurn handles G.turn++ when next===1; aiTurn only needs startTurn
@@ -3847,6 +3862,8 @@ async function onlineCreateRoom(){
     state:null
   });
   _onlineRoom={roomId,myPid:1,role:'host'};
+  // Auto-delete room if host disconnects
+  try{await fb.onDisconnect(roomRef).remove();}catch(e){}
   document.getElementById('online-room-id-display').textContent=roomId;
   document.getElementById('online-created-room').style.display='flex';
   // watch for guest joining
@@ -4022,6 +4039,17 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
 }
 
 // ── Controls ──
+// Delete room from Firebase
+async function _onlineCleanupRoom(){
+  if(!_onlineRoom)return;
+  const fb=_fb();if(!fb)return;
+  try{
+    await fb.remove(fb.ref(fb.db,`rooms/${_onlineRoom.roomId}`));
+  }catch(e){console.warn('room cleanup error',e);}
+  _onlineRoom=null;
+  _onlineActionUnsub=null;
+}
+
 function _onlineIsMyTurn(){return G.cp===_onlineRoom?.myPid;}
 function _onlineLockControls(){
   aiLock=true;
@@ -4285,6 +4313,16 @@ function showAbilityBanner(cardName, text, durationMs=1400){
   return new Promise(r=>setTimeout(r,Math.min(durationMs,600)));
 }
 
+// ── Card ability glow ──
+function animateAbility(pid, cardUid){
+  const el=findCardEl(pid,cardUid);
+  if(!el)return;
+  el.classList.remove('card-ability-anim');
+  el.offsetHeight;
+  el.classList.add('card-ability-anim');
+  el.addEventListener('animationend',()=>el.classList.remove('card-ability-anim'),{once:true});
+}
+
 // ── Card attack lunge ──
 function animateLunge(pid, cardUid){
   return new Promise(resolve=>{
@@ -4321,6 +4359,9 @@ function animateSummon(pid, cardUid){
       el.addEventListener('animationend',()=>{
         el.classList.remove('card-summon-anim');
         if(c)c._summoning=false;
+        // brief glow after entering field
+        el.classList.add('card-ability-anim');
+        el.addEventListener('animationend',()=>el.classList.remove('card-ability-anim'),{once:true});
         resolve();
       },{once:true});
       setTimeout(()=>{if(c)c._summoning=false;resolve();},600); // fallback
