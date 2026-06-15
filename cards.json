@@ -1,0 +1,610 @@
+[
+  {
+    "id": "001",
+    "name": "ランサー",
+    "image": "mon_011.gif",
+    "cost": 1,
+    "power": 1,
+    "toughness": 1,
+    "abilities": [],
+    "type": "王国"
+  },
+  {
+    "id": "018",
+    "name": "ソルジャー",
+    "image": "mon_191.gif",
+    "cost": 1,
+    "power": 2,
+    "toughness": 1,
+    "abilities": [],
+    "isToken": true,
+    "type": "王国"
+  },
+  {
+    "id": "002",
+    "name": "アーチャー",
+    "image": "mon_042.gif",
+    "cost": 2,
+    "power": 2,
+    "toughness": 2,
+    "abilities": [],
+    "type": "王国"
+  },
+  {
+    "id": "011",
+    "name": "エンジェル",
+    "image": "mon_049.gif",
+    "cost": 2,
+    "power": 1,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "heal_leader",
+        "params": {
+          "amount": 1
+        }
+      }
+    ],
+    "type": "天使"
+  },
+  {
+    "id": "013",
+    "name": "インプ",
+    "image": "mon_020.gif",
+    "cost": 2,
+    "power": 2,
+    "toughness": 1,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_death",
+        "effect": "dmg_leader",
+        "params": {
+          "dmg": 1
+        }
+      }
+    ],
+    "type": "悪魔"
+  },
+  {
+    "id": "020",
+    "name": "バンデット",
+    "image": "mon_079.gif",
+    "cost": 2,
+    "power": 1,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "add_to_hand",
+        "params": {
+          "cards": [
+            {
+              "name": "ハルバード",
+              "n": 1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "021",
+    "name": "ハルバード",
+    "image": "mon_080.gif",
+    "cost": 2,
+    "power": 2,
+    "toughness": 1,
+    "abilities": [],
+    "isToken": true
+  },
+  {
+    "id": "003",
+    "name": "パラディン",
+    "image": "mon_010.gif",
+    "cost": 3,
+    "power": 2,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "guard"
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_free",
+        "params": {
+          "cost_max": 2,
+          "filter": "no_ability"
+        }
+      }
+    ],
+    "type": "王国"
+  },
+  {
+    "id": "005",
+    "name": "ウォリアー",
+    "image": "mon_033.gif",
+    "cost": 3,
+    "power": 3,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "rush"
+      }
+    ]
+  },
+  {
+    "id": "014",
+    "name": "グリム",
+    "image": "mon_147.gif",
+    "cost": 3,
+    "power": 1,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "deathtouch"
+      }
+    ],
+    "type": "悪魔"
+  },
+  {
+    "id": "015",
+    "name": "パワー",
+    "image": "mon_006.gif",
+    "cost": 3,
+    "power": 1,
+    "toughness": 1,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "rush"
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_attack",
+        "effect": "dmg_enemy_one",
+        "params": {
+          "dmg": 2,
+          "target": "choose"
+        }
+      }
+    ],
+    "type": "天使"
+  },
+  {
+    "id": "009",
+    "name": "フェザー",
+    "image": "mon_015.gif",
+    "cost": 4,
+    "power": 3,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "haste"
+      }
+    ],
+    "type": "天使"
+  },
+  {
+    "id": "019",
+    "name": "ジェネラル",
+    "image": "mon_199.gif",
+    "cost": 4,
+    "power": 2,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_card",
+        "params": {
+          "cards": [
+            {
+              "name": "ソルジャー",
+              "n": 1
+            }
+          ]
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "add_to_hand",
+        "params": {
+          "cards": [
+            {
+              "name": "ソルジャー",
+              "n": 1
+            }
+          ]
+        }
+      }
+    ],
+    "type": "王国"
+  },
+  {
+    "id": "004",
+    "name": "ウィザード",
+    "image": "mon_018.gif",
+    "cost": 5,
+    "power": 1,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "passive",
+        "id": "cost_reduce_self",
+        "params": {
+          "per": "ally_no_ability",
+          "amount": 1
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "dmg_enemy_one",
+        "params": {
+          "dmg": 3,
+          "target": "choose"
+        }
+      }
+    ],
+    "type": "王国"
+  },
+  {
+    "id": "008",
+    "name": "ミノタウロス",
+    "image": "mon_014.gif",
+    "cost": 5,
+    "power": 4,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "destroy_one",
+        "params": {
+          "target": "choose"
+        }
+      }
+    ]
+  },
+  {
+    "id": "006",
+    "name": "シャーマン",
+    "image": "mon_046.gif",
+    "cost": 6,
+    "power": 2,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_card",
+        "params": {
+          "name": "ウォリアー",
+          "n": 2,
+          "from": "nowhere"
+        }
+      }
+    ]
+  },
+  {
+    "id": "010",
+    "name": "ドラゴン",
+    "image": "mon_013.gif",
+    "cost": 7,
+    "power": 5,
+    "toughness": 5,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "dmg_enemy_all",
+        "params": {
+          "dmg": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "022",
+    "name": "キングナイト",
+    "image": "mon_178.gif",
+    "cost": 7,
+    "power": 3,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_card",
+        "params": {
+          "cards": [
+            {
+              "name": "ソルジャー",
+              "n": 2
+            }
+          ]
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "buff_ally_all",
+        "params": {
+          "pow": 1,
+          "tuf": 1
+        }
+      }
+    ],
+    "type": "王国"
+  },
+  {
+    "id": "016",
+    "name": "ミカエル",
+    "image": "mon_239.gif",
+    "cost": 8,
+    "power": 3,
+    "toughness": 4,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_card",
+        "params": {
+          "cards": [
+            {
+              "name": "フェザー",
+              "n": 1
+            },
+            {
+              "name": "パワー",
+              "n": 1
+            },
+            {
+              "name": "エンジェル",
+              "n": 1
+            }
+          ]
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "grant_kw_summoned",
+        "params": {
+          "kws": [
+            "guard"
+          ]
+        }
+      }
+    ],
+    "type": "天使"
+  },
+  {
+    "id": "017",
+    "name": "ルシファー",
+    "image": "mon_174.gif",
+    "cost": 8,
+    "power": 4,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "summon_card",
+        "params": {
+          "cards": [
+            {
+              "name": "レイヴン",
+              "n": 1
+            },
+            {
+              "name": "グリム",
+              "n": 1
+            },
+            {
+              "name": "インプ",
+              "n": 1
+            }
+          ]
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "grant_kw_summoned",
+        "params": {
+          "kws": [
+            "rush"
+          ]
+        }
+      }
+    ],
+    "type": "悪魔"
+  },
+  {
+    "id": "012",
+    "name": "レイヴン",
+    "image": "mon_012.gif",
+    "cost": 4,
+    "power": 3,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "drain"
+      },
+      {
+        "type": "keyword",
+        "id": "stealth"
+      }
+    ],
+    "type": "悪魔"
+  },
+  {
+    "id": "024",
+    "name": "アビスロード",
+    "image": "mon_109.gif",
+    "cost": 7,
+    "power": 3,
+    "toughness": 3,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "revive",
+        "params": {
+          "cost_max": 5,
+          "type": "",
+          "target": "choose"
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_ally_enter",
+        "effect": "dmg_enemy_all",
+        "params": {
+          "dmg": 1
+        }
+      }
+    ],
+    "type": "死霊"
+  },
+  {
+    "id": "025",
+    "name": "ハデス",
+    "image": "mon_110.gif",
+    "cost": 9,
+    "power": 4,
+    "toughness": 4,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "revive",
+        "params": {
+          "cost_max": 7,
+          "type": "",
+          "target": "choose"
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_ally_enter",
+        "effect": "dmg_leader",
+        "params": {
+          "dmg": 1
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_ally_enter",
+        "effect": "heal_leader",
+        "params": {
+          "amount": 1
+        }
+      }
+    ],
+    "type": "死霊"
+  },
+  {
+    "id": "026",
+    "name": "ゾンビ",
+    "image": "mon_142.gif",
+    "cost": 3,
+    "power": 1,
+    "toughness": 1,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "rush"
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_death",
+        "effect": "summon_card",
+        "params": {
+          "cards": [
+            {
+              "name": "コープス",
+              "n": 1
+            }
+          ]
+        }
+      }
+    ],
+    "type": "死霊"
+  },
+  {
+    "id": "027",
+    "name": "コープス",
+    "image": "mon_141.gif",
+    "cost": 1,
+    "power": 1,
+    "toughness": 1,
+    "abilities": [
+      {
+        "type": "keyword",
+        "id": "rush"
+      }
+    ],
+    "isToken": true,
+    "type": "死霊"
+  },
+  {
+    "id": "007",
+    "name": "ハカモリ",
+    "image": "mon_034.gif",
+    "cost": 2,
+    "power": 1,
+    "toughness": 1,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "draw",
+        "params": {
+          "n": 1
+        }
+      }
+    ],
+    "type": "死霊"
+  },
+  {
+    "id": "023",
+    "name": "ネクロメイジ",
+    "image": "mon_106.gif",
+    "cost": 5,
+    "power": 2,
+    "toughness": 2,
+    "abilities": [
+      {
+        "type": "trigger",
+        "trigger": "on_enter",
+        "effect": "revive",
+        "params": {
+          "cost_max": 3
+        }
+      },
+      {
+        "type": "trigger",
+        "trigger": "on_ally_enter",
+        "effect": "dmg_enemy_one",
+        "params": {
+          "dmg": 2,
+          "target": "random"
+        }
+      }
+    ],
+    "type": "死霊"
+  }
+]
