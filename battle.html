@@ -719,19 +719,6 @@ textarea.finput{resize:vertical;min-height:64px;}
   <div id="coin-result"></div>
   <div id="coin-sub"></div>
 </div>
-<!-- Upload progress modal -->
-<div id="upload-modal" style="position:fixed;inset:0;z-index:900;background:rgba(5,4,12,0.88);backdrop-filter:blur(4px);
-  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.18s;">
-  <div style="background:linear-gradient(135deg,#1c1930,#25203e);border:1px solid rgba(201,168,76,0.4);
-    border-radius:12px;padding:24px 28px;width:360px;display:flex;flex-direction:column;gap:14px;">
-    <div style="font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:0.1em;color:var(--gold);">画像をStorageにアップロード</div>
-    <div id="upload-progress-text" style="font-size:11px;color:rgba(240,230,204,0.6);">ファイルを選択してください</div>
-    <div style="background:rgba(8,6,16,0.6);border-radius:6px;height:8px;overflow:hidden;">
-      <div id="upload-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--gold-d),var(--gold));transition:width 0.2s;"></div>
-    </div>
-    <button id="upload-close-btn" class="gbtn sec" onclick="closeUploadModal()" style="font-size:12px;">閉じる</button>
-  </div>
-</div>
 <div id="grave-modal" onclick="if(event.target===this)closeGrave()">
   <div id="grave-box">
     <div id="grave-title">墓地</div>
@@ -788,12 +775,8 @@ textarea.finput{resize:vertical;min-height:64px;}
     <span class="panel-title">カード一覧</span>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <span id="e-count" style="background:var(--gold);color:var(--ink);font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;">0</span>
-      <span style="font-size:10px;color:rgba(240,230,204,0.3);">cards.jsonをドロップでインポート</span>
-      <button class="gbtn sec" onclick="eCopyJSON()" style="font-size:11px;padding:5px 10px;">📋 コピー</button>
-      <button class="gbtn sec" onclick="ePickSaveFile()" id="btn-pick-save" style="font-size:11px;padding:5px 10px;" title="保存先を選択（以降自動上書き）">📁 保存先</button>
       <button class="gbtn" onclick="cdmOpenNew()" style="font-size:12px;padding:6px 14px;">＋ 新規作成</button>
       <button class="gbtn" onclick="eDownloadJSON()" style="font-size:12px;padding:6px 14px;">💾 保存</button>
-      <button class="gbtn sec" onclick="eUploadImagesToStorage()" style="font-size:12px;padding:6px 14px;" title="images/フォルダの画像をFirebase Storageに一括アップロード">☁ 画像アップロード</button>
     </div>
   </div>
   <!-- Full-screen card grid -->
@@ -1070,8 +1053,6 @@ textarea.finput{resize:vertical;min-height:64px;}
   import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import{getDatabase,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove}
     from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import{getStorage,ref as sRef,uploadBytes,getDownloadURL}
-    from"https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
   const fbCfg={
     apiKey:"AIzaSyCdGOYVHlG69Ca_CsK12Fe1ED4LWz3FUAQ",
     authDomain:"cardcraft-f8642.firebaseapp.com",
@@ -1083,9 +1064,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   };
   const fbApp=initializeApp(fbCfg);
   const fbDb=getDatabase(fbApp);
-  const fbStorage=getStorage(fbApp);
-  window._FB={db:fbDb,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove,
-    storage:fbStorage,sRef,uploadBytes,getDownloadURL};
+  window._FB={db:fbDb,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove};
   window.dispatchEvent(new Event('fb-ready'));
 </script>
 <script>
@@ -1576,30 +1555,11 @@ function eRenderGrid(){
   });
 }
 
-function eCopyJSON(){
-  if(!CARDS.length){eToast('⚠ カードがありません',true);return;}
-  const j=JSON.stringify(CARDS.map(({imageDataUrl,...r})=>r),null,2);
-  navigator.clipboard.writeText(j).then(()=>eToast('📋 JSONをコピーしました')).catch(()=>eToast('コピー失敗',true));
-}
 function eDownloadJSON(){
   if(!CARDS.length){eToast('⚠ カードがありません',true);return;}
   saveCards();
 }
 
-async function ePickSaveFile(){
-  if(!window.showSaveFilePicker){
-    eToast('⚠ このブラウザは非対応です。Chromeをお使いください',true);return;
-  }
-  try{
-    _cardsFileHandle=await window.showSaveFilePicker({
-      suggestedName:'cards.json',
-      types:[{description:'JSON',accept:{'application/json':['.json']}}]
-    });
-    document.getElementById('btn-pick-save').textContent='📁 保存先: ✓';
-    document.getElementById('btn-pick-save').style.borderColor='rgba(34,197,94,0.5)';
-    eToast('✓ 保存先を設定しました。以降「保存」で自動上書きします');
-  }catch(e){if(e.name!=='AbortError')console.error(e);}
-}
 
 // ── Ability Builder ──────────────────────────────────
 const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce','stealth','barrier','intimidate','aura'];
@@ -4233,75 +4193,6 @@ async function endTurnSequence(){
 
 // ═══════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════
-// FIREBASE STORAGE IMAGE UPLOAD
-// ═══════════════════════════════════════════════════════
-
-function closeUploadModal(){
-  const modal=document.getElementById('upload-modal');
-  modal.style.opacity='0';modal.style.pointerEvents='none';
-}
-
-async function eUploadImagesToStorage(){
-  const fb=window._FB;
-  if(!fb||!fb.storage){eToast('Firebase Storage未接続',true);return;}
-
-  // File picker: select multiple GIF files
-  const input=document.createElement('input');
-  input.type='file';input.accept='image/*';input.multiple=true;
-  input.onchange=async()=>{
-    const files=[...input.files];
-    if(!files.length)return;
-
-    // Show progress modal
-    const modal=document.getElementById('upload-modal');
-    modal.style.opacity='1';modal.style.pointerEvents='all';
-    const progressText=document.getElementById('upload-progress-text');
-    const progressBar=document.getElementById('upload-progress-bar');
-    document.getElementById('upload-close-btn').style.display='none';
-
-    let done=0,updated=0,errors=0;
-    const total=files.length;
-
-    for(const file of files){
-      try{
-        progressText.textContent=`${done+1} / ${total}  ${file.name}`;
-        progressBar.style.width=`${Math.round((done/total)*100)}%`;
-
-        // Upload to Storage: images/{filename}
-        const storageRef=fb.sRef(fb.storage,`images/${file.name}`);
-        await fb.uploadBytes(storageRef,file);
-        const url=await fb.getDownloadURL(storageRef);
-
-        // Update matching card's image field
-        const card=CARDS.find(c=>c.image===file.name);
-        if(card){
-          card.image=url;
-          updated++;
-        }
-        done++;
-      }catch(e){
-        console.error(`Upload error: ${file.name}`,e);
-        errors++;
-        done++;
-      }
-    }
-
-    progressBar.style.width='100%';
-    progressText.textContent=`完了: ${done}枚アップロード / ${updated}枚カード更新 / エラー${errors}件`;
-    document.getElementById('upload-close-btn').style.display='';
-
-    if(updated>0){
-      // Save updated card data to Firebase
-      await saveCards();
-      eRenderTable();
-      eToast(`${updated}枚のカード画像URLを更新しました`);
-    }
-  };
-  input.click();
-}
-
-// ═══════════════════════════════════════════════════════
 
 // LOG / TOAST / FX
 function log(text,cls){
