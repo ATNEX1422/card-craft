@@ -839,11 +839,22 @@ textarea.finput{resize:vertical;min-height:64px;}
       <button class="gbtn danger" id="arcana-edit-del" onclick="arcanaDeleteFromEdit()" style="font-size:11px;padding:4px 12px;display:none;">削除</button>
     </div>
     <div style="display:grid;grid-template-columns:60px 1fr 1fr;gap:10px;margin-bottom:10px;">
-      <div><label class="flabel">No.</label><input id="arc-number" type="number" class="finput" placeholder="0" min="0" max="21"></div>
-      <div><label class="flabel">ID</label><input id="arc-id" class="finput" placeholder="arc_001"></div>
+      <div><label class="flabel">No.</label><input id="arc-number" type="number" class="finput" placeholder="0" min="0" max="21" oninput="if(!document.getElementById('arc-id').value)arcAutoId()"></div>
+      <div><label class="flabel">ID</label><div style="display:flex;gap:5px;"><input id="arc-id" class="finput" placeholder="arc_001"><button type="button" class="gbtn sec" onclick="arcAutoId()" style="padding:6px 8px;font-size:11px;flex-shrink:0;">AUTO</button></div></div>
       <div><label class="flabel">アルカナ名</label><input id="arc-name" class="finput" placeholder="例：愚者"></div>
     </div>
-    <div style="margin-bottom:12px;"><label class="flabel">画像ファイル名</label><input id="arc-image" class="finput" placeholder="例：arc_fool.gif"></div>
+    <div style="margin-bottom:12px;">
+      <label class="flabel">画像ファイル名</label>
+      <div class="drop-zone" id="arc-dz" onclick="arcDzClick()" style="min-height:48px;padding:8px 11px;">
+        <input type="file" id="arc-img-file" accept="image/*" tabindex="-1" onclick="event.stopPropagation()" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+        <span class="dz-ico" id="arc-dz-ico">🖼️</span>
+        <div id="arc-dz-txt"><div class="dz-txt">ドロップ or クリック</div><div class="dz-sub">PNG/GIF/JPG</div></div>
+        <img id="arc-dz-prev" class="dz-prev" style="display:none;" alt="">
+        <div id="arc-dz-info" style="display:none;"><div class="dz-fn" id="arc-dz-fn"></div></div>
+        <button type="button" class="dz-clear" id="arc-dz-clr" style="display:none;" onclick="arcDzClear(event)">✕</button>
+      </div>
+      <input type="hidden" id="arc-image">
+    </div>
 
     <!-- 正位置パッシブ -->
     <div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:12px;margin-bottom:10px;">
@@ -1607,7 +1618,7 @@ function arcanaOpenNew(){
   document.getElementById('arc-number').value='';
   document.getElementById('arc-id').value='';
   document.getElementById('arc-name').value='';
-  document.getElementById('arc-image').value='';
+  arcDzReset();
   document.getElementById('arcana-edit-title').textContent='新規アルカナ作成';
   document.getElementById('arcana-edit-del').style.display='none';
   arcanaRenderAbilLists();
@@ -1624,7 +1635,7 @@ function arcanaOpenEdit(id){
   document.getElementById('arc-number').value=arc.number??'';
   document.getElementById('arc-id').value=arc.id;
   document.getElementById('arc-name').value=arc.name;
-  document.getElementById('arc-image').value=arc.image||'';
+  arcDzLoad(arc.image||null);
   document.getElementById('arcana-edit-title').textContent=`編集: ${arc.name}`;
   document.getElementById('arcana-edit-del').style.display='';
   arcanaRenderAbilLists();
@@ -1635,6 +1646,84 @@ function arcanaOpenEdit(id){
 function arcanaEditClose(){
   const modal=document.getElementById('arcana-edit-modal');
   modal.style.opacity='0';modal.style.pointerEvents='none';
+}
+
+// ── Arcana image drop zone ──
+function arcDzClick(){ document.getElementById('arc-img-file').click(); }
+
+document.getElementById('arc-img-file').addEventListener('change', e=>{
+  if(e.target.files[0]) arcHandleFile(e.target.files[0]);
+});
+
+(function(){
+  const dz=document.getElementById('arc-dz');
+  dz.addEventListener('dragenter',e=>{e.preventDefault();dz.classList.add('dv');});
+  dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('dv');});
+  dz.addEventListener('dragleave',e=>{if(!dz.contains(e.relatedTarget))dz.classList.remove('dv');});
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('dv');
+    const f=e.dataTransfer.files[0];if(f)arcHandleFile(f);
+  });
+})();
+
+function arcHandleFile(file){
+  if(!file.type.startsWith('image/')){eToast('画像ファイルを選択してください',true);return;}
+  document.getElementById('arc-image').value=file.name;
+  const dz=document.getElementById('arc-dz');dz.classList.add('hi');
+  document.getElementById('arc-dz-ico').style.display='none';
+  document.getElementById('arc-dz-txt').style.display='none';
+  const prev=document.getElementById('arc-dz-prev');
+  prev.src=URL.createObjectURL(file);prev.style.display='block';
+  document.getElementById('arc-dz-fn').textContent=`images/${file.name}`;
+  document.getElementById('arc-dz-info').style.display='block';
+  document.getElementById('arc-dz-clr').style.display='flex';
+}
+
+function arcDzClear(e){
+  e.stopPropagation();
+  document.getElementById('arc-image').value='';
+  document.getElementById('arc-img-file').value='';
+  const dz=document.getElementById('arc-dz');dz.classList.remove('hi','dv');
+  document.getElementById('arc-dz-ico').style.display='';
+  document.getElementById('arc-dz-txt').style.display='';
+  document.getElementById('arc-dz-prev').style.display='none';
+  document.getElementById('arc-dz-info').style.display='none';
+  document.getElementById('arc-dz-clr').style.display='none';
+}
+
+function arcDzReset(){
+  arcDzClear({stopPropagation:()=>{}});
+}
+
+function arcDzLoad(imageName){
+  if(!imageName){arcDzReset();return;}
+  document.getElementById('arc-image').value=imageName;
+  const dz=document.getElementById('arc-dz');dz.classList.add('hi');
+  document.getElementById('arc-dz-ico').style.display='none';
+  document.getElementById('arc-dz-txt').style.display='none';
+  document.getElementById('arc-dz-fn').textContent=`images/${imageName}`;
+  document.getElementById('arc-dz-info').style.display='block';
+  document.getElementById('arc-dz-clr').style.display='flex';
+  // show existing image
+  const prev=document.getElementById('arc-dz-prev');
+  prev.src=`images/${imageName}`;prev.style.display='block';
+}
+
+function arcAutoId(){
+  // Generate from number if set, else sequential
+  const num=document.getElementById('arc-number').value.trim();
+  if(num!==''){
+    const n=parseInt(num);
+    const names=['fool','magician','high_priestess','empress','emperor','hierophant',
+      'lovers','chariot','strength','hermit','wheel','justice',
+      'hanged_man','death','temperance','devil','tower','star','moon','sun','judgement','world'];
+    const name=names[n]||`arc${String(n).padStart(2,'0')}`;
+    document.getElementById('arc-id').value=`arc_${name}`;
+  } else {
+    const used=new Set(ARCANAS.map(a=>a.id));
+    let i=1; while(used.has(`arc_${String(i).padStart(3,'0')}`))i++;
+    document.getElementById('arc-id').value=`arc_${String(i).padStart(3,'0')}`;
+  }
 }
 
 function arcanaRegister(){
