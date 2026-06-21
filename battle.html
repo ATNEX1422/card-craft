@@ -833,74 +833,44 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 <!-- Arcana edit modal -->
 <div id="arcana-edit-modal" onclick="if(event.target===this)arcanaEditClose()" style="position:fixed;inset:0;z-index:820;background:rgba(5,4,12,0.9);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity 0.18s;">
-  <div style="background:linear-gradient(135deg,#1c1930,#25203e);border:1px solid rgba(167,139,250,0.4);border-radius:14px;padding:20px 24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;">
+  <div style="background:linear-gradient(135deg,#1c1930,#25203e);border:1px solid rgba(167,139,250,0.4);border-radius:14px;padding:20px 24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <span style="font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:0.1em;color:rgba(167,139,250,0.9);" id="arcana-edit-title">新規アルカナ作成</span>
       <button class="gbtn danger" id="arcana-edit-del" onclick="arcanaDeleteFromEdit()" style="font-size:11px;padding:4px 12px;display:none;">削除</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div>
-        <label class="flabel">ID</label>
-        <input id="arc-id" class="finput" placeholder="arc_001">
-      </div>
-      <div>
-        <label class="flabel">アルカナ名</label>
-        <input id="arc-name" class="finput" placeholder="例：愚者">
-      </div>
+    <div style="display:grid;grid-template-columns:60px 1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div><label class="flabel">No.</label><input id="arc-number" type="number" class="finput" placeholder="0" min="0" max="21"></div>
+      <div><label class="flabel">ID</label><input id="arc-id" class="finput" placeholder="arc_001"></div>
+      <div><label class="flabel">アルカナ名</label><input id="arc-name" class="finput" placeholder="例：愚者"></div>
     </div>
-    <div style="margin-bottom:10px;">
-      <label class="flabel">画像ファイル名</label>
-      <input id="arc-image" class="finput" placeholder="例：arc_fool.gif">
-    </div>
-    <!-- Upright ability -->
+    <div style="margin-bottom:12px;"><label class="flabel">画像ファイル名</label><input id="arc-image" class="finput" placeholder="例：arc_fool.gif"></div>
+
+    <!-- 正位置パッシブ -->
     <div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(167,139,250,0.8);margin-bottom:8px;">正位置（パッシブ / 毎ターン効果）</div>
-      <div style="display:flex;gap:8px;margin-bottom:6px;">
-        <select id="arc-up-trigger" class="finput" style="flex:1;font-size:11px;">
-          <option value="on_turn_start">ターン開始時</option>
-          <option value="on_turn_end">ターン終了時</option>
-          <option value="passive_heal">パッシブ: 毎ターン回復</option>
-          <option value="passive_draw">パッシブ: 毎ターンドロー</option>
-          <option value="passive_mana">パッシブ: マナボーナス</option>
-          <option value="none">なし</option>
-        </select>
-        <select id="arc-up-effect" class="finput" style="flex:1;font-size:11px;">
-          <option value="heal_leader">リーダー回復</option>
-          <option value="draw">カードを引く</option>
-          <option value="buff_ally_all">味方全体バフ</option>
-          <option value="gain_mana">マナ加速</option>
-          <option value="none">なし</option>
-        </select>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(167,139,250,0.8);">正位置 — パッシブ</span>
+        <button type="button" class="gbtn sec" onclick="arcanaAddPassive('up')" style="font-size:10px;padding:3px 10px;border-color:rgba(167,139,250,0.4);color:rgba(167,139,250,0.8);">＋ 追加</button>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <label class="flabel" style="margin:0;white-space:nowrap;">値:</label>
-        <input id="arc-up-val" type="number" class="finput" value="1" min="0" max="10" style="width:70px;">
-        <input id="arc-up-desc" class="finput" placeholder="説明テキスト" style="flex:1;font-size:11px;">
-      </div>
+      <div id="arc-up-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
-    <!-- Reversed ability -->
+
+    <!-- 逆位置 -->
     <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:12px;margin-bottom:14px;">
-      <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(251,191,36,0.8);margin-bottom:8px;">逆位置（即時効果・ゲージ3で発動）</div>
-      <div style="display:flex;gap:8px;margin-bottom:6px;">
-        <select id="arc-rev-effect" class="finput" style="flex:1;font-size:11px;">
-          <option value="dmg_enemy_all">相手全体ダメージ</option>
-          <option value="dmg_enemy_one">相手1体ダメージ</option>
-          <option value="dmg_leader">相手リーダーダメージ</option>
-          <option value="heal_leader">リーダー回復</option>
-          <option value="draw">カードを引く</option>
-          <option value="destroy_one">相手1体破壊</option>
-          <option value="return_one">相手1体手札に戻す</option>
-          <option value="buff_ally_all">味方全体バフ</option>
-          <option value="summon_card">カードを召喚</option>
-          <option value="none">なし</option>
-        </select>
+      <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(251,191,36,0.8);margin-bottom:6px;">逆位置 — 反転時効果（ゲージ満タンで発動）</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:10px;color:rgba(251,191,36,0.6);">即時効果</span>
+        <button type="button" class="gbtn sec" onclick="arcanaAddRevImm()" style="font-size:10px;padding:3px 10px;border-color:rgba(251,191,36,0.4);color:rgba(251,191,36,0.8);">＋ 追加</button>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <label class="flabel" style="margin:0;white-space:nowrap;">値:</label>
-        <input id="arc-rev-val" type="number" class="finput" value="2" min="0" max="10" style="width:70px;">
-        <input id="arc-rev-desc" class="finput" placeholder="説明テキスト" style="flex:1;font-size:11px;">
+      <div id="arc-rev-imm-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+      <div style="border-top:1px solid rgba(251,191,36,0.1);padding-top:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:10px;color:rgba(251,191,36,0.6);">逆位置中パッシブ（ターン継続）</span>
+          <button type="button" class="gbtn sec" onclick="arcanaAddPassive('rev')" style="font-size:10px;padding:3px 10px;border-color:rgba(251,191,36,0.4);color:rgba(251,191,36,0.8);">＋ 追加</button>
+        </div>
+        <div id="arc-rev-list" style="display:flex;flex-direction:column;gap:6px;"></div>
       </div>
     </div>
+
     <div style="display:flex;gap:8px;">
       <button class="gbtn" onclick="arcanaRegister()" style="flex:1;border-color:rgba(167,139,250,0.6);background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(167,139,250,0.2));color:rgba(229,222,255,0.9);">✦ 保存</button>
       <button class="gbtn sec" onclick="arcanaEditClose()">キャンセル</button>
@@ -1403,7 +1373,12 @@ function buildAbilityText(card){
 let ARCANAS = []; // アルカナカードデータ
 
 // ── Arcana gauge constants ──
-const ARCANA_GAUGE_MAX = 3;
+// Gauge max = arcana number (0→no gauge, 1→1, ..., 21→21)
+function arcanaGaugeMax(arc){
+  if(!arc)return 0;
+  const n=arc.number??0;
+  return n===0?0:n;
+}
 
 // ── Save/Load ──
 async function saveArcanas(){
@@ -1440,8 +1415,9 @@ async function loadArcanas(){
 // ── Arcana ability text ──
 function buildArcanaText(arc){
   const parts=[];
-  if(arc.upright&&arc.upright.desc) parts.push('[正] '+arc.upright.desc);
-  if(arc.reversed&&arc.reversed.desc) parts.push('[逆] '+arc.reversed.desc);
+  (arc.upright||[]).forEach(p=>{ if(p.desc) parts.push('[正] '+p.desc); });
+  (arc.revImmediate||[]).forEach(p=>{ if(p.desc) parts.push('[逆即時] '+p.desc); });
+  (arc.revPassive||[]).forEach(p=>{ if(p.desc) parts.push('[逆継続] '+p.desc); });
   return parts.join(' / ')||'（効果なし）';
 }
 
@@ -1461,6 +1437,146 @@ function eShowTab(tab){
 
 // ── Arcana editor ──
 let _editingArcanaId=null;
+// Working copies of ability lists while editing
+let _arcUpPassives=[];    // [{condition, effect, val, desc}]
+let _arcRevImms=[];       // [{effect, val, desc}]  immediate effects on reverse
+let _arcRevPassives=[];   // [{condition, effect, val, desc}]  passives while reversed
+
+// ── Condition / Effect options ──
+const ARC_CONDITIONS=[
+  {id:'my_turn_start',  label:'自分のターン開始時'},
+  {id:'my_turn_end',    label:'自分のターン終了時'},
+  {id:'any_turn_start', label:'両者のターン開始時'},
+  {id:'on_ally_death',  label:'味方破壊時'},
+  {id:'on_enemy_death', label:'相手ユニット破壊時'},
+  {id:'on_damage_taken',label:'ダメージを受けた時'},
+];
+const ARC_PASSIVE_EFFECTS=[
+  {id:'heal_leader',    label:'リーダー回復', unit:'点'},
+  {id:'draw',           label:'カードを引く', unit:'枚'},
+  {id:'gain_mana',      label:'マナ加速',     unit:'個'},
+  {id:'buff_ally_all',  label:'味方全体バフ', unit:'(pow/tuf)'},
+  {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
+  {id:'dmg_leader',     label:'相手リーダーダメージ', unit:'点'},
+  {id:'reduce_atk_all', label:'相手全体攻撃力-', unit:'点'},
+];
+const ARC_IMM_EFFECTS=[
+  {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
+  {id:'dmg_enemy_one',  label:'相手1体ダメージ（ランダム）', unit:'点'},
+  {id:'dmg_leader',     label:'相手リーダーダメージ', unit:'点'},
+  {id:'heal_leader',    label:'リーダー回復', unit:'点'},
+  {id:'draw',           label:'カードを引く', unit:'枚'},
+  {id:'destroy_one',    label:'相手1体を破壊（ランダム）', unit:''},
+  {id:'return_one',     label:'相手1体を手札に戻す（ランダム）', unit:''},
+  {id:'buff_ally_all',  label:'味方全体バフ', unit:'(pow/tuf)'},
+  {id:'return_all',     label:'相手全体を手札に戻す', unit:''},
+  {id:'destroy_all',    label:'相手全体を破壊', unit:''},
+];
+
+function _buildPassiveRow(listId, arr, i, effectOptions){
+  const ab=arr[i];
+  const row=document.createElement('div');
+  row.className='trigger-row';row.style.gap='6px';
+  const selCond=document.createElement('select');
+  selCond.className='finput';selCond.style.cssText='flex:1;font-size:11px;';
+  ARC_CONDITIONS.forEach(c=>{
+    const o=document.createElement('option');o.value=c.id;o.textContent=c.label;
+    if(ab.condition===c.id)o.selected=true;
+    selCond.appendChild(o);
+  });
+  selCond.onchange=e=>{arr[i].condition=e.target.value;};
+
+  const selEff=document.createElement('select');
+  selEff.className='finput';selEff.style.cssText='flex:1;font-size:11px;';
+  effectOptions.forEach(ef=>{
+    const o=document.createElement('option');o.value=ef.id;o.textContent=ef.label;
+    if(ab.effect===ef.id)o.selected=true;
+    selEff.appendChild(o);
+  });
+  selEff.onchange=e=>{arr[i].effect=e.target.value;};
+
+  const inpVal=document.createElement('input');
+  inpVal.type='number';inpVal.min=0;inpVal.max=20;inpVal.value=ab.val??1;
+  inpVal.style.cssText='width:48px;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  inpVal.oninput=e=>{arr[i].val=parseInt(e.target.value)||0;};
+
+  const inpDesc=document.createElement('input');
+  inpDesc.type='text';inpDesc.value=ab.desc||'';inpDesc.placeholder='説明';
+  inpDesc.style.cssText='flex:1;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  inpDesc.oninput=e=>{arr[i].desc=e.target.value;};
+
+  const del=document.createElement('button');
+  del.type='button';del.className='trigger-del';del.textContent='削除';
+  del.onclick=()=>{arr.splice(i,1);arcanaRenderAbilLists();};
+
+  const top=document.createElement('div');
+  top.style.cssText='display:flex;gap:5px;align-items:center;';
+  top.appendChild(selCond);top.appendChild(selEff);top.appendChild(inpVal);top.appendChild(del);
+  row.appendChild(top);
+  row.appendChild(inpDesc);
+  return row;
+}
+
+function _buildImmRow(arr, i){
+  const ab=arr[i];
+  const row=document.createElement('div');
+  row.className='trigger-row';row.style.gap='6px';
+
+  const selEff=document.createElement('select');
+  selEff.className='finput';selEff.style.cssText='flex:1;font-size:11px;';
+  ARC_IMM_EFFECTS.forEach(ef=>{
+    const o=document.createElement('option');o.value=ef.id;o.textContent=ef.label;
+    if(ab.effect===ef.id)o.selected=true;
+    selEff.appendChild(o);
+  });
+  selEff.onchange=e=>{arr[i].effect=e.target.value;};
+
+  const inpVal=document.createElement('input');
+  inpVal.type='number';inpVal.min=0;inpVal.max=20;inpVal.value=ab.val??2;
+  inpVal.style.cssText='width:48px;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  inpVal.oninput=e=>{arr[i].val=parseInt(e.target.value)||0;};
+
+  const inpDesc=document.createElement('input');
+  inpDesc.type='text';inpDesc.value=ab.desc||'';inpDesc.placeholder='説明';
+  inpDesc.style.cssText='flex:1;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  inpDesc.oninput=e=>{arr[i].desc=e.target.value;};
+
+  const del=document.createElement('button');
+  del.type='button';del.className='trigger-del';del.textContent='削除';
+  del.onclick=()=>{arr.splice(i,1);arcanaRenderAbilLists();};
+
+  const top=document.createElement('div');
+  top.style.cssText='display:flex;gap:5px;align-items:center;';
+  top.appendChild(selEff);top.appendChild(inpVal);top.appendChild(del);
+  row.appendChild(top);
+  row.appendChild(inpDesc);
+  return row;
+}
+
+function arcanaRenderAbilLists(){
+  const upList=document.getElementById('arc-up-list');
+  const revImmList=document.getElementById('arc-rev-imm-list');
+  const revList=document.getElementById('arc-rev-list');
+  upList.innerHTML='';
+  revImmList.innerHTML='';
+  revList.innerHTML='';
+  _arcUpPassives.forEach((_,i)=>upList.appendChild(_buildPassiveRow('arc-up-list',_arcUpPassives,i,ARC_PASSIVE_EFFECTS)));
+  _arcRevImms.forEach((_,i)=>revImmList.appendChild(_buildImmRow(_arcRevImms,i)));
+  _arcRevPassives.forEach((_,i)=>revList.appendChild(_buildPassiveRow('arc-rev-list',_arcRevPassives,i,ARC_PASSIVE_EFFECTS)));
+  if(!_arcUpPassives.length) upList.innerHTML='<div style="font-size:10px;color:rgba(167,139,250,0.3);padding:4px 0;">なし</div>';
+  if(!_arcRevImms.length) revImmList.innerHTML='<div style="font-size:10px;color:rgba(251,191,36,0.3);padding:4px 0;">なし</div>';
+  if(!_arcRevPassives.length) revList.innerHTML='<div style="font-size:10px;color:rgba(251,191,36,0.3);padding:4px 0;">なし</div>';
+}
+
+function arcanaAddPassive(side){
+  const arr=side==='up'?_arcUpPassives:_arcRevPassives;
+  arr.push({condition:'my_turn_start',effect:'heal_leader',val:1,desc:''});
+  arcanaRenderAbilLists();
+}
+function arcanaAddRevImm(){
+  _arcRevImms.push({effect:'dmg_enemy_all',val:2,desc:''});
+  arcanaRenderAbilLists();
+}
 
 function arcanaRenderGrid(){
   const grid=document.getElementById('e-arcana-grid');
@@ -1472,10 +1588,13 @@ function arcanaRenderGrid(){
     const div=document.createElement('div');
     div.className='arcana-pool-card';
     const src=arc.image?`images/${arc.image}`:null;
+    const descTxt=(arc.upright||[]).map(p=>p.desc).filter(Boolean).join(' / ');
+    const numLabel=arc.number!=null?`No.${arc.number}`:'';
     div.innerHTML=`
-      ${src?`<img src="${src}" style="width:100%;height:70%;object-fit:cover;">` : '<div style="font-size:24px;opacity:0.4;">✦</div>'}
+      <div style="position:absolute;top:2px;left:3px;font-family:'Bebas Neue',cursive;font-size:9px;color:rgba(167,139,250,0.6);">${numLabel}</div>
+      ${src?`<img src="${src}" style="width:100%;height:60%;object-fit:cover;">` : '<div style="font-size:22px;opacity:0.4;margin-top:12px;">✦</div>'}
       <div class="arcana-pool-name">${esc(arc.name)}</div>
-      <div style="font-size:8px;color:rgba(167,139,250,0.5);text-align:center;padding:0 3px;">${arc.upright?.desc||''}</div>
+      <div style="font-size:7px;color:rgba(167,139,250,0.4);text-align:center;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(descTxt)}</div>
     `;
     div.onclick=()=>arcanaOpenEdit(arc.id);
     grid.appendChild(div);
@@ -1484,18 +1603,14 @@ function arcanaRenderGrid(){
 
 function arcanaOpenNew(){
   _editingArcanaId=null;
+  _arcUpPassives=[];_arcRevImms=[];_arcRevPassives=[];
+  document.getElementById('arc-number').value='';
   document.getElementById('arc-id').value='';
   document.getElementById('arc-name').value='';
   document.getElementById('arc-image').value='';
-  document.getElementById('arc-up-trigger').value='on_turn_start';
-  document.getElementById('arc-up-effect').value='heal_leader';
-  document.getElementById('arc-up-val').value='1';
-  document.getElementById('arc-up-desc').value='';
-  document.getElementById('arc-rev-effect').value='dmg_enemy_all';
-  document.getElementById('arc-rev-val').value='2';
-  document.getElementById('arc-rev-desc').value='';
   document.getElementById('arcana-edit-title').textContent='新規アルカナ作成';
   document.getElementById('arcana-edit-del').style.display='none';
+  arcanaRenderAbilLists();
   const modal=document.getElementById('arcana-edit-modal');
   modal.style.opacity='1';modal.style.pointerEvents='all';
 }
@@ -1503,18 +1618,16 @@ function arcanaOpenNew(){
 function arcanaOpenEdit(id){
   const arc=ARCANAS.find(a=>a.id===id);if(!arc)return;
   _editingArcanaId=id;
+  _arcUpPassives=JSON.parse(JSON.stringify(arc.upright||[]));
+  _arcRevImms=JSON.parse(JSON.stringify(arc.revImmediate||[]));
+  _arcRevPassives=JSON.parse(JSON.stringify(arc.revPassive||[]));
+  document.getElementById('arc-number').value=arc.number??'';
   document.getElementById('arc-id').value=arc.id;
   document.getElementById('arc-name').value=arc.name;
   document.getElementById('arc-image').value=arc.image||'';
-  document.getElementById('arc-up-trigger').value=arc.upright?.trigger||'on_turn_start';
-  document.getElementById('arc-up-effect').value=arc.upright?.effect||'heal_leader';
-  document.getElementById('arc-up-val').value=arc.upright?.val||1;
-  document.getElementById('arc-up-desc').value=arc.upright?.desc||'';
-  document.getElementById('arc-rev-effect').value=arc.reversed?.effect||'dmg_enemy_all';
-  document.getElementById('arc-rev-val').value=arc.reversed?.val||2;
-  document.getElementById('arc-rev-desc').value=arc.reversed?.desc||'';
   document.getElementById('arcana-edit-title').textContent=`編集: ${arc.name}`;
   document.getElementById('arcana-edit-del').style.display='';
+  arcanaRenderAbilLists();
   const modal=document.getElementById('arcana-edit-modal');
   modal.style.opacity='1';modal.style.pointerEvents='all';
 }
@@ -1528,32 +1641,25 @@ function arcanaRegister(){
   const id=document.getElementById('arc-id').value.trim();
   const name=document.getElementById('arc-name').value.trim();
   if(!id||!name){eToast('IDと名前を入力してください',true);return;}
+  const arcNum=parseInt(document.getElementById('arc-number').value)||0;
   const arc={
-    id, name,
+    id, name, number:arcNum,
     image:document.getElementById('arc-image').value.trim()||null,
-    upright:{
-      trigger:document.getElementById('arc-up-trigger').value,
-      effect:document.getElementById('arc-up-effect').value,
-      val:parseInt(document.getElementById('arc-up-val').value)||1,
-      desc:document.getElementById('arc-up-desc').value.trim(),
-    },
-    reversed:{
-      effect:document.getElementById('arc-rev-effect').value,
-      val:parseInt(document.getElementById('arc-rev-val').value)||2,
-      desc:document.getElementById('arc-rev-desc').value.trim(),
-    }
+    upright:JSON.parse(JSON.stringify(_arcUpPassives)),
+    revImmediate:JSON.parse(JSON.stringify(_arcRevImms)),
+    revPassive:JSON.parse(JSON.stringify(_arcRevPassives)),
   };
   if(_editingArcanaId){
     const idx=ARCANAS.findIndex(a=>a.id===_editingArcanaId);
-    if(idx>=0) ARCANAS[idx]=arc;
+    if(idx>=0) ARCANAS[idx]=arc; else ARCANAS.push(arc);
   } else {
     if(ARCANAS.find(a=>a.id===id)){eToast('このIDは使用済みです',true);return;}
     ARCANAS.push(arc);
   }
   arcanaEditClose();
   arcanaRenderGrid();
-  deckRenderTabs(); // refresh deck builder too
-  eToast(`「${name}」を保存 → Firebaseに保存してください`);
+  deckRenderTabs();
+  eToast(`「${name}」を保存しました`);
 }
 
 function arcanaDeleteFromEdit(){
@@ -2653,9 +2759,11 @@ function dsRender(){
 // G.p[pid].arcana = { id, gauge, reversed, usedThisTurn, damagedThisTurn }
 
 function initArcanaState(pid, arcanaId, isSecond){
+  const arc=arcanaId?ARCANAS.find(a=>a.id===arcanaId):null;
+  const maxG=arcanaGaugeMax(arc);
   return {
     id: arcanaId||null,
-    gauge: isSecond?1:0,  // 後攻+1
+    gauge: maxG>0?(isSecond?1:0):0,  // 後攻+1、ただし上限が0なら常に0
     reversed: false,
     usedThisTurn: false,
     damagedThisTurn: false,
@@ -2671,50 +2779,100 @@ function getArcana(pid){
 async function arcanaOnTurnEnd(pid){
   const state=G.p[pid].arcana;
   if(!state||!state.id)return;
-  // +1 gauge at turn end
-  if(state.gauge<ARCANA_GAUGE_MAX) state.gauge++;
-  // +1 if took damage this turn
-  if(state.damagedThisTurn&&state.gauge<ARCANA_GAUGE_MAX) state.gauge++;
-  state.damagedThisTurn=false;
+  const arc_g=getArcana(pid);
+  const maxG=arcanaGaugeMax(arc_g);
+
+  // Fire turn_end passives (before gauge/state changes)
+  if(arc_g){
+    const ctx={event:'turn_end',pid};
+    if(!state.reversed) await arcanaFirePassives(pid,arc_g,arc_g.upright||[],'正位置',ctx);
+    else await arcanaFirePassives(pid,arc_g,arc_g.revPassive||[],'逆位置',ctx);
+  }
+
+  // Step1: ゲージ+1（逆位置中はたまらない、上限0もたまらない）
+  if(!state.reversed&&maxG>0){
+    if(state.gauge<maxG) state.gauge++;
+  }
+
+  // Step2: 逆位置だったなら正位置に戻す（ゲージはリセットしない）
+  if(state.reversed){
+    state.reversed=false;
+  }
+
   state.usedThisTurn=false;
   renderArcana();
 }
 
-// Called at start of each player's turn: apply upright passive
-async function arcanaOnTurnStart(pid){
-  const state=G.p[pid].arcana;
-  if(!state||!state.id||state.reversed)return;
-  const arc=getArcana(pid);
-  if(!arc||!arc.upright)return;
-  const trigger=arc.upright.trigger;
-  if(trigger==='on_turn_start'||trigger==='passive_heal'||trigger==='passive_draw'||trigger==='passive_mana'){
-    await arcanaApplyUprightEffect(pid, arc);
+// Condition check for arcana passives
+function arcanaConditionMet(condition, pid, context={}){
+  switch(condition){
+    case 'my_turn_start':   return context.event==='turn_start'&&context.pid===pid;
+    case 'my_turn_end':     return context.event==='turn_end'&&context.pid===pid;
+    case 'any_turn_start':  return context.event==='turn_start';
+    case 'on_ally_death':   return context.event==='ally_death'&&context.pid===pid;
+    case 'on_enemy_death':  return context.event==='ally_death'&&context.pid!==(pid===1?2:1);
+    case 'on_damage_taken': return context.event==='damage_taken'&&context.pid===pid;
+    default: return false;
   }
 }
 
-async function arcanaApplyUprightEffect(pid, arc){
-  const up=arc.upright;
-  const val=up.val||1;
-  switch(up.effect){
+async function arcanaApplyPassiveEffect(pid, arc, ab, label){
+  const val=ab.val||1;
+  const opp=pid===1?2:1;
+  switch(ab.effect){
     case 'heal_leader':
       G.p[pid].life=Math.min(20,G.p[pid].life+val);
-      log(`✦ ${arc.name} [正位置] → リーダーを${val}回復`,'ll-sys');
-      break;
+      log(`✦ ${arc.name} [${label}] → リーダーを${val}回復`,'ll-sys'); break;
     case 'draw':
       for(let i=0;i<val;i++) drawCard(pid);
-      log(`✦ ${arc.name} [正位置] → ${val}枚ドロー`,'ll-sys');
-      break;
+      log(`✦ ${arc.name} [${label}] → ${val}枚ドロー`,'ll-sys'); break;
     case 'gain_mana':
       G.p[pid].mana=Math.min(G.p[pid].maxMana,G.p[pid].mana+val);
-      log(`✦ ${arc.name} [正位置] → マナ+${val}`,'ll-sys');
-      break;
+      log(`✦ ${arc.name} [${label}] → マナ+${val}`,'ll-sys'); break;
     case 'buff_ally_all':
       G.p[pid].field.forEach(c=>{c.power+=val;c.toughness+=val;c._hp+=val;});
-      log(`✦ ${arc.name} [正位置] → 味方全体+${val}/+${val}`,'ll-sys');
+      log(`✦ ${arc.name} [${label}] → 味方全体+${val}/+${val}`,'ll-sys'); break;
+    case 'dmg_enemy_all':
+      if(G.p[opp].field.length){
+        G.p[opp].field.forEach(c=>c._hp-=val);
+        const dead=G.p[opp].field.filter(c=>c._hp<=0);
+        dead.forEach(c=>{removeCard(opp,c._uid);});
+        log(`✦ ${arc.name} [${label}] → 相手全体に${val}ダメージ`,'ll-sys');
+      } break;
+    case 'dmg_leader':
+      G.p[opp].life=Math.max(0,G.p[opp].life-val);
+      log(`✦ ${arc.name} [${label}] → 相手リーダーに${val}ダメージ`,'ll-sys');
+      if(G.p[opp].life<=0){render();setTimeout(()=>gameOver(pid),300);}
       break;
+    case 'reduce_atk_all':
+      G.p[opp].field.forEach(c=>{c.power=Math.max(0,c.power-val);});
+      log(`✦ ${arc.name} [${label}] → 相手全体攻撃力-${val}`,'ll-sys'); break;
   }
   animateArcanaCard(pid);
   render();
+}
+
+async function arcanaFirePassives(pid, arc, passives, label, context){
+  for(const ab of passives){
+    if(arcanaConditionMet(ab.condition, pid, context)){
+      await arcanaApplyPassiveEffect(pid, arc, ab, label);
+    }
+  }
+}
+
+// Called at start of each player's turn
+async function arcanaOnTurnStart(pid){
+  const state=G.p[pid].arcana;
+  if(!state||!state.id)return;
+  const arc=getArcana(pid);if(!arc)return;
+  const ctx={event:'turn_start',pid};
+  if(!state.reversed){
+    // upright passives
+    await arcanaFirePassives(pid,arc,arc.upright||[],'正位置',ctx);
+  } else {
+    // reversed passives (while reversed)
+    await arcanaFirePassives(pid,arc,arc.revPassive||[],'逆位置',ctx);
+  }
 }
 
 // Player clicks arcana card → activate reversed effect
@@ -2725,8 +2883,11 @@ async function onArcanaClick(pid){
   if(state.reversed){
     eToast('逆位置効果は発動済みです',true);return;
   }
-  if(state.gauge<ARCANA_GAUGE_MAX){
-    eToast(`ゲージが足りません (${state.gauge}/${ARCANA_GAUGE_MAX})`,true);return;
+  const arc_c=getArcana(pid);
+  const maxG_c=arcanaGaugeMax(arc_c);
+  if(maxG_c===0){eToast('このアルカナは正位置のみです',true);return;}
+  if(state.gauge<maxG_c){
+    eToast(`ゲージが足りません (${state.gauge}/${maxG_c})`,true);return;
   }
   if(state.usedThisTurn){
     eToast('このターンすでに使用しました',true);return;
@@ -2745,15 +2906,16 @@ async function onArcanaClick(pid){
 }
 
 async function arcanaApplyReversedEffect(pid, arc){
-  const rev=arc.reversed;
-  if(!rev||rev.effect==='none')return;
-  const val=rev.val||2;
-  const opp=pid===1?2:1;
-  const isAI=pid===2;
-  // Create a fake fc for _execEffect compatibility
-  const fakeFc={name:arc.name, _uid:-1, abilities:[]};
-  const ab={effect:rev.effect,params:{dmg:val,amount:val,n:val,pow:val,tuf:val,target:'random'},_triggerType:'arcana'};
-  await _execEffect(pid, fakeFc, ab, isAI);
+  const imms=arc.revImmediate||[];
+  for(const ab of imms){
+    if(!ab.effect||ab.effect==='none')continue;
+    const val=ab.val||2;
+    const opp=pid===1?2:1;
+    const isAI=pid===2;
+    const fakeFc={name:arc.name, _uid:-1, abilities:[]};
+    const abEx={effect:ab.effect,params:{dmg:val,amount:val,n:val,pow:val,tuf:val,target:'random'},_triggerType:'arcana'};
+    await _execEffect(pid, fakeFc, abEx, isAI);
+  }
 }
 
 // Arcana render
@@ -2772,20 +2934,26 @@ function renderArcana(){
     const arc=getArcana(pid);
     // card visual
     const src=arc?.image?`images/${arc.image}`:null;
-    const canActivate=!state.reversed&&state.gauge>=ARCANA_GAUGE_MAX&&!state.usedThisTurn&&G.cp===pid&&!aiLock;
+    const _maxG=arcanaGaugeMax(getArcana(pid));
+    const canActivate=_maxG>0&&!state.reversed&&state.gauge>=_maxG&&!state.usedThisTurn&&G.cp===pid&&!aiLock;
     cardEl.className='arcana-card'+(state.reversed?' reversed':'')+(canActivate?' can-activate':'');
     cardEl.innerHTML=src
       ? `<img class="arcana-img" src="${src}" alt="${esc(arc?.name||'')}"><div style="position:absolute;bottom:1px;left:0;right:0;text-align:center;font-family:'Bebas Neue',cursive;font-size:7px;color:rgba(229,222,255,0.8);background:rgba(0,0,0,0.5);padding:1px 0;">${esc(arc?.name||'')}</div>`
       : `<div class="arcana-img-ph">✦</div><div style="font-family:'Bebas Neue',cursive;font-size:8px;color:rgba(229,222,255,0.7);text-align:center;padding:2px;">${esc(arc?.name||'')}</div>`;
-    // gauge pips
+    // gauge: always numeric display
     gaugeEl.innerHTML='';
-    for(let i=0;i<ARCANA_GAUGE_MAX;i++){
-      const pip=document.createElement('div');
-      const filled=i<state.gauge;
-      const ready=filled&&state.gauge>=ARCANA_GAUGE_MAX;
-      pip.className='arcana-pip'+(filled?' filled':'')+(ready?' ready':'');
-      gaugeEl.appendChild(pip);
+    const arc_r=getArcana(pid);
+    const maxG_r=arcanaGaugeMax(arc_r);
+    const lbl=document.createElement('div');
+    if(maxG_r===0){
+      lbl.style.cssText="font-family:'Bebas Neue',cursive;font-size:8px;letter-spacing:0.05em;color:rgba(167,139,250,0.35)";
+      lbl.textContent='正位置';
+    } else {
+      const canActivate2=state.gauge>=maxG_r&&!state.reversed&&!state.usedThisTurn;
+      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.05em;color:${canActivate2?'#fbbf24':state.reversed?'rgba(251,191,36,0.3)':'rgba(167,139,250,0.7)'};`;
+      lbl.textContent=`${state.gauge}/${maxG_r}`;
     }
+    gaugeEl.appendChild(lbl);
   });
 }
 
@@ -2801,7 +2969,9 @@ function animateArcanaCard(pid){
 // AI arcana: auto-activate when gauge is full
 async function aiArcana(){
   const state=G.p[2].arcana;
-  if(!state||!state.id||state.reversed||state.gauge<ARCANA_GAUGE_MAX||state.usedThisTurn)return;
+  const arc_ai=getArcana(2);
+  const maxG_ai=arcanaGaugeMax(arc_ai);
+  if(!state||!state.id||maxG_ai===0||state.reversed||state.gauge<maxG_ai||state.usedThisTurn)return;
   const arc=getArcana(2);
   if(!arc)return;
   state.reversed=true;state.gauge=0;state.usedThisTurn=true;
@@ -2813,9 +2983,14 @@ async function aiArcana(){
   renderArcana();
 }
 
-// Track damage for gauge bonus
-function arcanaNotifyDamage(pid){
-  if(G.p[pid]?.arcana) G.p[pid].arcana.damagedThisTurn=true;
+// +1 gauge each time leader takes damage (only during own turn, not reversed)
+function arcanaNotifyLifeLoss(pid){
+  const state=G.p[pid]?.arcana;
+  if(!state||!state.id||state.reversed)return;
+  const arc=getArcana(pid);
+  const maxG=arcanaGaugeMax(arc);
+  if(maxG>0&&state.gauge<maxG) state.gauge++;
+  renderArcana();
 }
 
 let G={over:true};
@@ -3292,6 +3467,7 @@ async function _execEffect(pid, fc, ab, isAI){
   if(e==='dmg_leader'){
     const dmg=pr.dmg||1;
     op.life=Math.max(0,op.life-dmg);
+    arcanaNotifyLifeLoss(opp);
     const lpos=getLifeCenter(opp);if(lpos)showDmgFloat(lpos.x,lpos.y,dmg);
     log(`${pCol(fc.name,pid)}→ 相手リーダーに${dmg}ダメージ`,'');
     if(op.life<=0){render();setTimeout(()=>gameOver(pid),300);}
@@ -3766,7 +3942,7 @@ async function doAttackUnit(targetPid,targetUid){
   }
   if(isPierce(aCard)&&dCard._hp<0){
     const excess=-dCard._hp;
-    G.p[targetPid].life=Math.max(0,G.p[targetPid].life-excess);
+    G.p[targetPid].life=Math.max(0,G.p[targetPid].life-excess);arcanaNotifyLifeLoss(targetPid);
     const lp=getLifeCenter(targetPid);if(lp)showDmgFloat(lp.x,lp.y,excess);
   }
 
@@ -3821,6 +3997,7 @@ async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQ
   showMidNotif(`⚔ ${pCol(aCard.name,ap)} → ${pCol('P'+targetPid+'リーダー',targetPid)}`,'',1600);
   const dmg=aCard.power;
   G.p[targetPid].life=Math.max(0,G.p[targetPid].life-dmg);
+  arcanaNotifyLifeLoss(targetPid);
   aCard._attacked=true; aCard._revealed=true;
   // on_attack trigger (leader target - no unit target)
   await triggerAbility(ap,aCard,false,'on_attack');
@@ -3864,11 +4041,6 @@ async function endTurn(){
   }
   // arcana gauge update
   await arcanaOnTurnEnd(curPid);
-  // reset reversed state at turn end
-  if(G.p[curPid].arcana&&G.p[curPid].arcana.reversed){
-    G.p[curPid].arcana.reversed=false;
-    renderArcana();
-  }
   await new Promise(r=>setTimeout(r,80));
   const next=G.cp===1?2:1;
   G.cp=next;
@@ -4007,7 +4179,7 @@ async function aiTurn(){
         render();await new Promise(r=>requestAnimationFrame(r));
         await animateLunge(pid,atk._uid);
         const dmg=atk.power;
-        op.life=Math.max(0,op.life-dmg);atk._attacked=true;atk._revealed=true;
+        op.life=Math.max(0,op.life-dmg);arcanaNotifyLifeLoss(opp);atk._attacked=true;atk._revealed=true;
         const _alpos=getLifeCenter(opp);if(_alpos)showDmgFloat(_alpos.x,_alpos.y,dmg);
         await triggerAbility(pid,atk,true,'on_attack');
         log(`${pCol(atk.name,pid)}→ ${pCol('P1リーダー',opp)}に${dmg}ダメ (残${op.life})`,'');
@@ -4088,7 +4260,6 @@ async function dmgCard(pid,cuid,dmg){
   animateHit(pid,cuid);
   const pos=getCardCenter(pid,cuid);if(pos)showDmgFloat(pos.x,pos.y,dmg);
   c._hp-=dmg;
-  arcanaNotifyDamage(pid); // arcana gauge bonus for taking damage
   if(c._hp<=0){
     render();
     await new Promise(r=>setTimeout(r,350));
@@ -4831,7 +5002,7 @@ async function _replayAttackLeader(pid,opp,atk){
   render();await new Promise(r=>requestAnimationFrame(r));
   await animateLunge(pid,atk._uid);
   const dmg=atk.power;
-  G.p[opp].life=Math.max(0,G.p[opp].life-dmg);atk._attacked=true;atk._revealed=true;
+  G.p[opp].life=Math.max(0,G.p[opp].life-dmg);arcanaNotifyLifeLoss(opp);atk._attacked=true;atk._revealed=true;
   const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,dmg);
   await triggerAbility(pid,atk,pid===2,'on_attack');
   render();await wait(300);
