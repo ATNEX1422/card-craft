@@ -1358,6 +1358,10 @@ function buildAbilityText(card){
       case 'debuff_enemy_one':{const p2=a.params||{};desc+=`相手ユニット1体に-${p2.pow||0}/-${p2.tuf||0}`;break;}
       case 'discard':      desc+=`相手手札を${(a.params?.n||1)}枚捨てさせる`; break;
       case 'dmg_any':      desc+=`任意の対象に${(a.params?.dmg||1)}ダメージ`; break;
+      case 'add_ap_self':    desc+=`自分AP+${a.params?.amount||1}`; break;
+      case 'reduce_ap_self': desc+=`自分AP-${a.params?.amount||1}（コスト）`; break;
+      case 'add_ap_enemy':   desc+=`相手AP+${a.params?.amount||1}`; break;
+      case 'reduce_ap_enemy':desc+=`相手AP-${a.params?.amount||1}`; break;
       default: desc+=(EFF_LABELS[a.effect]||a.effect);
     }
     parts.push(desc);
@@ -1470,6 +1474,10 @@ const ARC_PASSIVE_EFFECTS=[
   {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
   {id:'dmg_leader',     label:'相手リーダーダメージ', unit:'点'},
   {id:'reduce_atk_all', label:'相手全体攻撃力-', unit:'点'},
+  {id:'add_ap_self',    label:'自分AP増加',          unit:'点'},
+  {id:'reduce_ap_self', label:'自分APを消費',         unit:'点'},
+  {id:'add_ap_enemy',   label:'相手AP増加',           unit:'点'},
+  {id:'reduce_ap_enemy',label:'相手AP減少',           unit:'点'},
 ];
 const ARC_IMM_EFFECTS=[
   {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
@@ -1482,6 +1490,10 @@ const ARC_IMM_EFFECTS=[
   {id:'buff_ally_all',  label:'味方全体バフ', unit:'(pow/tuf)'},
   {id:'return_all',     label:'相手全体を手札に戻す', unit:''},
   {id:'destroy_all',    label:'相手全体を破壊', unit:''},
+  {id:'add_ap_self',    label:'自分AP増加',     unit:'点'},
+  {id:'reduce_ap_self', label:'自分APを消費',   unit:'点'},
+  {id:'add_ap_enemy',   label:'相手AP増加',     unit:'点'},
+  {id:'reduce_ap_enemy',label:'相手AP減少',     unit:'点'},
 ];
 
 function _buildPassiveRow(listId, arr, i, effectOptions){
@@ -2247,6 +2259,10 @@ const ALL_EFFECTS=[
   {id:'debuff_enemy_one',label:'相手ユニット1体をデバフ', params:[{key:'pow',label:'-攻撃',def:1},{key:'tuf',label:'-体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
   {id:'discard',        label:'相手手札をランダムに捨てさせる', params:[{key:'n',label:'枚数',def:1}]},
   {id:'dmg_any',        label:'任意対象にダメージ', params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'add_ap_self',    label:'自分APを増加',        params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_self', label:'自分APをコストとして消費', params:[{key:'amount',label:'消費量',def:1}]},
+  {id:'add_ap_enemy',   label:'相手APを増加',         params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_enemy',label:'相手APを減少',         params:[{key:'amount',label:'減少量',def:1}]},
 ];
 
 // current editing abilities array
@@ -2936,6 +2952,22 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
     case 'reduce_atk_all':
       G.p[opp].field.forEach(c=>{c.power=Math.max(0,c.power-val);});
       log(`✦ ${arc.name} [${label}] → 相手全体攻撃力-${val}`,'ll-sys'); break;
+    case 'add_ap_self':{
+      const st=G.p[pid].arcana;const mG=arcanaGaugeMax(arc);
+      if(st&&mG>0){st.gauge=Math.min(mG,st.gauge+val);renderArcana();}
+      log(`✦ ${arc.name} [${label}] → 自分AP+${val}`,'ll-sys'); break;}
+    case 'reduce_ap_self':{
+      const st=G.p[pid].arcana;
+      if(st){st.gauge=Math.max(0,st.gauge-val);renderArcana();}
+      log(`✦ ${arc.name} [${label}] → 自分AP-${val}（コスト消費）`,'ll-sys'); break;}
+    case 'add_ap_enemy':{
+      const st=G.p[opp].arcana;const mG=arcanaGaugeMax(getArcana(opp));
+      if(st&&mG>0){st.gauge=Math.min(mG,st.gauge+val);renderArcana();}
+      log(`✦ ${arc.name} [${label}] → 相手AP+${val}`,'ll-sys'); break;}
+    case 'reduce_ap_enemy':{
+      const st=G.p[opp].arcana;
+      if(st){st.gauge=Math.max(0,st.gauge-val);renderArcana();}
+      log(`✦ ${arc.name} [${label}] → 相手AP-${val}`,'ll-sys'); break;}
   }
   animateArcanaCard(pid);
   render();
@@ -3918,6 +3950,44 @@ async function _execEffect(pid, fc, ab, isAI){
       else {op.life=Math.max(0,op.life-(pr.dmg||1));const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,pr.dmg||1);}
     }
     render();return;
+  }
+  if(e==='add_ap_self'){
+    const state=G.p[pid].arcana;
+    if(state&&arcanaGaugeMax(getArcana(pid))>0){
+      const maxG=arcanaGaugeMax(getArcana(pid));
+      state.gauge=Math.min(maxG,state.gauge+(pr.amount||1));
+      log(`${pCol(fc.name,pid)}→ 自分AP+${pr.amount||1}`,'ll-s');
+      renderArcana();render();
+    }
+    return;
+  }
+  if(e==='reduce_ap_self'){
+    const state=G.p[pid].arcana;
+    if(state){
+      state.gauge=Math.max(0,state.gauge-(pr.amount||1));
+      log(`${pCol(fc.name,pid)}→ 自分AP-${pr.amount||1}（コスト消費）`,'ll-s');
+      renderArcana();render();
+    }
+    return;
+  }
+  if(e==='add_ap_enemy'){
+    const state=G.p[opp].arcana;
+    if(state&&arcanaGaugeMax(getArcana(opp))>0){
+      const maxG=arcanaGaugeMax(getArcana(opp));
+      state.gauge=Math.min(maxG,state.gauge+(pr.amount||1));
+      log(`${pCol(fc.name,pid)}→ 相手AP+${pr.amount||1}`,'ll-s');
+      renderArcana();render();
+    }
+    return;
+  }
+  if(e==='reduce_ap_enemy'){
+    const state=G.p[opp].arcana;
+    if(state){
+      state.gauge=Math.max(0,state.gauge-(pr.amount||1));
+      log(`${pCol(fc.name,pid)}→ 相手AP-${pr.amount||1}`,'ll-s');
+      renderArcana();render();
+    }
+    return;
   }
   log(`「${fc.name}」→ 能力発動（未実装: ${e}）`,'ll-sys');
 }
