@@ -766,16 +766,15 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 /* ── Arcana editor screen ── */
 #e-arcana-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(89px,1fr));gap:10px;
   align-content:start;
   scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;
 }
 .arcana-pool-card{
-  width:100%;aspect-ratio:57/100;border-radius:6px;overflow:hidden;cursor:pointer;
+  width:89px;height:115px;border-radius:6px;overflow:hidden;cursor:pointer;
   background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(167,139,250,0.3);
   position:relative;transition:transform 0.13s,border-color 0.13s;
-  max-height:140px;
 }
 .arcana-pool-card:hover{transform:translateY(-4px);border-color:rgba(167,139,250,0.7);}
 .arcana-pool-card img{width:100%;height:100%;object-fit:cover;display:block;}
