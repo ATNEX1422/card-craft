@@ -3218,7 +3218,7 @@ async function aiArcana(){
   if(!arc)return;
   state.reversed=true;state.gauge=0;state.usedThisTurn=true;
   log(`✦ AI ${arc.name} 逆位置に反転！`,'ll-ai');
-  showMidNotif(`✦ ${arc.name}: ${arc.reversed?.desc||'逆位置発動'}`, '#f87171', 2000);
+  showMidNotif(`✦ ${arc.name}: ${(arc.revImmediate||[]).map(a=>a.desc).filter(Boolean).join(' / ')||'逆位置発動'}`, '#f87171', 2000);
   animateArcanaCard(2);
   await wait(600);
   await arcanaApplyReversedEffect(2, arc);
@@ -4533,9 +4533,9 @@ async function aiTurn(){
   if(G.over){aiLock=false;return;}
 
   await wait(280);log('AI: ターン終了','ll-ai');
+  // arcana end-of-turn processing for AI
+  await arcanaOnTurnEnd(2);
   G.cp=1;
-  // only increment turn when returning to P1 after P1 had a turn
-  // endTurn handles G.turn++ when next===1; aiTurn only needs startTurn
   await startTurn(1);
   aiLock=false;document.getElementById('end-btn').disabled=false;
   render();
