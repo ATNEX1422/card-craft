@@ -765,9 +765,8 @@ textarea.finput{resize:vertical;min-height:64px;}
 .arcana-activate-anim{animation:arcana-activate 0.6s ease-out;}
 
 /* ── Arcana editor screen ── */
-#screen-arcana .arcana-grid-area{
-  flex:1;overflow-y:auto;padding:12px 16px 14px;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;
+#e-arcana-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;
   align-content:start;
   scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;
 }
@@ -776,6 +775,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(167,139,250,0.3);
   position:relative;transition:transform 0.13s,border-color 0.13s;
+  max-height:140px;
 }
 .arcana-pool-card:hover{transform:translateY(-4px);border-color:rgba(167,139,250,0.7);}
 .arcana-pool-card img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -1193,17 +1193,15 @@ textarea.finput{resize:vertical;min-height:64px;}
 <div id="screen-battle" class="screen hidden">
   <!-- P2 Hand (top, face-down, right-aligned) -->
   <div id="p2hand">
-    <span class="hand-label" style="margin-right:4px;">HAND</span>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;">
+      <div class="mini-counter" title="AIデッキ残枚数"><div class="mc-val" id="p2-deck-count">0</div><div class="mc-lbl">DECK</div></div>
+      <div class="mini-counter" title="相手墓地を見る" onclick="openGrave(2)"><div class="mc-val" id="p2-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
+    </div>
+    <span class="hand-label" style="margin:0 4px;">HAND</span>
     <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow:hidden;"></div>
-    <div style="display:flex;flex-direction:row;gap:4px;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;">
-      <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-        <div class="mini-counter" title="AIデッキ残枚数"><div class="mc-val" id="p2-deck-count">0</div><div class="mc-lbl">DECK</div></div>
-        <div class="mini-counter" title="相手墓地を見る" onclick="openGrave(2)"><div class="mc-val" id="p2-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
-      </div>
-      <div class="arcana-slot" id="p2-arcana-slot">
-        <div class="arcana-card" id="p2-arcana-card" title="相手のアルカナ"></div>
-        <div class="arcana-gauge" id="p2-arcana-gauge"></div>
-      </div>
+    <div class="arcana-slot" id="p2-arcana-slot" style="padding:0 4px;">
+      <div class="arcana-card" id="p2-arcana-card"></div>
+      <div class="arcana-gauge" id="p2-arcana-gauge"></div>
     </div>
   </div>
   <!-- P2 Field -->
@@ -1453,12 +1451,35 @@ async function loadArcanas(){
 }
 
 // ── Arcana ability text ──
+const ARC_COND_LABELS={
+  my_turn_start:'自ターン開始時', my_turn_end:'自ターン終了時',
+  any_turn_start:'両者ターン開始時', on_ally_death:'味方破壊時',
+  on_enemy_death:'相手ユニット破壊時', on_damage_taken:'被ダメージ時',
+};
+const ARC_EFF_LABELS={
+  heal_leader:'リーダーX回復', draw:'Xドロー', gain_mana:'マナ+X',
+  buff_ally_all:'味方全体+X/+X', dmg_enemy_all:'相手全体Xダメ',
+  dmg_leader:'相手リーダーXダメ', reduce_atk_all:'相手全体攻撃-X',
+  add_ap_self:'自AP+X', reduce_ap_self:'自AP-X',
+  add_ap_enemy:'相手AP+X', reduce_ap_enemy:'相手AP-X',
+  dmg_enemy_one:'相手1体Xダメ（ランダム）', destroy_one:'相手1体破壊（ランダム）',
+  return_one:'相手1体手札に戻す', buff_ally_all_rev:'味方全体+X/+X',
+  return_all:'相手全体手札に戻す', destroy_all:'相手全体破壊',
+};
+function arcEffText(ab, showCond=true){
+  const eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
+  const val=ab.val||ab.amount||1;
+  const effStr=eff.replace(/X/g,val);
+  if(!showCond) return ab.desc||effStr;
+  const cond=ARC_COND_LABELS[ab.condition]||ab.condition||'';
+  return cond?(cond+': '+effStr):effStr;
+}
 function buildArcanaText(arc){
   const parts=[];
-  (arc.upright||[]).forEach(p=>{ if(p.desc) parts.push('[正] '+p.desc); });
-  (arc.revImmediate||[]).forEach(p=>{ if(p.desc) parts.push('[逆即時] '+p.desc); });
-  (arc.revPassive||[]).forEach(p=>{ if(p.desc) parts.push('[逆継続] '+p.desc); });
-  return parts.join(' / ')||'（効果なし）';
+  (arc.upright||[]).forEach(ab=>parts.push('[正] '+(ab.desc||arcEffText(ab))));
+  (arc.revImmediate||[]).forEach(ab=>parts.push('[逆] '+(ab.desc||arcEffText(ab,false))));
+  (arc.revPassive||[]).forEach(ab=>parts.push('[逆継続] '+(ab.desc||arcEffText(ab))));
+  return parts.join('\n')||'（効果なし）';
 }
 
 // ── Editor tab switch ──
@@ -2925,8 +2946,10 @@ async function arcanaOnTurnEnd(pid){
   // Fire turn_end passives (before gauge/state changes)
   if(arc_g){
     const ctx={event:'turn_end',pid};
-    if(!state.reversed) await arcanaFirePassives(pid,arc_g,arc_g.upright||[],'正位置',ctx);
-    else await arcanaFirePassives(pid,arc_g,arc_g.revPassive||[],'逆位置',ctx);
+    const endConds=['my_turn_end'];
+    const filterEnd=abs=>abs.filter(ab=>endConds.includes(ab.condition));
+    if(!state.reversed) await arcanaFirePassives(pid,arc_g,filterEnd(arc_g.upright||[]),'正位置',ctx);
+    else await arcanaFirePassives(pid,arc_g,filterEnd(arc_g.revPassive||[]),'逆位置',ctx);
   }
 
   // Step1: ゲージ+1（逆位置中はたまらない、上限0もたまらない）
@@ -3021,13 +3044,14 @@ async function arcanaOnTurnStart(pid){
   const state=G.p[pid].arcana;
   if(!state||!state.id)return;
   const arc=getArcana(pid);if(!arc)return;
+  // Only fire passives with start conditions
   const ctx={event:'turn_start',pid};
+  const startConds=['my_turn_start','any_turn_start'];
+  const filter=abs=>abs.filter(ab=>startConds.includes(ab.condition));
   if(!state.reversed){
-    // upright passives
-    await arcanaFirePassives(pid,arc,arc.upright||[],'正位置',ctx);
+    await arcanaFirePassives(pid,arc,filter(arc.upright||[]),'正位置',ctx);
   } else {
-    // reversed passives (while reversed)
-    await arcanaFirePassives(pid,arc,arc.revPassive||[],'逆位置',ctx);
+    await arcanaFirePassives(pid,arc,filter(arc.revPassive||[]),'逆位置',ctx);
   }
 }
 
@@ -3096,7 +3120,19 @@ function renderArcana(){
     cardEl.innerHTML=src
       ? `<img class="arcana-img" src="${src}" alt="${esc(arc?.name||'')}">`
       : `<div class="arcana-img-ph">✦</div>`;
-    cardEl.title=`${arc?.number!=null?'No.'+arc.number:''} ${arc?.name||''}`.trim();
+    // tooltip
+    if(arc){
+      cardEl.onmouseenter=e=>{
+        const numStr=arc.number!=null?`No.${arc.number} `:'';
+        document.getElementById('tt-name').textContent=numStr+arc.name;
+        document.getElementById('tt-stats').textContent=state.reversed?'逆位置':'正位置';
+        document.getElementById('tt-abil').textContent=buildArcanaText(arc);
+        document.getElementById('tt-summons').style.display='none';
+        document.getElementById('tooltip').classList.add('vis');moveTip(e);
+      };
+      cardEl.onmouseleave=hideTip;
+      cardEl.onmousemove=moveTip;
+    }
     // gauge: always numeric display
     gaugeEl.innerHTML='';
     const arc_r=getArcana(pid);
@@ -3143,11 +3179,21 @@ async function aiArcana(){
 // +1 gauge each time leader takes damage (only during own turn, not reversed)
 function arcanaNotifyLifeLoss(pid){
   const state=G.p[pid]?.arcana;
-  if(!state||!state.id||state.reversed)return;
+  if(!state||!state.id)return;
   const arc=getArcana(pid);
   const maxG=arcanaGaugeMax(arc);
-  if(maxG>0&&state.gauge<maxG) state.gauge++;
-  renderArcana();
+  // gauge +1 on life loss (not while reversed)
+  if(!state.reversed&&maxG>0&&state.gauge<maxG){
+    state.gauge++;renderArcana();
+  }
+  // fire on_damage_taken passives
+  if(arc){
+    const ctx={event:'damage_taken',pid};
+    const cond=['on_damage_taken'];
+    const f=abs=>abs.filter(ab=>cond.includes(ab.condition));
+    if(!state.reversed) arcanaFirePassives(pid,arc,f(arc.upright||[]),'正位置',ctx);
+    else arcanaFirePassives(pid,arc,f(arc.revPassive||[]),'逆位置',ctx);
+  }
 }
 
 let G={over:true};
@@ -4474,10 +4520,35 @@ function removeCard(pid,cuid){
     if(existing) existing.count++;
     else gr.push({id:dying.id,name:dying.name,count:1,card:dying});
   }
-  // fire on_death trigger (async, non-blocking for now)
+  // fire on_death trigger
   if(dying && !G.over){
     const hasDeathTrig=(dying.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_death');
     if(hasDeathTrig) triggerAbility(pid,dying,G.cp!==pid,'on_death');
+    // arcana on_ally_death
+    const ctx={event:'ally_death',pid};
+    const allyPid=pid; // the player who lost the unit
+    const arcState=G.p[allyPid].arcana;
+    if(arcState&&arcState.id){
+      const arc=getArcana(allyPid);
+      if(arc){
+        const cond=['on_ally_death'];
+        const f=abs=>abs.filter(ab=>cond.includes(ab.condition));
+        if(!arcState.reversed) arcanaFirePassives(allyPid,arc,f(arc.upright||[]),'正位置',ctx);
+        else arcanaFirePassives(allyPid,arc,f(arc.revPassive||[]),'逆位置',ctx);
+      }
+    }
+    // arcana on_enemy_death: opponent's arcana
+    const oppPid=pid===1?2:1;
+    const oppArcState=G.p[oppPid].arcana;
+    if(oppArcState&&oppArcState.id){
+      const oppArc=getArcana(oppPid);
+      if(oppArc){
+        const cond=['on_enemy_death'];
+        const f=abs=>abs.filter(ab=>cond.includes(ab.condition));
+        if(!oppArcState.reversed) arcanaFirePassives(oppPid,oppArc,f(oppArc.upright||[]),'正位置',{event:'ally_death',pid:allyPid});
+        else arcanaFirePassives(oppPid,oppArc,f(oppArc.revPassive||[]),'逆位置',{event:'ally_death',pid:allyPid});
+      }
+    }
   }
 }
 function deselectAtk(){selAtk=null;}
