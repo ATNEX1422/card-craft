@@ -1410,11 +1410,15 @@ function buildAbilityText(card){
 let ARCANAS = []; // アルカナカードデータ
 
 // ── Arcana gauge constants ──
-// Gauge max = arcana number (0→no gauge, 1→1, ..., 21→21)
+// Gauge max = arcana number. 0 = always ready (no gauge needed)
 function arcanaGaugeMax(arc){
   if(!arc)return 0;
-  const n=arc.number??0;
-  return n===0?0:n;
+  return arc.number??0;
+}
+function arcanaIsReady(state, arc){
+  if(!state||!state.id||state.reversed||state.usedThisTurn)return false;
+  const max=arcanaGaugeMax(arc);
+  return max===0||state.gauge>=max; // 0番は常にready
 }
 
 // ── Save/Load ──
@@ -2923,7 +2927,7 @@ function initArcanaState(pid, arcanaId, isSecond){
   const maxG=arcanaGaugeMax(arc);
   return {
     id: arcanaId||null,
-    gauge: maxG>0?(isSecond?1:0):0,  // 後攻+1、ただし上限が0なら常に0
+    gauge: maxG>0?(isSecond?1:0):0,  // 後攻+1ボーナス（0番はゲージ不要）
     reversed: false,
     usedThisTurn: false,
     damagedThisTurn: false,
@@ -3064,9 +3068,8 @@ async function onArcanaClick(pid){
   }
   const arc_c=getArcana(pid);
   const maxG_c=arcanaGaugeMax(arc_c);
-  if(maxG_c===0){eToast('このアルカナは正位置のみです',true);return;}
-  if(state.gauge<maxG_c){
-    eToast(`ゲージが足りません (${state.gauge}/${maxG_c})`,true);return;
+  if(!arcanaIsReady(state,arc_c)){
+    eToast(maxG_c===0?'発動できません':`ゲージが足りません (${state.gauge}/${maxG_c})`,true);return;
   }
   if(state.usedThisTurn){
     eToast('このターンすでに使用しました',true);return;
@@ -3113,8 +3116,8 @@ function renderArcana(){
     const arc=getArcana(pid);
     // card visual
     const src=arc?.image?`images/${arc.image}`:null;
-    const _maxG=arcanaGaugeMax(getArcana(pid));
-    const canActivate=_maxG>0&&!state.reversed&&state.gauge>=_maxG&&!state.usedThisTurn&&G.cp===pid&&!aiLock;
+    const _arcana=getArcana(pid);
+    const canActivate=arcanaIsReady(state,_arcana)&&G.cp===pid&&!aiLock;
     cardEl.className='arcana-card'+(state.reversed?' reversed':'')+(canActivate?' can-activate':'');
     cardEl.innerHTML=src
       ? `<img class="arcana-img" src="${src}" alt="${esc(arc?.name||'')}">`
@@ -3137,12 +3140,12 @@ function renderArcana(){
     const arc_r=getArcana(pid);
     const maxG_r=arcanaGaugeMax(arc_r);
     const lbl=document.createElement('div');
+    const ready_r=arcanaIsReady(state,arc_r);
     if(maxG_r===0){
-      lbl.style.cssText="font-family:'Bebas Neue',cursive;font-size:8px;letter-spacing:0.05em;color:rgba(167,139,250,0.35)";
-      lbl.textContent='正位置';
+      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:9px;letter-spacing:0.05em;color:${ready_r?'#fbbf24':'rgba(167,139,250,0.5)'};`;
+      lbl.textContent=ready_r?'READY':'—';
     } else {
-      const canActivate2=state.gauge>=maxG_r&&!state.reversed&&!state.usedThisTurn;
-      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.05em;color:${canActivate2?'#fbbf24':state.reversed?'rgba(251,191,36,0.3)':'rgba(167,139,250,0.7)'};`;
+      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.05em;color:${ready_r?'#fbbf24':state.reversed?'rgba(251,191,36,0.3)':'rgba(167,139,250,0.7)'};`;
       lbl.textContent=`${state.gauge}/${maxG_r}`;
     }
     gaugeEl.appendChild(lbl);
@@ -3162,8 +3165,7 @@ function animateArcanaCard(pid){
 async function aiArcana(){
   const state=G.p[2].arcana;
   const arc_ai=getArcana(2);
-  const maxG_ai=arcanaGaugeMax(arc_ai);
-  if(!state||!state.id||maxG_ai===0||state.reversed||state.gauge<maxG_ai||state.usedThisTurn)return;
+  if(!state||!state.id||!arcanaIsReady(state,arc_ai))return;
   const arc=getArcana(2);
   if(!arc)return;
   state.reversed=true;state.gauge=0;state.usedThisTurn=true;
