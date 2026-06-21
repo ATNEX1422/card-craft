@@ -695,28 +695,30 @@ textarea.finput{resize:vertical;min-height:64px;}
 /* ── Arcana card ── */
 .arcana-slot{
   flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:0 6px;position:relative;
+  padding:0 4px;position:relative;justify-content:center;
 }
 .arcana-card{
-  width:54px;height:70px;border-radius:5px;
+  width:57px;height:100px;border-radius:6px;
   background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(167,139,250,0.4);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
   cursor:pointer;position:relative;overflow:hidden;
-  transition:transform 0.18s,box-shadow 0.18s;
+  transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.18s,filter 0.3s;
   box-shadow:0 0 8px rgba(167,139,250,0.2);
+  flex-shrink:0;
 }
-.arcana-card:hover{transform:translateY(-2px);box-shadow:0 0 14px rgba(167,139,250,0.45);}
+.arcana-card:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 0 16px rgba(167,139,250,0.5);}
 .arcana-card.reversed{
   transform:rotate(180deg);
-  border-color:rgba(251,191,36,0.6);
-  box-shadow:0 0 12px rgba(251,191,36,0.4);
+  border-color:rgba(251,191,36,0.7);
+  box-shadow:0 0 14px rgba(251,191,36,0.5),inset 0 0 20px rgba(251,191,36,0.08);
+  filter:sepia(0.4) hue-rotate(15deg) saturate(1.3);
 }
-.arcana-card.reversed:hover{transform:rotate(180deg) translateY(2px);}
+.arcana-card.reversed:hover{transform:rotate(180deg) translateY(3px) scale(1.04);}
 .arcana-card.can-activate{
-  border-color:rgba(251,191,36,0.9)!important;
-  box-shadow:0 0 16px rgba(251,191,36,0.6)!important;
-  animation:arcana-pulse 1s infinite alternate;
+  border-color:rgba(251,191,36,0.95)!important;
+  box-shadow:0 0 20px rgba(251,191,36,0.7),inset 0 0 12px rgba(251,191,36,0.12)!important;
+  filter:none!important;
+  animation:arcana-pulse 0.9s infinite alternate;
 }
 @keyframes arcana-pulse{
   from{box-shadow:0 0 8px rgba(251,191,36,0.4);}
@@ -727,8 +729,17 @@ textarea.finput{resize:vertical;min-height:64px;}
   color:rgba(167,139,250,0.8);text-align:center;max-width:54px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.arcana-img{width:100%;height:100%;object-fit:cover;border-radius:4px;}
-.arcana-img-ph{font-size:20px;opacity:0.5;}
+.arcana-img{width:100%;height:100%;object-fit:cover;border-radius:5px;display:block;}
+.arcana-img-ph{font-size:22px;opacity:0.4;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+/* arcana card overlay: name at bottom */
+.arcana-name-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(5,4,12,0.85));
+  padding:10px 3px 3px;
+  font-family:'Bebas Neue',cursive;font-size:7px;letter-spacing:0.08em;
+  color:rgba(229,222,255,0.85);text-align:center;
+  pointer-events:none;
+}
 .arcana-gauge{display:flex;gap:2px;align-items:center;justify-content:center;}
 .arcana-pip{
   width:7px;height:7px;border-radius:50%;
@@ -761,16 +772,30 @@ textarea.finput{resize:vertical;min-height:64px;}
   scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;
 }
 .arcana-pool-card{
-  width:100%;aspect-ratio:54/70;border-radius:6px;overflow:hidden;cursor:pointer;
+  width:100%;aspect-ratio:57/100;border-radius:6px;overflow:hidden;cursor:pointer;
   background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(167,139,250,0.3);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   position:relative;transition:transform 0.13s,border-color 0.13s;
 }
 .arcana-pool-card:hover{transform:translateY(-4px);border-color:rgba(167,139,250,0.7);}
-.arcana-pool-name{font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.06em;
-  color:rgba(167,139,250,0.9);text-align:center;padding:0 3px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;}
+.arcana-pool-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.arcana-pool-card .arcana-pool-ph{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+}
+.arcana-pool-name{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(5,4,12,0.85));
+  font-family:'Bebas Neue',cursive;font-size:9px;letter-spacing:0.06em;
+  color:rgba(229,222,255,0.9);text-align:center;padding:10px 3px 3px;
+  pointer-events:none;
+}
+.arcana-pool-num{
+  position:absolute;top:2px;left:3px;
+  font-family:'Bebas Neue',cursive;font-size:9px;
+  color:rgba(167,139,250,0.7);
+  text-shadow:0 1px 3px rgba(0,0,0,0.8);
+}
 
 /* editor tab */
 .editor-tab{
@@ -1613,12 +1638,23 @@ function arcanaRenderGrid(){
     const src=arc.image?`images/${arc.image}`:null;
     const descTxt=(arc.upright||[]).map(p=>p.desc).filter(Boolean).join(' / ');
     const numLabel=arc.number!=null?`No.${arc.number}`:'';
-    div.innerHTML=`
-      <div style="position:absolute;top:2px;left:3px;font-family:'Bebas Neue',cursive;font-size:9px;color:rgba(167,139,250,0.6);">${numLabel}</div>
-      ${src?`<img src="${src}" style="width:100%;height:60%;object-fit:cover;">` : '<div style="font-size:22px;opacity:0.4;margin-top:12px;">✦</div>'}
-      <div class="arcana-pool-name">${esc(arc.name)}</div>
-      <div style="font-size:7px;color:rgba(167,139,250,0.4);text-align:center;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(descTxt)}</div>
-    `;
+    if(src){
+      div.innerHTML=`<img src="${src}" alt="${esc(arc.name)}">`;
+    } else {
+      div.innerHTML=`<div class="arcana-pool-ph"><div style="font-size:24px;opacity:0.35;">✦</div></div>`;
+    }
+    div.title=`${numLabel} ${arc.name}`;
+    // tooltip on hover
+    div.addEventListener('mouseenter',e=>{
+      const t=document.getElementById('tooltip');
+      document.getElementById('tt-name').textContent=`${numLabel} ${arc.name}`;
+      document.getElementById('tt-stats').textContent='';
+      document.getElementById('tt-abil').textContent=buildArcanaText(arc);
+      document.getElementById('tt-summons').style.display='none';
+      t.classList.add('vis');moveTip(e);
+    });
+    div.addEventListener('mouseleave',hideTip);
+    div.addEventListener('mousemove',moveTip);
     div.onclick=()=>arcanaOpenEdit(arc.id);
     grid.appendChild(div);
   });
@@ -1819,7 +1855,6 @@ function closeArcanaSelect(){
 function deckClearArcana(){
   if(editingDeckIdx>=0&&editingDeckIdx<DECKS.length){
     delete DECKS[editingDeckIdx].arcanaId;
-    saveDecks();
   }
   window._pendingArcanaId=null;
   deckRenderArcana();
@@ -3059,8 +3094,9 @@ function renderArcana(){
     const canActivate=_maxG>0&&!state.reversed&&state.gauge>=_maxG&&!state.usedThisTurn&&G.cp===pid&&!aiLock;
     cardEl.className='arcana-card'+(state.reversed?' reversed':'')+(canActivate?' can-activate':'');
     cardEl.innerHTML=src
-      ? `<img class="arcana-img" src="${src}" alt="${esc(arc?.name||'')}"><div style="position:absolute;bottom:1px;left:0;right:0;text-align:center;font-family:'Bebas Neue',cursive;font-size:7px;color:rgba(229,222,255,0.8);background:rgba(0,0,0,0.5);padding:1px 0;">${esc(arc?.name||'')}</div>`
-      : `<div class="arcana-img-ph">✦</div><div style="font-family:'Bebas Neue',cursive;font-size:8px;color:rgba(229,222,255,0.7);text-align:center;padding:2px;">${esc(arc?.name||'')}</div>`;
+      ? `<img class="arcana-img" src="${src}" alt="${esc(arc?.name||'')}">`
+      : `<div class="arcana-img-ph">✦</div>`;
+    cardEl.title=`${arc?.number!=null?'No.'+arc.number:''} ${arc?.name||''}`.trim();
     // gauge: always numeric display
     gaugeEl.innerHTML='';
     const arc_r=getArcana(pid);
