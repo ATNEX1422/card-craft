@@ -284,6 +284,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 ═══════════════════════════════════ */
 #screen-battle{
   display:none; /* hidden by default; showScreen sets display:grid */
+  overflow:visible;
   grid-template-rows: 132px 1fr 44px 1fr 132px 40px;
   grid-template-columns: 1fr 176px;
   grid-template-areas:
@@ -300,15 +301,18 @@ textarea.finput{resize:vertical;min-height:64px;}
 #p2hand,#p1hand{
   position:relative;z-index:1;
   display:flex;align-items:center;gap:5px;
-  padding:4px 8px;overflow-x:auto;overflow-y:visible;
+  padding:6px 8px;overflow:visible;
+  scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
+}
+#p1-hand-inner,#p2-hand-inner{
+  overflow-x:auto;overflow-y:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
-  justify-content:center;}
+  justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
-  justify-content:center;}
-.hand-label{font-family:'Bebas Neue',cursive;font-size:8px;letter-spacing:0.12em;color:rgba(201,168,76,0.28);
-  writing-mode:vertical-rl;flex-shrink:0;margin:0 2px;}
+  justify-content:center;overflow:visible;clip-path:none;}
+.hand-label{display:none;}
 
 /* field zones */
 #p2field,#p1field{
@@ -319,8 +323,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 }
 #p2field{grid-area:p2field;justify-content:flex-start;}
 #p1field{grid-area:p1field;flex-direction:column-reverse;justify-content:flex-start;}
-.zone-label{font-family:'Bebas Neue',cursive;font-size:8px;letter-spacing:0.12em;
-  color:rgba(201,168,76,0.25);flex-shrink:0;}
+.zone-label{display:none;}
 #p2field .zone-label{margin-bottom:2px;text-align:center;}
 #p1field .zone-label{margin-top:2px;text-align:center;}
 .field-row{
@@ -423,12 +426,15 @@ textarea.finput{resize:vertical;min-height:64px;}
 .card.atk-tgt{border-color:var(--p2)!important;box-shadow:0 0 13px var(--atkg)!important;animation:pulse-r 0.8s infinite alternate;}
 .card.sel-tgt{border-color:var(--green)!important;box-shadow:0 0 12px rgba(34,197,94,0.48)!important;animation:pulse-g 0.8s infinite alternate;}
 @keyframes pulse-g{from{box-shadow:0 0 5px rgba(34,197,94,0.32);}to{box-shadow:0 0 15px rgba(34,197,94,0.68);}}
-.c-cost{position:absolute;top:-5px;left:-5px;width:17px;height:17px;border-radius:50%;
-  background:linear-gradient(135deg,#f0d080,#c9a84c);border:1px solid #f0d080;
+.c-cost{
+  position:absolute;top:0;left:0;
+  width:18px;height:18px;
+  border-radius:6px 0 18px 0;
+  background:linear-gradient(135deg,#f0d080,#c9a84c);
   font-family:'Bebas Neue',cursive;font-size:13px;color:#0e0c14;
   display:flex;align-items:center;justify-content:center;
-  padding-top:2px;
-  z-index:2;box-shadow:0 0 5px rgba(201,168,76,0.6);}
+  padding:2px 4px 0 0;
+  z-index:20;box-shadow:2px 2px 4px rgba(201,168,76,0.4);}
 .c-img{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,rgba(201,168,76,0.03),rgba(100,50,150,0.04));overflow:hidden;margin-top:0;padding:4px;border-radius:5px 5px 0 0;}
 .c-img img{width:100%;height:100%;object-fit:contain;}
@@ -695,28 +701,34 @@ textarea.finput{resize:vertical;min-height:64px;}
 /* ── Arcana card ── */
 .arcana-slot{
   flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:0 4px;position:relative;justify-content:center;
+  padding:0 4px;position:relative;
+  justify-content:center;
+  z-index:10;
 }
 .arcana-card{
-  width:57px;height:100px;border-radius:6px;
-  background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
-  border:1px solid rgba(167,139,250,0.4);
+  width:64px;height:110px;border-radius:6px;
+  background:linear-gradient(135deg,#1a1200,#2a1e00);
+  border:1px solid rgba(201,168,76,0.5);
   cursor:pointer;position:relative;overflow:hidden;
   transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.18s,filter 0.3s;
-  box-shadow:0 0 8px rgba(167,139,250,0.2);
+  /* 正位置: 金色の光 */
+  box-shadow:0 0 10px rgba(201,168,76,0.4),0 0 3px rgba(240,210,100,0.2);
   flex-shrink:0;
 }
-.arcana-card:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 0 16px rgba(167,139,250,0.5);}
+.arcana-card:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 0 18px rgba(201,168,76,0.65);}
 .arcana-card.reversed{
   transform:rotate(180deg);
-  border-color:rgba(251,191,36,0.7);
-  box-shadow:0 0 14px rgba(251,191,36,0.5),inset 0 0 20px rgba(251,191,36,0.08);
-  filter:sepia(0.4) hue-rotate(15deg) saturate(1.3);
+  background:linear-gradient(135deg,#0e0020,#1a0035);
+  border-color:rgba(147,51,234,0.65);
+  /* 逆位置: 紫の闇 */
+  box-shadow:0 0 14px rgba(124,58,237,0.55),inset 0 0 16px rgba(80,0,160,0.25);
+  filter:saturate(1.1) brightness(0.9);
 }
-.arcana-card.reversed:hover{transform:rotate(180deg) translateY(3px) scale(1.04);}
+.arcana-card.reversed:hover{transform:rotate(180deg) translateY(3px) scale(1.04);box-shadow:0 0 22px rgba(147,51,234,0.75),inset 0 0 16px rgba(80,0,160,0.3);}
 .arcana-card.can-activate{
-  border-color:rgba(251,191,36,0.95)!important;
-  box-shadow:0 0 20px rgba(251,191,36,0.7),inset 0 0 12px rgba(251,191,36,0.12)!important;
+  border-color:rgba(240,210,80,0.98)!important;
+  background:linear-gradient(135deg,#221a00,#332800)!important;
+  box-shadow:0 0 24px rgba(240,210,80,0.8),0 0 6px rgba(255,240,150,0.4),inset 0 0 12px rgba(240,210,80,0.12)!important;
   filter:none!important;
   animation:arcana-pulse 0.9s infinite alternate;
 }
@@ -1198,7 +1210,7 @@ textarea.finput{resize:vertical;min-height:64px;}
     </div>
     <span class="hand-label" style="margin:0 4px;">HAND</span>
     <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow:hidden;"></div>
-    <div class="arcana-slot" id="p2-arcana-slot" style="padding:0 4px;">
+    <div class="arcana-slot" id="p2-arcana-slot" style="padding:0 14px 0 8px;">
       <div class="arcana-card" id="p2-arcana-card"></div>
       <div class="arcana-gauge" id="p2-arcana-gauge"></div>
     </div>
@@ -1242,7 +1254,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   <!-- P1 Hand (bottom, face-up, centred) -->
   <div id="p1hand">
     <span class="hand-label">HAND</span>
-    <div class="arcana-slot" id="p1-arcana-slot">
+    <div class="arcana-slot" id="p1-arcana-slot" style="padding:0 8px 0 14px;">
       <div class="arcana-card" id="p1-arcana-card" onclick="onArcanaClick(1)" title="アルカナをクリックして発動"></div>
       <div class="arcana-gauge" id="p1-arcana-gauge"></div>
     </div>
@@ -1407,7 +1419,18 @@ function buildAbilityText(card){
 // ═══════════════════════════════════════════════════════════
 // ARCANA SYSTEM
 // ═══════════════════════════════════════════════════════════
-let ARCANAS = []; // アルカナカードデータ
+let ARCANAS = [
+  {
+    id:'arc_fool', name:'愚者', number:0, image:null,
+    upright:[
+      {condition:'my_turn_start', effect:'draw', val:1, desc:'自ターン開始時1ドロー'}
+    ],
+    revImmediate:[
+      {effect:'discard_hand_draw', val:0, desc:'手札を全て捨てて同枚数ドロー'}
+    ],
+    revPassive:[]
+  }
+]; // アルカナカードデータ
 
 // ── Arcana gauge constants ──
 // Gauge max = arcana number. 0 = always ready (no gauge needed)
@@ -1997,6 +2020,22 @@ async function initData(){
   }
   // Load arcanas
   await loadArcanas();
+
+  // デフォルトデッキが空の場合のフォールバック
+  if(!DECKS.length&&CARDS.length){
+    const entries=[];let total=0;
+    for(const c of CARDS.filter(x=>!x.isToken)){
+      if(total>=30)break;
+      const add=Math.min(3,30-total);
+      entries.push({id:c.id,count:add});
+      total+=add;
+    }
+    DECKS=[{name:'スターターデッキ',cards:entries,arcanaId:'arc_fool'}];
+  }
+  // arcanaIdが未設定のデッキに愚者をデフォルト設定
+  if(ARCANAS.find(a=>a.id==='arc_fool')){
+    DECKS.forEach(d=>{ if(!d.arcanaId) d.arcanaId='arc_fool'; });
+  }
 }
 
 // File System Access API: 一度フォルダを選択したら自動上書き
@@ -2879,6 +2918,8 @@ function showDeckSelect(){
     if(!CARDS.length){eToast('⚠ カードがありません',true);return;}
     const auto=buildAutoDefaultDeck();
     dsSelected[1]=auto;dsSelected[2]=auto;
+    dsSelectedDeck[1]={name:'auto',cards:auto,arcanaId:'arc_fool'};
+    dsSelectedDeck[2]={name:'auto',cards:auto,arcanaId:'arc_fool'};
     startBattle();return;
   }
   showScreen('screen-deckselect');
@@ -3050,7 +3091,13 @@ async function arcanaOnTurnStart(pid){
   // Only fire passives with start conditions
   const ctx={event:'turn_start',pid};
   const startConds=['my_turn_start','any_turn_start'];
-  const filter=abs=>abs.filter(ab=>startConds.includes(ab.condition));
+  // filter: hand<=4 condition for draw effects
+  const filter=abs=>abs.filter(ab=>{
+    if(!startConds.includes(ab.condition))return false;
+    // draw effect: only fire if hand<=4
+    if(ab.effect==='draw'&&G.p[pid].hand.length>4)return false;
+    return true;
+  });
   if(!state.reversed){
     await arcanaFirePassives(pid,arc,filter(arc.upright||[]),'正位置',ctx);
   } else {
@@ -3097,6 +3144,7 @@ async function arcanaApplyReversedEffect(pid, arc){
     const fakeFc={name:arc.name, _uid:-1, abilities:[]};
     const abEx={effect:ab.effect,params:{dmg:val,amount:val,n:val,pow:val,tuf:val,target:'random'},_triggerType:'arcana'};
     await _execEffect(pid, fakeFc, abEx, isAI);
+    render();
   }
 }
 
@@ -3142,8 +3190,8 @@ function renderArcana(){
     const lbl=document.createElement('div');
     const ready_r=arcanaIsReady(state,arc_r);
     if(maxG_r===0){
-      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:9px;letter-spacing:0.05em;color:${ready_r?'#fbbf24':'rgba(167,139,250,0.5)'};`;
-      lbl.textContent=ready_r?'READY':'—';
+      gaugeEl.innerHTML='';
+      return; // No.0: gauge display not needed
     } else {
       lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.05em;color:${ready_r?'#fbbf24':state.reversed?'rgba(251,191,36,0.3)':'rgba(167,139,250,0.7)'};`;
       lbl.textContent=`${state.gauge}/${maxG_r}`;
@@ -4071,6 +4119,13 @@ async function _execEffect(pid, fc, ab, isAI){
       renderArcana();render();
     }
     return;
+  }
+  if(e==='discard_hand_draw'){
+    const discarded=p.hand.length;
+    p.hand=[];
+    for(let i=0;i<discarded;i++) drawCard(pid);
+    log(`${pCol(fc.name,pid)}→ 手札を${discarded}枚捨てて${discarded}枚ドロー`,'ll-s');
+    render();return;
   }
   log(`「${fc.name}」→ 能力発動（未実装: ${e}）`,'ll-sys');
 }
