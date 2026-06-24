@@ -311,7 +311,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
-  justify-content:center;overflow:visible;clip-path:none;}
+  justify-content:center;overflow:visible;clip-path:none;position:relative;}
 .hand-label{display:none;}
 
 /* field zones */
@@ -412,7 +412,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   background:var(--ink-card);border:1px solid rgba(201,168,76,0.18);display:flex;flex-direction:column;}
 .card:hover:not(.no-hv){transform:translateY(-4px);}
 .hcard{width:89px;height:115px;}
-.hcard:hover:not(.no-hv){transform:translateY(-6px);}
+.hcard:hover:not(.no-hv){transform:translateY(-4px);}
 .hcard.unafford{opacity:0.35;cursor:not-allowed;}
 .hcard.unafford:hover{transform:none!important;}
 .fcard{width:89px;height:115px;}
@@ -546,6 +546,9 @@ textarea.finput{resize:vertical;min-height:64px;}
 }
 #coin-icon{font-size:72px;animation:none;}
 #coin-icon.spin{animation:coin-spin 1.2s cubic-bezier(0.4,0,0.2,1) forwards;}
+/* コインの表裏 */
+#coin-icon[data-face="heads"]::after{content:'☀️';}
+#coin-icon[data-face="tails"]::after{content:'🌙';}
 
 /* Graveyard modal */
 #grave-modal{position:fixed;inset:0;z-index:800;background:rgba(5,4,12,0.85);backdrop-filter:blur(4px);
@@ -700,10 +703,77 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 /* ── Arcana card ── */
 .arcana-slot{
-  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:0 4px;position:relative;
-  justify-content:center;
-  z-index:10;
+  position:absolute;
+  z-index:35;
+  pointer-events:none;
+}
+/* P1: 手札領域の左下角に90度扇形 */
+#p1-arcana-slot{
+  bottom:0;left:0;
+  width:56px;height:56px;
+}
+/* P2: 手札領域の右上角に90度扇形（逆） */
+#p2-arcana-slot{
+  top:0;right:0;
+  width:56px;height:56px;
+}
+/* アルカナカードは扇の下レイヤー */
+#p1-arcana-slot .arcana-card{
+  position:absolute;
+  bottom:6px;left:10px;
+  pointer-events:all;
+  z-index:34;
+}
+#p2-arcana-slot .arcana-card{
+  position:absolute;
+  top:6px;right:10px;
+  pointer-events:all;
+  z-index:34;
+}
+/* AP扇形エリア本体: カードより上 */
+.ap-fan{
+  position:absolute;bottom:0;left:0;
+  width:62px;height:62px;
+  border-radius:0 56px 0 0;
+  background:linear-gradient(135deg,rgba(20,14,36,1.0),rgba(12,8,24,0.97));
+  border-top:1px solid rgba(167,139,250,0.3);
+  border-right:1px solid rgba(167,139,250,0.3);
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  padding:0 0 6px 7px;
+  box-shadow:2px -2px 10px rgba(0,0,0,0.5);
+  pointer-events:none;
+  z-index:37;
+}
+.ap-fan.ready{
+  border-color:rgba(201,168,76,0.6);
+  background:linear-gradient(135deg,rgba(30,22,8,1.0),rgba(20,14,4,0.97));
+  box-shadow:2px -2px 14px rgba(201,168,76,0.3);
+}
+#p2-arcana-slot .ap-fan{
+  bottom:auto;top:0;left:auto;right:0;
+  border-radius:0 0 0 56px;
+  border-top:none;border-right:none;
+  border-bottom:1px solid rgba(167,139,250,0.3);
+  border-left:1px solid rgba(167,139,250,0.3);
+  align-items:flex-start;justify-content:flex-end;
+  padding:6px 7px 0 0;
+  box-shadow:-2px 2px 10px rgba(0,0,0,0.5);
+}
+#p2-arcana-slot .ap-fan.ready{
+  border-color:rgba(201,168,76,0.6);
+  box-shadow:-2px 2px 14px rgba(201,168,76,0.3);
+}
+/* ゲージテキスト */
+.arcana-gauge{
+  position:absolute;
+  z-index:38;
+  pointer-events:none;
+}
+#p1-arcana-slot .arcana-gauge{
+  bottom:22px;left:28px;
+}
+#p2-arcana-slot .arcana-gauge{
+  top:8px;right:4px;
 }
 .arcana-card{
   width:64px;height:110px;border-radius:6px;
@@ -752,7 +822,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   color:rgba(229,222,255,0.85);text-align:center;
   pointer-events:none;
 }
-.arcana-gauge{display:flex;gap:2px;align-items:center;justify-content:center;}
+
 .arcana-pip{
   width:7px;height:7px;border-radius:50%;
   background:rgba(167,139,250,0.18);
@@ -1210,7 +1280,8 @@ textarea.finput{resize:vertical;min-height:64px;}
     </div>
     <span class="hand-label" style="margin:0 4px;">HAND</span>
     <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow:hidden;"></div>
-    <div class="arcana-slot" id="p2-arcana-slot" style="padding:0 14px 0 8px;">
+    <div class="arcana-slot" id="p2-arcana-slot">
+      <div class="ap-fan" id="p2-ap-fan"></div>
       <div class="arcana-card" id="p2-arcana-card"></div>
       <div class="arcana-gauge" id="p2-arcana-gauge"></div>
     </div>
@@ -1254,8 +1325,9 @@ textarea.finput{resize:vertical;min-height:64px;}
   <!-- P1 Hand (bottom, face-up, centred) -->
   <div id="p1hand">
     <span class="hand-label">HAND</span>
-    <div class="arcana-slot" id="p1-arcana-slot" style="padding:0 8px 0 14px;">
-      <div class="arcana-card" id="p1-arcana-card" onclick="onArcanaClick(1)" title="アルカナをクリックして発動"></div>
+    <div class="arcana-slot" id="p1-arcana-slot">
+      <div class="ap-fan" id="p1-ap-fan"></div>
+      <div class="arcana-card" id="p1-arcana-card" onclick="onArcanaClick(1)"></div>
       <div class="arcana-gauge" id="p1-arcana-gauge"></div>
     </div>
     <div id="p1-hand-inner" style="display:flex;gap:4px;align-items:center;justify-content:center;flex:1;overflow:hidden;"></div>
@@ -3031,8 +3103,8 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
       G.p[pid].life=Math.min(20,G.p[pid].life+val);
       log(`✦ ${arc.name} [${label}] → リーダーを${val}回復`,'ll-sys'); break;
     case 'draw':
-      for(let i=0;i<val;i++) drawCard(pid);
-      log(`✦ ${arc.name} [${label}] → ${val}枚ドロー`,'ll-sys'); break;
+      log(`✦ ${arc.name} [${label}] → ${val}枚ドロー`,'ll-sys');
+      await drawCardAnim(pid,val); break;
     case 'gain_mana':
       G.p[pid].mana=Math.min(G.p[pid].maxMana,G.p[pid].mana+val);
       log(`✦ ${arc.name} [${label}] → マナ+${val}`,'ll-sys'); break;
@@ -3183,20 +3255,28 @@ function renderArcana(){
       cardEl.onmouseleave=hideTip;
       cardEl.onmousemove=moveTip;
     }
-    // gauge: always numeric display
+    // gauge: AP fan badge
     gaugeEl.innerHTML='';
     const arc_r=getArcana(pid);
     const maxG_r=arcanaGaugeMax(arc_r);
+    const ready_check=arcanaIsReady(state,arc_r);
+    // Update ap-fan ready state
+    const fanEl=document.getElementById(`p${pid}-ap-fan`);
+    if(fanEl){fanEl.className='ap-fan'+(ready_check?' ready':'');}
+    gaugeEl.innerHTML='';
     const lbl=document.createElement('div');
+    gaugeEl.appendChild(lbl);
     const ready_r=arcanaIsReady(state,arc_r);
     if(maxG_r===0){
-      gaugeEl.innerHTML='';
-      return; // No.0: gauge display not needed
+      lbl.style.cssText='display:flex;align-items:baseline;line-height:1;gap:1px;transform:translate(-50%,50%);';
+      lbl.innerHTML=`<span style="font-family:'Bebas Neue',cursive;font-size:22px;font-weight:700;color:${ready_check?'#fbbf24':'rgba(167,139,250,0.9)'};text-shadow:0 1px 6px rgba(0,0,0,0.9);transform:translateY(-3px);display:inline-block;">0</span><span style="font-family:'Bebas Neue',cursive;font-size:13px;color:${ready_check?'rgba(240,210,80,0.7)':'rgba(167,139,250,0.5)'};transform:translateY(3px);display:inline-block;">/0</span>`;
+      return;
     } else {
-      lbl.style.cssText=`font-family:'Bebas Neue',cursive;font-size:10px;letter-spacing:0.05em;color:${ready_r?'#fbbf24':state.reversed?'rgba(251,191,36,0.3)':'rgba(167,139,250,0.7)'};`;
-      lbl.textContent=`${state.gauge}/${maxG_r}`;
+      const _col=ready_check?'#fbbf24':state.reversed?'rgba(251,191,36,0.5)':'rgba(167,139,250,0.9)';
+      const _colSub=ready_check?'rgba(240,210,80,0.7)':state.reversed?'rgba(251,191,36,0.35)':'rgba(167,139,250,0.5)';
+      lbl.style.cssText='display:flex;align-items:baseline;line-height:1;gap:1px;transform:translate(-50%,50%);';
+      lbl.innerHTML=`<span style="font-family:'Bebas Neue',cursive;font-size:22px;font-weight:700;color:${_col};text-shadow:0 1px 6px rgba(0,0,0,0.9);transform:translateY(-3px);display:inline-block;">${state.gauge}</span><span style="font-family:'Bebas Neue',cursive;font-size:13px;color:${_colSub};transform:translateY(3px);display:inline-block;">/${maxG_r}</span>`;
     }
-    gaugeEl.appendChild(lbl);
   });
 }
 
@@ -3360,9 +3440,18 @@ async function _showCoinToss(firstPid){
   overlay.classList.add('show');
   await new Promise(r=>setTimeout(r,300));
 
-  // spin
+  // set coin face before spin
+  icon.textContent='';
+  icon.style.cssText='font-size:72px;position:relative;';
+  // Front = sun (P1先攻), Back = moon (AI先攻)
+  const face1='☀️', face2='🌙';
+  icon.textContent=face1; // starts showing front
+
+  // spin with face flip at midpoint
   icon.classList.add('spin');
-  await new Promise(r=>setTimeout(r,1200));
+  await new Promise(r=>setTimeout(r,600));
+  icon.textContent=firstPid===1?face1:face2; // flip to result face
+  await new Promise(r=>setTimeout(r,600));
 
   // show result
   result.textContent=firstPid===1?'あなたが先攻！':'AIが先攻！';
@@ -3389,11 +3478,33 @@ function drawCard(pid,silent){
   const p=G.p[pid];
   if(!p.deck.length){if(!silent)log(`P${pid}: デッキ切れ`,'ll-sys');return;}
   const c=p.deck.shift();p.hand.push(c);
-  // P2のドロー内容は非公開
   if(!silent){
     if(pid===1) log(`P1: 「${c.name}」をドロー`,'');
     else log(`AI: 1枚ドロー`,'ll-ai');
   }
+}
+
+// 複数枚を1枚ずつ間隔をあけてドロー
+async function drawCardAnim(pid, n, silent){
+  for(let i=0;i<n;i++){
+    drawCard(pid,silent);
+    render();
+    if(i<n-1) await new Promise(r=>setTimeout(r,160));
+  }
+  render();
+}
+
+// 複数枚を1枚ずつ捨てる
+async function discardAnim(pid, n){
+  const p=G.p[pid];
+  for(let i=0;i<n;i++){
+    if(!p.hand.length)break;
+    const idx=Math.floor(Math.random()*p.hand.length);
+    p.hand.splice(idx,1);
+    render();
+    if(i<n-1) await new Promise(r=>setTimeout(r,140));
+  }
+  render();
 }
 
 // COST
@@ -3619,9 +3730,10 @@ async function _execEffect(pid, fc, ab, isAI){
   const e=ab.effect;
 
   if(e==='draw'){
-    for(let i=0;i<(pr.n||1);i++) drawCard(pid);
-    log(`「${fc.name}」→ ${pr.n||1}枚ドロー`,'ll-s');
-    render(); return;
+    const n=pr.n||1;
+    log(`「${fc.name}」→ ${n}枚ドロー`,'ll-s');
+    await drawCardAnim(pid,n);
+    return;
   }
   if(e==='dmg_enemy_one'){
     if(!op.field.length){log(`「${fc.name}」→ 対象なし`,'');return;}
@@ -4048,13 +4160,9 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='discard'){
     const n=pr.n||1;
-    const discarded=[];
-    for(let i=0;i<n&&op.hand.length;i++){
-      const idx=Math.floor(Math.random()*op.hand.length);
-      discarded.push(op.hand.splice(idx,1)[0]);
-    }
-    if(discarded.length) log(`${pCol(fc.name,pid)}→ 相手手札${discarded.length}枚を捨てさせる`,'ll-s');
-    render();return;
+    log(`${pCol(fc.name,pid)}→ 相手手札${n}枚を捨てさせる`,'ll-s');
+    await discardAnim(opp,n);
+    return;
   }
   if(e==='dmg_any'){
     // hit any unit or leader
@@ -4122,10 +4230,12 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='discard_hand_draw'){
     const discarded=p.hand.length;
-    p.hand=[];
-    for(let i=0;i<discarded;i++) drawCard(pid);
     log(`${pCol(fc.name,pid)}→ 手札を${discarded}枚捨てて${discarded}枚ドロー`,'ll-s');
-    render();return;
+    // 一枚ずつ捨てる
+    while(p.hand.length>0){p.hand.splice(0,1);render();await new Promise(r=>setTimeout(r,110));}
+    // 一枚ずつ引く
+    await drawCardAnim(pid,discarded);
+    return;
   }
   log(`「${fc.name}」→ 能力発動（未実装: ${e}）`,'ll-sys');
 }
