@@ -707,26 +707,28 @@ textarea.finput{resize:vertical;min-height:64px;}
   z-index:35;
   pointer-events:none;
 }
-/* P1: 手札領域の左下角に90度扇形 */
+/* P1: 手札領域の左下角、カードが上にはみ出す */
 #p1-arcana-slot{
   bottom:0;left:0;
-  width:56px;height:56px;
+  width:112px;height:56px;
+  overflow:visible;
 }
-/* P2: 手札領域の右上角に90度扇形（逆） */
+/* P2: 手札領域の右上角、カードが下にはみ出す */
 #p2-arcana-slot{
   top:0;right:0;
-  width:56px;height:56px;
+  width:112px;height:56px;
+  overflow:visible;
 }
 /* アルカナカードは扇の下レイヤー */
 #p1-arcana-slot .arcana-card{
   position:absolute;
-  bottom:6px;left:10px;
+  bottom:6px;left:8px;
   pointer-events:all;
   z-index:34;
 }
 #p2-arcana-slot .arcana-card{
   position:absolute;
-  top:6px;right:10px;
+  top:6px;right:8px;
   pointer-events:all;
   z-index:34;
 }
@@ -776,7 +778,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   top:8px;right:4px;
 }
 .arcana-card{
-  width:64px;height:110px;border-radius:6px;
+  width:96px;height:165px;border-radius:8px;
   background:linear-gradient(135deg,#1a1200,#2a1e00);
   border:1px solid rgba(201,168,76,0.5);
   cursor:pointer;position:relative;overflow:hidden;
