@@ -1019,21 +1019,25 @@ textarea.finput{resize:vertical;min-height:64px;}
 <!-- ═══ ONLINE SCREEN ═══ -->
 <div id="screen-online" class="screen hidden">
   <button class="back-btn" style="position:absolute;top:12px;left:12px;" onclick="showScreen('screen-menu')">← MENU</button>
-  <div class="online-box" id="online-create-box">
-    <div class="online-title">ルームを作成</div>
-    <button class="gbtn" onclick="onlineCreateRoom()">ルームを作成する</button>
-    <div id="online-created-room" style="display:none;flex-direction:column;align-items:center;gap:6px;">
+  <div class="online-box" style="gap:16px;">
+    <!-- ボタン行 -->
+    <div style="display:flex;gap:12px;">
+      <button class="gbtn" id="btn-create-room" onclick="onlineToggleCreate()">ルーム作成</button>
+      <button class="gbtn sec" id="btn-join-room" onclick="onlineToggleJoin()">ルームに参加</button>
+    </div>
+    <!-- ルーム作成パネル -->
+    <div id="online-create-panel" style="display:none;flex-direction:column;align-items:center;gap:8px;">
       <div style="font-size:11px;color:rgba(240,230,204,0.5);">ルームID</div>
       <div class="room-id-display" id="online-room-id-display">------</div>
       <div style="font-size:10px;color:rgba(240,230,204,0.4);">友人にこのIDを伝えてください</div>
-      <div class="online-status" id="online-host-status">相手の参加を待っています…</div>
+      <div class="online-status" id="online-host-status"></div>
     </div>
-  </div>
-  <div class="online-box" id="online-join-box">
-    <div class="online-title">ルームに参加</div>
-    <input class="room-input" id="online-join-input" maxlength="6" placeholder="XXXXXX">
-    <button class="gbtn" onclick="onlineJoinRoom()">参加する</button>
-    <div class="online-status" id="online-join-status"></div>
+    <!-- 参加パネル -->
+    <div id="online-join-panel" style="display:none;flex-direction:column;align-items:center;gap:8px;">
+      <input class="room-input" id="online-join-input" maxlength="6" placeholder="XXXXXX">
+      <button class="gbtn" onclick="onlineJoinRoom()">参加する</button>
+      <div class="online-status" id="online-join-status"></div>
+    </div>
   </div>
 </div>
 
@@ -5081,13 +5085,56 @@ function _fb(){return window._FB;}
 
 function showOnlineMenu(){
   showScreen('screen-online');
-  document.getElementById('online-created-room').style.display='none';
-  document.getElementById('online-host-status').textContent='相手の参加を待っています…';
+  _onlineHidePanels();
   document.getElementById('online-join-status').textContent='';
   document.getElementById('online-join-input').value='';
-  document.getElementById('online-create-box').style.display='';
-  document.getElementById('online-join-box').style.display='';
+  document.getElementById('online-host-status').textContent='';
   window._onlineBattleStarted=false;
+  // reset buttons
+  document.getElementById('btn-create-room').className='gbtn';
+  document.getElementById('btn-join-room').className='gbtn sec';
+}
+
+function _onlineHidePanels(){
+  document.getElementById('online-create-panel').style.display='none';
+  document.getElementById('online-join-panel').style.display='none';
+}
+
+async function onlineToggleCreate(){
+  const panel=document.getElementById('online-create-panel');
+  const isOpen=panel.style.display!=='none';
+  if(isOpen){
+    // 閉じる → 部屋削除
+    _onlineHidePanels();
+    document.getElementById('btn-create-room').className='gbtn';
+    document.getElementById('btn-join-room').className='gbtn sec';
+    if(_onlineRoom&&_onlineRoom.role==='host'){
+      await _onlineCleanupRoom();
+    }
+    document.getElementById('online-room-id-display').textContent='------';
+    document.getElementById('online-host-status').textContent='';
+    return;
+  }
+  // 参加パネルを閉じて作成パネルを開く
+  _onlineHidePanels();
+  panel.style.display='flex';
+  document.getElementById('btn-create-room').className='gbtn';
+  document.getElementById('btn-join-room').className='gbtn sec';
+  await onlineCreateRoom();
+}
+
+function onlineToggleJoin(){
+  const panel=document.getElementById('online-join-panel');
+  const isOpen=panel.style.display!=='none';
+  if(isOpen){
+    _onlineHidePanels();
+    document.getElementById('btn-join-room').className='gbtn sec';
+    return;
+  }
+  _onlineHidePanels();
+  panel.style.display='flex';
+  document.getElementById('btn-join-room').className='gbtn';
+  document.getElementById('btn-create-room').className='gbtn sec';
 }
 
 // Generate 6-char room ID
@@ -5112,9 +5159,7 @@ async function onlineCreateRoom(){
   // Auto-delete room if host disconnects
   try{await fb.onDisconnect(roomRef).remove();}catch(e){}
   document.getElementById('online-room-id-display').textContent=roomId;
-  document.getElementById('online-created-room').style.display='flex';
-  // ゲスト参加欄を隠す
-  document.getElementById('online-join-box').style.display='none';
+  document.getElementById('online-host-status').textContent='相手の参加を待っています…';
   // watch for guest joining
   fb.onValue(fb.ref(db,`rooms/${roomId}/guest/status`),snap=>{
     const v=snap.val();
@@ -5138,8 +5183,6 @@ async function onlineJoinRoom(){
   await fb.update(fb.ref(db,`rooms/${roomId}/guest`),{status:'ready'});
   _onlineRoom={roomId,myPid:2,role:'guest'};
   document.getElementById('online-join-status').textContent='参加しました！デッキを選択してください';
-  // ルーム作成欄を隠す
-  document.getElementById('online-create-box').style.display='none';
   showOnlineDeckSelect();
 }
 
