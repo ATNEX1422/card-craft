@@ -1019,7 +1019,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 <!-- ═══ ONLINE SCREEN ═══ -->
 <div id="screen-online" class="screen hidden">
   <button class="back-btn" style="position:absolute;top:12px;left:12px;" onclick="showScreen('screen-menu')">← MENU</button>
-  <div class="online-box">
+  <div class="online-box" id="online-create-box">
     <div class="online-title">ルームを作成</div>
     <button class="gbtn" onclick="onlineCreateRoom()">ルームを作成する</button>
     <div id="online-created-room" style="display:none;flex-direction:column;align-items:center;gap:6px;">
@@ -1029,7 +1029,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       <div class="online-status" id="online-host-status">相手の参加を待っています…</div>
     </div>
   </div>
-  <div class="online-box">
+  <div class="online-box" id="online-join-box">
     <div class="online-title">ルームに参加</div>
     <input class="room-input" id="online-join-input" maxlength="6" placeholder="XXXXXX">
     <button class="gbtn" onclick="onlineJoinRoom()">参加する</button>
@@ -5085,6 +5085,9 @@ function showOnlineMenu(){
   document.getElementById('online-host-status').textContent='相手の参加を待っています…';
   document.getElementById('online-join-status').textContent='';
   document.getElementById('online-join-input').value='';
+  document.getElementById('online-create-box').style.display='';
+  document.getElementById('online-join-box').style.display='';
+  window._onlineBattleStarted=false;
 }
 
 // Generate 6-char room ID
@@ -5110,6 +5113,8 @@ async function onlineCreateRoom(){
   try{await fb.onDisconnect(roomRef).remove();}catch(e){}
   document.getElementById('online-room-id-display').textContent=roomId;
   document.getElementById('online-created-room').style.display='flex';
+  // ゲスト参加欄を隠す
+  document.getElementById('online-join-box').style.display='none';
   // watch for guest joining
   fb.onValue(fb.ref(db,`rooms/${roomId}/guest/status`),snap=>{
     const v=snap.val();
@@ -5133,6 +5138,8 @@ async function onlineJoinRoom(){
   await fb.update(fb.ref(db,`rooms/${roomId}/guest`),{status:'ready'});
   _onlineRoom={roomId,myPid:2,role:'guest'};
   document.getElementById('online-join-status').textContent='参加しました！デッキを選択してください';
+  // ルーム作成欄を隠す
+  document.getElementById('online-create-box').style.display='none';
   showOnlineDeckSelect();
 }
 
@@ -5159,14 +5166,13 @@ async function onlineSelectDeck(deck){
   const deckData=deck.cards.map(e=>({id:e.id,count:e.count}));
   await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,status:'deck_ready'});
   document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
-  // Watch for both ready
+  // Watch for both ready (onlyOnce)
   fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
     const d=snap.val();
     if(d?.host?.status==='deck_ready'&&d?.guest?.status==='deck_ready'){
-      // Both ready: start game
       _onlineStartGame(d,snap.key);
     }
-  },{onlyOnce:false});
+  },{onlyOnce:true});
 }
 
 // ── Start Game ──
@@ -5199,10 +5205,13 @@ async function _onlineStartGame(roomData,key){
     await fb.set(fb.ref(db,`rooms/${roomId}/turn`),firstPid);
   }
 
-  // Both: watch for initState
-  fb.onValue(fb.ref(db,`rooms/${roomId}/initState`),snap=>{
+  // Both: watch for initState (host reads back what it just wrote)
+  const _initRef=fb.ref(db,`rooms/${roomId}/initState`);
+  fb.onValue(_initRef,snap=>{
     if(!snap.exists())return;
     const init=snap.val();
+    if(window._onlineBattleStarted)return; // prevent double-start
+    window._onlineBattleStarted=true;
     _onlineInitBattle(init);
   },{onlyOnce:true});
 }
@@ -5382,9 +5391,17 @@ async function _onlineProcessAction(action){
       }
       case 'end_turn':{
         const pid=action.pid;
-        G.cp=pid===1?2:1;
-        await endTurnSequence();
+        const next=pid===1?2:1;
+        G.cp=next;
+        // fire turn_end for the player who ended
+        for(const fc of [...G.p[pid].field]){
+          const abs=(fc.abilities||[]).filter(a=>a.type==='trigger'&&a.trigger==='on_turn_end');
+          for(const ab of abs) await _execEffect(pid,fc,{...ab,_triggerType:'on_turn_end'},pid===2);
+        }
+        await arcanaOnTurnEnd(pid);
+        await startTurn(next);
         _onlineUpdateControls();
+        render();
         break;
       }
     }
@@ -5444,15 +5461,9 @@ async function _replayAttackLeader(pid,opp,atk){
 }
 
 async function endTurnSequence(){
-  const curPid=G.cp===1?2:1; // who just ended
-  G.cp=G.cp; // already set by caller
-  if(_p1TurnStarted)G.turn++;
-  if(G.cp===1)_p1TurnStarted=true;
-  _clearAllyEnterFired();
-  const p=G.p[G.cp];
-  p.turnCount++;p.maxMana=Math.min(10,p.turnCount);p.mana=p.maxMana;
-  p.field.forEach(c=>{clearTurnFlags(c);c._bound=false;});
-  drawCard(G.cp);
+  // Called when receiving opponent's end_turn action online
+  // G.cp is already set to the new current player by caller
+  await startTurn(G.cp);
   render();
 }
 
