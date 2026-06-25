@@ -5055,6 +5055,8 @@ let summonQueue=[];   // queued summons: {pid, base, cost, preTargets}
 async function endTurn(){
   if(G.over||aiLock||targetMode||isAnimating())return;
   if(endTurnPending)return; // prevent double trigger
+  // オンライン: 自分の手番でなければ無視
+  if(_onlineRoom&&!_onlineProcessingAction&&G.cp!==_onlineRoom.myPid)return;
   endTurnPending=true;
   document.getElementById('end-btn').disabled=true;
   deselectAtk();
@@ -5378,12 +5380,18 @@ async function startTurn(pid){
   render();
   // turn change notification LAST so it's not overwritten
   await new Promise(r=>setTimeout(r,60));
-  if(pid===1){
+  if(_onlineRoom){
+    // オンライン: 自分の手番か相手の手番かで表示
+    const myTurn=pid===_onlineRoom.myPid;
+    showMidNotif(myTurn?'YOUR TURN':'OPPONENT TURN',myTurn?'#60a5fa':'#f87171',2200);
+  } else if(pid===1){
     showMidNotif('YOUR TURN','#60a5fa',2200);
   } else {
     showMidNotif('ENEMY TURN','#f87171',2200);
   }
   await new Promise(r=>setTimeout(r,500));
+  // オンライン: ターン開始時にコントロール更新
+  if(_onlineRoom)_onlineUpdateControls();
 }
 
 function render(){
@@ -5815,6 +5823,7 @@ async function onlineJoinRoom(){
 
 // ── Deck Select for online ──
 function showOnlineDeckSelect(){
+  window._onlineBattleStarted=false;
   showScreen('screen-deckselect-online');
   const list=document.getElementById('online-ds-list');
   list.innerHTML='';
@@ -5852,11 +5861,13 @@ async function onlineSelectDeck(deck){
   const roleKey=role==='host'?'host':'guest';
   // Serialize deck entries
   const deckData=deck.cards.map(e=>({id:e.id,count:e.count}));
-  await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,status:'deck_ready'});
+  console.log('[online] selectDeck',roleKey,deck.name,deckData.length,'cards');
+  await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,arcanaId:deck.arcanaId||null,status:'deck_ready'});
   document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
   // Watch for both ready (keep watching until both are ready)
   const _unsub=fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
     const d=snap.val();
+    console.log('[online] room update: host=',d?.host?.status,'guest=',d?.guest?.status);
     if(d?.host?.status==='deck_ready'&&d?.guest?.status==='deck_ready'){
       if(window._onlineBattleStarted)return;
       _onlineStartGame(d,snap.key);
@@ -5868,30 +5879,35 @@ async function onlineSelectDeck(deck){
 async function _onlineStartGame(roomData,key){
   const fb=_fb();const {roomId,myPid,role}=_onlineRoom;
   const db=fb.db;
+  console.log('[online] _onlineStartGame role=',role,'data=',roomData);
 
   // Only host initializes the game state
   if(role==='host'){
-    // Build deck entries
-    const p1Entries=roomData.host.deck;
-    const p2Entries=roomData.guest.deck;
-    // Assign UIDs from counter (both sides use same sequence)
-    let uidCtr=200;
-    function nextUid(){return ++uidCtr;}
-
-    const makeSerialDeck=(entries)=>{
-      const cards=[];
-      entries.forEach(e=>{
-        const base=CARDS.find(c=>c.id===e.id);if(!base)return;
-        for(let i=0;i<e.count;i++)cards.push({id:base.id,uid:nextUid()});
-      });
-      return shuffle(cards);
-    };
-    const p1deck=makeSerialDeck(p1Entries);
-    const p2deck=makeSerialDeck(p2Entries);
-    const firstPid=Math.random()<0.5?1:2;
-    const initState={firstPid,p1deck,p2deck,uidCtr};
-    await fb.set(fb.ref(db,`rooms/${roomId}/initState`),initState);
-    await fb.set(fb.ref(db,`rooms/${roomId}/turn`),firstPid);
+    try{
+      const p1Entries=roomData.host.deck;
+      const p2Entries=roomData.guest.deck;
+      if(!p1Entries||!p2Entries){console.error('[online] deck missing',p1Entries,p2Entries);return;}
+      let uidCtr=200;
+      function nextUid(){return ++uidCtr;}
+      const makeSerialDeck=(entries)=>{
+        const cards=[];
+        entries.forEach(e=>{
+          const base=CARDS.find(c=>c.id===e.id);if(!base)return;
+          for(let i=0;i<(e.count||1);i++)cards.push({id:base.id,uid:nextUid()});
+        });
+        return shuffle(cards);
+      };
+      const p1deck=makeSerialDeck(p1Entries);
+      const p2deck=makeSerialDeck(p2Entries);
+      const firstPid=Math.random()<0.5?1:2;
+      const initState={firstPid,p1deck,p2deck,uidCtr,
+        p1ArcanaId:roomData.host.arcanaId||null,
+        p2ArcanaId:roomData.guest.arcanaId||null};
+      console.log('[online] host writing initState',initState);
+      await fb.set(fb.ref(db,`rooms/${roomId}/initState`),initState);
+      await fb.set(fb.ref(db,`rooms/${roomId}/turn`),firstPid);
+      console.log('[online] host initState written OK');
+    }catch(e){console.error('[online] host init error',e);}
   }
 
   // Both: watch for initState (host reads back what it just wrote)
@@ -5970,14 +5986,9 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
   // Start listening for opponent actions
   _onlineListenActions();
 
-  // If it's my turn, enable controls; else disable
-  _onlineUpdateControls();
-
   await startTurn(firstPid);
-  if(firstPid!==myPid){
-    // Opponent goes first: lock my controls
-    _onlineLockControls();
-  }
+  // ターン開始後にコントロールを更新（手番でない側はロック）
+  _onlineUpdateControls();
 }
 
 // ── Controls ──
