@@ -1563,18 +1563,41 @@ async function loadArcanas(){
 // ── Arcana ability text ──
 const ARC_COND_LABELS={
   my_turn_start:'自ターン開始時', my_turn_end:'自ターン終了時',
-  any_turn_start:'両者ターン開始時', on_ally_death:'味方破壊時',
-  on_enemy_death:'相手ユニット破壊時', on_damage_taken:'被ダメージ時',
+  any_turn_start:'両者ターン開始時',
+  on_ally_enter:'自ユニット出た時', on_enemy_enter:'相手ユニット出た時', on_any_enter:'ユニット出た時',
+  on_ally_death:'味方破壊時', on_enemy_death:'相手ユニット破壊時',
+  on_damage_taken:'被ダメージ時',
 };
+
 const ARC_EFF_LABELS={
-  heal_leader:'リーダーX回復', draw:'Xドロー', gain_mana:'マナ+X',
-  buff_ally_all:'味方全体+X/+X', dmg_enemy_all:'相手全体Xダメ',
-  dmg_leader:'相手リーダーXダメ', reduce_atk_all:'相手全体攻撃-X',
-  add_ap_self:'自AP+X', reduce_ap_self:'自AP-X',
-  add_ap_enemy:'相手AP+X', reduce_ap_enemy:'相手AP-X',
-  dmg_enemy_one:'相手1体Xダメ（ランダム）', destroy_one:'相手1体破壊（ランダム）',
-  return_one:'相手1体手札に戻す', buff_ally_all_rev:'味方全体+X/+X',
-  return_all:'相手全体手札に戻す', destroy_all:'相手全体破壊',
+  draw:'Xドロー', draw_enemy:'相手Xドロー',
+  discard:'相手手札X枚捨て', discard_self:'自分手札X枚捨て',
+  discard_hand_draw:'手札全捨て→同枚数ドロー', add_to_hand:'指定カードを手札に',
+  heal_leader:'リーダーX回復', heal_unit_one:'ユニット1体X回復', heal_unit_all:'ユニット全体X回復',
+  heal_ally_one:'味方1体X回復', heal_ally_all:'味方全体X回復',
+  gain_mana:'マナ+X', change_mana:'マナ変更X', change_ap:'AP変更X',
+  add_ap_self:'自AP+X', reduce_ap_self:'自AP-X', add_ap_enemy:'相手AP+X', reduce_ap_enemy:'相手AP-X',
+  buff_unit_one:'ユニット1体バフ', buff_unit_all:'ユニット全体バフ',
+  buff_ally_all:'味方全体+X/+X', buff_ally_one:'味方1体+X/+X',
+  debuff_enemy_one:'相手1体-X/-X', debuff_enemy_all:'相手全体デバフ',
+  reduce_atk_all:'相手全体攻撃-X', set_stats:'スタッツ指定値に', set_leader_life:'リーダーHPをXに',
+  grant_kw_unit:'ユニットにキーワード付与', grant_kw_all:'味方全体キーワード付与',
+  grant_kw_one:'味方1体キーワード付与', grant_kw_summoned:'召喚ユニットにキーワード付与',
+  dmg_unit_all:'ユニット全体Xダメ', dmg_unit_one:'ユニット1体Xダメ', dmg_unit_n:'ユニットX体ダメ',
+  dmg_enemy_all:'相手全体Xダメ', dmg_enemy_one:'相手1体Xダメ',
+  dmg_leader:'リーダーXダメ', dmg_leader_self:'自リーダーXダメ',
+  dmg_ally_one:'味方1体Xダメ', dmg_ally_all:'味方全体Xダメ', dmg_all_units:'全ユニットXダメ', dmg_any:'Xダメ',
+  destroy_unit_one:'ユニット1体破壊', destroy_unit_all:'ユニット全体破壊',
+  destroy_one:'相手1体破壊', destroy_all:'相手全体破壊', destroy_ally_one:'味方1体破壊',
+  exile_unit_one:'ユニット1体除外', exile_unit_all:'ユニット全体除外', exile_all:'全体除外',
+  exile_one:'相手1体除外',
+  return_unit_one:'ユニット1体手札に戻す', return_unit_all:'ユニット全体手札に戻す',
+  return_one:'相手1体手札に戻す', return_all:'相手全体手札に戻す', return_ally_one:'味方1体手札に戻す',
+  steal_unit_one:'ユニット1体強奪', steal_one:'相手1体強奪',
+  bind_unit:'ユニット呪縛', bind_all:'全体呪縛', bind_one:'相手1体呪縛',
+  silence_unit:'ユニット沈黙', silence_all:'全体沈黙', silence_one:'相手1体沈黙',
+  summon_card:'指定カード召喚', summon_free:'手札から無料召喚',
+  revive:'墓地から蘇生', revive_enemy:'相手墓地から蘇生',
 };
 function arcEffText(ab, showCond=true){
   const eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
@@ -1587,8 +1610,8 @@ function arcEffText(ab, showCond=true){
 function buildArcanaText(arc){
   const parts=[];
   (arc.upright||[]).forEach(ab=>parts.push('正: '+(ab.desc||arcEffText(ab))));
-  (arc.revImmediate||[]).forEach(ab=>parts.push('逆: '+(ab.desc||arcEffText(ab,false))));
-  (arc.revPassive||[]).forEach(ab=>parts.push('転: '+(ab.desc||arcEffText(ab))));
+  (arc.revImmediate||[]).forEach(ab=>parts.push('転: '+(ab.desc||arcEffText(ab,false))));
+  (arc.revPassive||[]).forEach(ab=>parts.push('逆: '+(ab.desc||arcEffText(ab))));
   return parts.join('\n')||'（効果なし）';
 }
 
@@ -1614,6 +1637,20 @@ let _arcRevImms=[];       // [{effect, val, desc}]  immediate effects on reverse
 let _arcRevPassives=[];   // [{condition, effect, val, desc}]  passives while reversed
 
 // ── Condition / Effect options ──
+const ARC_TARGET_LABELS={
+  'self':'自分','enemy':'相手',
+  'ally_choose':'味方選択','ally_random':'味方ランダム','ally_self':'自身',
+  'ally_all':'味方全体','ally_lowest_hp':'味方最低HP','ally_highest_atk':'味方最高攻撃',
+  'enemy_choose':'相手選択','enemy_random':'相手ランダム','enemy_all':'相手全体',
+  'enemy_strongest':'相手最強','enemy_weakest':'相手最弱','enemy_lowest_hp':'相手最低HP','enemy_highest_atk':'相手最高攻撃',
+  'both':'両方',
+  'self_restore':'自分回復','self_add_max':'自分最大UP','self_sub_current':'自分現在-','self_sub_max':'自分最大-',
+  'enemy_restore':'相手回復','enemy_add_max':'相手最大UP','enemy_sub_current':'相手現在-','enemy_sub_max':'相手最大-',
+  'self_add':'自分+','self_subtract':'自分-','enemy_add':'相手+','enemy_subtract':'相手-',
+  'self_random':'自分ランダム','enemy_random_revive':'相手ランダム',
+  'ally_choose_revive':'自分選択','self_choose':'自分選択',
+  'enemy_choose_any':'相手選択','any_choose':'任意選択',
+};
 const ARC_CONDITIONS=[
   {id:'my_turn_start',    label:'自分のターン開始時'},
   {id:'my_turn_end',      label:'自分のターン終了時'},
@@ -1726,8 +1763,37 @@ function _buildArcKwChips(ab, container){
 }
 
 // 効果に応じた追加UIを更新
-function _updateArcRowExtras(ab, extrasEl){
+function _getEffectTargetOpts(effectId, effectList){
+  const ef=effectList.find(e=>e.id===effectId);
+  return ef?.target_opts||null;
+}
+
+function _buildArcTargetSel(ab, opts, extrasEl){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:center;gap:5px;margin-top:3px;';
+  const lbl=document.createElement('span');
+  lbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.5);white-space:nowrap;';
+  lbl.textContent='対象:';
+  const sel=document.createElement('select');
+  sel.style.cssText='flex:1;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  opts.forEach(o=>{
+    const op=document.createElement('option');op.value=o;
+    op.textContent=ARC_TARGET_LABELS[o]||o;
+    if((ab.params?.target||ab.target)===o)op.selected=true;
+    sel.appendChild(op);
+  });
+  sel.onchange=e=>{
+    if(!ab.params)ab.params={};
+    ab.params.target=e.target.value;
+    ab.target=e.target.value;
+  };
+  wrap.appendChild(lbl);wrap.appendChild(sel);
+  extrasEl.appendChild(wrap);
+}
+
+function _updateArcRowExtras(ab, extrasEl, effectList){
   extrasEl.innerHTML='';
+  // キーワードチップ
   const needsKw=['grant_kw_unit','grant_kw_all','grant_kw_one','grant_kw_summoned'].includes(ab.effect);
   if(needsKw){
     const lbl=document.createElement('div');
@@ -1738,6 +1804,9 @@ function _updateArcRowExtras(ab, extrasEl){
     _buildArcKwChips(ab,chips);
     extrasEl.appendChild(chips);
   }
+  // 対象セレクター
+  const opts=_getEffectTargetOpts(ab.effect, effectList||ARC_PASSIVE_EFFECTS);
+  if(opts&&opts.length>1) _buildArcTargetSel(ab, opts, extrasEl);
 }
 
 function _buildPassiveRow(listId, arr, i, effectOptions){
@@ -1778,9 +1847,9 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
 
   const extrasEl=document.createElement('div');
   extrasEl.style.cssText='margin-top:2px;';
-  _updateArcRowExtras(ab,extrasEl);
+  _updateArcRowExtras(ab,extrasEl,effectOptions);
 
-  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl);};
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,effectOptions);};
 
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
@@ -1820,9 +1889,9 @@ function _buildImmRow(arr, i){
 
   const extrasEl=document.createElement('div');
   extrasEl.style.cssText='margin-top:2px;';
-  _updateArcRowExtras(ab,extrasEl);
+  _updateArcRowExtras(ab,extrasEl,ARC_IMM_EFFECTS);
 
-  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl);};
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,ARC_IMM_EFFECTS);};
 
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
@@ -3254,12 +3323,16 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
   const val=ab.val||1;
   const opp=pid===1?2:1;
   switch(ab.effect){
-    case 'heal_leader':
-      G.p[pid].life=Math.min(20,G.p[pid].life+val);
-      log(`✦ ${arc.name} [${label}] → リーダーを${val}回復`,'ll-sys'); break;
-    case 'draw':
-      log(`✦ ${arc.name} [${label}] → ${val}枚ドロー`,'ll-sys');
-      await drawCardAnim(pid,val); break;
+    case 'heal_leader':{
+      const htp=(ab.params?.target||ab.target);
+      const hpid=(htp==='enemy')?opp:pid;
+      G.p[hpid].life=Math.min(20,G.p[hpid].life+val);
+      log(`✦ ${arc.name} [${label}] → ${hpid===pid?'自分':'相手'}リーダーを${val}回復`,'ll-sys'); break;}
+    case 'draw':{
+      const tp=(ab.params?.target||ab.target);
+      const dpid=(tp==='enemy')?(pid===1?2:1):pid;
+      log(`✦ ${arc.name} [${label}] → ${dpid===pid?'自分':'相手'}${val}枚ドロー`,'ll-sys');
+      await drawCardAnim(dpid,val); break;}
     case 'gain_mana':
       G.p[pid].mana=Math.min(G.p[pid].maxMana,G.p[pid].mana+val);
       log(`✦ ${arc.name} [${label}] → マナ+${val}`,'ll-sys'); break;
@@ -3470,9 +3543,11 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
         log(`✦ ${arc.name} [${label}] → 相手1体に${val}ダメージ`,'ll-sys');
         if(t._hp<=0){render();await new Promise(r=>setTimeout(r,200));removeCard(opp,t._uid);}
       } break;}
-    case 'discard':
-      log(`✦ ${arc.name} [${label}] → 相手手札${val}枚を捨てさせる`,'ll-sys');
-      await discardAnim(opp,val); break;
+    case 'discard':{
+      const tp2=(ab.params?.target||ab.target);
+      const dispid=(tp2==='self')?pid:opp;
+      log(`✦ ${arc.name} [${label}] → ${dispid===pid?'自分':'相手'}手札${val}枚捨て`,'ll-sys');
+      await discardAnim(dispid,val); break;}
   }
   animateArcanaCard(pid);
   render();
