@@ -1770,7 +1770,7 @@ function arcanaRenderGrid(){
   [...grid.children].forEach(c=>{ if(c.id!=='e-arcana-empty')c.remove(); });
   if(!ARCANAS.length){ empty.style.display='block'; return; }
   empty.style.display='none';
-  ARCANAS.forEach(arc=>{
+  [...ARCANAS].sort((a,b)=>(a.number??99)-(b.number??99)).forEach(arc=>{
     const div=document.createElement('div');
     div.className='arcana-pool-card';
     const src=arc.image?`images/${arc.image}`:null;
