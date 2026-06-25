@@ -2498,7 +2498,7 @@ const ALL_EFFECTS=[
   // ── リソース ──
   {id:'change_mana',       label:'マナを変更',                params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_add_max','enemy_sub_current','enemy_sub_max'],def:'self_restore'}]},
   // ── 召喚・蘇生 ──
-  {id:'summon_card',       label:'指定カードを召喚',          params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]}]},
+  {id:'summon_card',       label:'指定カードを召喚',          params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]},{key:'target',label:'召喚先',type:'select',opts:['self','enemy'],def:'self'}]},
   {id:'summon_free',       label:'手札から無料召喚',          params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
   {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
   // ── AP ──
@@ -4203,23 +4203,23 @@ async function _execEffect(pid, fc, ab, isAI){
     render(); return;
   }
   if(e==='summon_card'){
-    // support both new {cards:[{name,n}]} and legacy {name,n}
     const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
+    const tgtPid=(pr.target==='enemy')?opp:pid;
+    const tgtField=G.p[tgtPid].field;
     const spawnedUids=[];
     for(const entry of entries){
       const base=CARDS.find(c=>c.name===entry.name);
       if(!base)continue;
       for(let i=0;i<(entry.n||1);i++){
-        if(p.field.length<7){
-          const nfc=mkCard(base);p.field.push(nfc);
+        if(tgtField.length<7){
+          const nfc=mkCard(base);tgtField.push(nfc);
           spawnedUids.push(nfc._uid);
-          log(`${pCol(fc.name,pid)}→${pCol(base.name,pid)}を召喚`,'ll-s');
-          render();await animateSummon(pid,nfc._uid);
-          await _fireAllyEnter(pid,nfc._uid,isAI);
+          log(`${pCol(fc.name,pid)}→${pCol(base.name,tgtPid)}を召喚`,'ll-s');
+          render();await animateSummon(tgtPid,nfc._uid);
+          await _fireAllyEnter(tgtPid,nfc._uid,tgtPid===2);
         }
       }
     }
-    // store for grant_kw_summoned effect (processed after this)
     fc._lastSummonedUids=spawnedUids;
     render(); return;
   }
@@ -4436,28 +4436,27 @@ async function _execEffect(pid, fc, ab, isAI){
     return;
   }
   if(e==='dmg_any'){
-    // hit any unit or leader
-    const allTargets=[
-      ...op.field.map(c=>({card:c,pid:opp})),
-      {card:null,pid:opp,isLeader:true}
-    ];
-    if(!isAI){
+    const dmgVal=pr.dmg||1;
+    const tgtOpt=pr.target||'enemy_choose';
+    if(tgtOpt==='enemy_random'||isAI){
+      const t=op.field.length?op.field[Math.floor(Math.random()*op.field.length)]:null;
+      if(t){await dmgCard(opp,t._uid,dmgVal);log(`${pCol(fc.name,pid)}→${pCol(t.name,opp)}に${dmgVal}ダメージ`,'');}
+      else{op.life=Math.max(0,op.life-dmgVal);arcanaNotifyLifeLoss(opp);const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,dmgVal);if(op.life<=0){render();setTimeout(()=>gameOver(pid),300);}}
+    } else {
+      // any_choose or enemy_choose: player picks
+      const allTargets=[...op.field.map(c=>({card:c,pid:opp})),{card:null,pid:opp,isLeader:true}];
       render();
       const r=await selectTarget(`${fc.name}: ダメージ対象を選択`,allTargets);
       if(!r)return;
       if(r.isLeader){
-        op.life=Math.max(0,op.life-(pr.dmg||1));
-        const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,pr.dmg||1);
-        log(`${pCol(fc.name,pid)}→ 相手リーダーに${pr.dmg||1}ダメージ`,'');
+        op.life=Math.max(0,op.life-dmgVal);arcanaNotifyLifeLoss(opp);
+        const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,dmgVal);
+        log(`${pCol(fc.name,pid)}→ 相手リーダーに${dmgVal}ダメージ`,'');
         if(op.life<=0){render();setTimeout(()=>gameOver(pid),300);}
       } else {
         const tgt=op.field.find(c=>c._uid===r.card._uid);
-        if(tgt){await dmgCard(opp,tgt._uid,pr.dmg||1);log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}に${pr.dmg||1}ダメージ`,'');}
+        if(tgt){await dmgCard(opp,tgt._uid,dmgVal);log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}に${dmgVal}ダメージ`,'');}
       }
-    } else {
-      const tgt=op.field.length?op.field.reduce((a,b)=>a._hp>b._hp?a:b):null;
-      if(tgt){await dmgCard(opp,tgt._uid,pr.dmg||1);}
-      else {op.life=Math.max(0,op.life-(pr.dmg||1));const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,pr.dmg||1);}
     }
     render();return;
   }
