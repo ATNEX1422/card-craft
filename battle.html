@@ -2334,7 +2334,11 @@ async function saveCards(){
       const cardsObj={};
       CARDS.forEach((c,i)=>{
         const {imageDataUrl,...rest}=c;
-        cardsObj[c.id||i]=rest;
+        // Firebase は undefined を受け付けないので除去
+        const clean=JSON.parse(JSON.stringify(rest, (k,v)=>v===undefined?null:v));
+        // null になった任意フィールドは削除
+        Object.keys(clean).forEach(k=>{if(clean[k]===null&&!['image','imageDataUrl'].includes(k))delete clean[k];});
+        cardsObj[c.id||i]=clean;
       });
       await fb.set(fb.ref(fb.db,'cards'),cardsObj);
       eToast('Firebase にカードを保存しました');
@@ -6026,7 +6030,6 @@ async function onlineSelectDeck(deck){
     const d=snap.val();
     if(d?.host?.status==='deck_ready'&&d?.guest?.status==='deck_ready'){
       if(window._onlineBattleStarted)return;
-      window._onlineBattleStarted=true;
       _onlineStartGame(d,snap.key);
     }
   });
@@ -6066,9 +6069,9 @@ async function _onlineStartGame(roomData,key){
   const _initRef=fb.ref(db,`rooms/${roomId}/initState`);
   fb.onValue(_initRef,snap=>{
     if(!snap.exists())return;
-    const init=snap.val();
-    if(window._onlineBattleStarted)return; // prevent double-start
+    if(window._onlineBattleStarted)return;
     window._onlineBattleStarted=true;
+    const init=snap.val();
     _onlineInitBattle(init);
   },{onlyOnce:true});
 }
