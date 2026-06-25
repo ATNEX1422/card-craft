@@ -1638,18 +1638,23 @@ let _arcRevPassives=[];   // [{condition, effect, val, desc}]  passives while re
 
 // ── Condition / Effect options ──
 const ARC_TARGET_LABELS={
-  'self':'自分','enemy':'相手',
-  'ally_choose':'味方選択','ally_random':'味方ランダム','ally_self':'自身',
-  'ally_all':'味方全体','ally_lowest_hp':'味方最低HP','ally_highest_atk':'味方最高攻撃',
-  'enemy_choose':'相手選択','enemy_random':'相手ランダム','enemy_all':'相手全体',
-  'enemy_strongest':'相手最強','enemy_weakest':'相手最弱','enemy_lowest_hp':'相手最低HP','enemy_highest_atk':'相手最高攻撃',
-  'both':'両方',
-  'self_restore':'自分回復','self_add_max':'自分最大UP','self_sub_current':'自分現在-','self_sub_max':'自分最大-',
-  'enemy_restore':'相手回復','enemy_add_max':'相手最大UP','enemy_sub_current':'相手現在-','enemy_sub_max':'相手最大-',
-  'self_add':'自分+','self_subtract':'自分-','enemy_add':'相手+','enemy_subtract':'相手-',
-  'self_random':'自分ランダム','enemy_random_revive':'相手ランダム',
-  'ally_choose_revive':'自分選択','self_choose':'自分選択',
-  'enemy_choose_any':'相手選択','any_choose':'任意選択',
+  // 自分・相手・両方（全体）
+  'self':'自分・全体','enemy':'相手・全体','both':'両者・全体',
+  // 自分ユニット
+  'ally_all':'自分・全体','ally_choose':'自分・選択','ally_random':'自分・ランダム','ally_self':'自身',
+  'ally_lowest_hp':'自分・最低HP','ally_highest_atk':'自分・最高攻撃',
+  // 相手ユニット
+  'enemy_all':'相手・全体','enemy_choose':'相手・選択','enemy_random':'相手・ランダム',
+  'enemy_strongest':'相手・最強','enemy_weakest':'相手・最弱',
+  'enemy_lowest_hp':'相手・最低HP','enemy_highest_atk':'相手・最高攻撃',
+  // マナ関連
+  'self_restore':'自分・回復','self_add_max':'自分・最大UP','self_sub_current':'自分・現在-','self_sub_max':'自分・最大-',
+  'enemy_restore':'相手・回復','enemy_add_max':'相手・最大UP','enemy_sub_current':'相手・現在-','enemy_sub_max':'相手・最大-',
+  // AP関連
+  'self_add':'自分・増加','self_subtract':'自分・消費','enemy_add':'相手・増加','enemy_subtract':'相手・減少',
+  // その他
+  'self_random':'自分・ランダム','self_choose':'自分・選択',
+  'any_choose':'任意・選択','enemy_choose_any':'相手・選択',
 };
 const ARC_CONDITIONS=[
   {id:'my_turn_start',    label:'自分のターン開始時'},
@@ -1667,76 +1672,76 @@ const ARC_PASSIVE_EFFECTS=[
   {id:'draw',               label:'カードを引く',              unit:'枚', target_opts:['self','enemy']},
   {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy','self']},
   {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー',  unit:'',   target_opts:['self','enemy']},
-  {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self']},
+  {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self','enemy']},
   // ── リソース ──
   {id:'change_mana',        label:'マナを変更',                unit:'個', target_opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_sub_current','enemy_sub_max']},
-  {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','enemy_subtract']},
+  {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','self_subtract','enemy_add','enemy_subtract']},
   // ── 回復 ──
   {id:'heal_leader',        label:'リーダーを回復',            unit:'点', target_opts:['self','enemy']},
-  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp']},
-  {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally','both']},
+  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp','enemy_random']},
+  {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── バフ・デバフ ──
-  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_random','ally_lowest_hp','enemy_random']},
-  {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally','enemy','both']},
-  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['enemy_random','ally_random']},
-  {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['enemy','self']},
-  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_random','enemy_random']},
+  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_atk','enemy_choose','enemy_random']},
+  {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally_all','enemy_all','both']},
+  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','enemy_choose','enemy_random']},
+  {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['self','enemy']},
+  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
   // ── ダメージ ──
-  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_random','ally_random']},
-  {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy','ally','both']},
+  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_lowest_hp','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy_all','ally_all','both']},
   {id:'dmg_leader',         label:'リーダーにダメージ',        unit:'点', target_opts:['enemy','self']},
-  {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:[]},
+  {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:['enemy_random']},
   // ── 除去・状態異常 ──
-  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_random','ally_random']},
-  {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy','ally','both']},
-  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_random']},
-  {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy','both']},
-  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_random','ally_random']},
-  {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy','ally']},
-  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_random']},
-  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_random','enemy_all']},
-  {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_random','enemy_all']},
+  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy_all','ally_all','both']},
+  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
+  {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy_all','both']},
+  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
+  {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy_all','ally_all']},
+  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest']},
+  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random']},
+  {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all']},
   // ── 召喚・蘇生 ──
-  {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:[]},
-  {id:'revive',             label:'墓地から蘇生',              unit:'',   target_opts:['self_random','enemy_random']},
+  {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:['self','enemy']},
+  {id:'revive',             label:'墓地から蘇生',              unit:'',   target_opts:['self_random','self_choose','enemy_random']},
 ];
 const ARC_IMM_EFFECTS=[
   // ── ドロー・手札 ──
   {id:'draw',               label:'カードを引く',              unit:'枚', target_opts:['self','enemy']},
   {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy','self']},
   {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー',  unit:'',   target_opts:['self','enemy']},
-  {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self']},
+  {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self','enemy']},
   // ── 回復 ──
   {id:'heal_leader',        label:'リーダーを回復',            unit:'点', target_opts:['self','enemy']},
-  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp']},
-  {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally','both']},
+  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp','enemy_random']},
+  {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── ダメージ ──
-  {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy','ally','both']},
-  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_random','ally_random']},
+  {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy_all','ally_all','both']},
+  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_lowest_hp','enemy_highest_atk','ally_choose','ally_random']},
   {id:'dmg_leader',         label:'リーダーにダメージ',        unit:'点', target_opts:['enemy','self']},
-  {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:[]},
+  {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:['enemy_random']},
   // ── 除去 ──
-  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_random','ally_random']},
-  {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy','ally','both']},
-  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_random']},
-  {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy','both']},
-  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_random','ally_random','ally_self']},
-  {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy','ally']},
-  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_random']},
+  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy_all','ally_all','both']},
+  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
+  {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy_all','both']},
+  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
+  {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy_all','ally_all']},
+  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest']},
   // ── 状態異常 ──
-  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_random','enemy_all']},
-  {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_random','enemy_all']},
+  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random']},
+  {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all']},
   // ── バフ・デバフ ──
-  {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally','enemy','both']},
-  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_random','enemy_random']},
-  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['enemy_random','ally_random']},
-  {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['enemy','self']},
-  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_random']},
+  {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally_all','enemy_all','both']},
+  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_highest_atk','enemy_choose','enemy_random']},
+  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','enemy_choose','enemy_random']},
+  {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['self','enemy']},
+  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
   // ── リソース ──
   {id:'change_mana',        label:'マナを変更',                unit:'個', target_opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_sub_current','enemy_sub_max']},
   // ── 召喚・蘇生 ──
-  {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:[]},
-  {id:'revive',             label:'墓地から蘇生',              unit:'',   target_opts:['self_random','enemy_random']},
+  {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:['self','enemy']},
+  {id:'revive',             label:'墓地から蘇生',              unit:'',   target_opts:['self_random','self_choose','enemy_random']},
   // ── AP ──
   {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','self_subtract','enemy_add','enemy_subtract']},
 ];
