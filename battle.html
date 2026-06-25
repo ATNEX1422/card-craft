@@ -3199,6 +3199,16 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
       const st=G.p[opp].arcana;
       if(st){st.gauge=Math.max(0,st.gauge-val);renderArcana();}
       log(`✦ ${arc.name} [${label}] → 相手AP-${val}`,'ll-sys'); break;}
+    case 'dmg_enemy_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        t._hp-=val;
+        log(`✦ ${arc.name} [${label}] → 相手1体に${val}ダメージ`,'ll-sys');
+        if(t._hp<=0){render();await new Promise(r=>setTimeout(r,200));removeCard(opp,t._uid);}
+      } break;}
+    case 'discard':
+      log(`✦ ${arc.name} [${label}] → 相手手札${val}枚を捨てさせる`,'ll-sys');
+      await discardAnim(opp,val); break;
   }
   animateArcanaCard(pid);
   render();
@@ -4240,6 +4250,12 @@ async function _execEffect(pid, fc, ab, isAI){
       if(tgt){await dmgCard(opp,tgt._uid,pr.dmg||1);}
       else {op.life=Math.max(0,op.life-(pr.dmg||1));const lp=getLifeCenter(opp);if(lp)showDmgFloat(lp.x,lp.y,pr.dmg||1);}
     }
+    render();return;
+  }
+  if(e==='reduce_atk_all'){
+    const amt=pr.amount||pr.val||1;
+    G.p[opp].field.forEach(c=>{c.power=Math.max(0,c.power-amt);});
+    log(`${pCol(fc.name,pid)}→ 相手全体攻撃力-${amt}`,'ll-s');
     render();return;
   }
   if(e==='add_ap_self'){
