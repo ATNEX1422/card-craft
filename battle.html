@@ -259,13 +259,19 @@ textarea.finput{resize:vertical;min-height:64px;}
 .ds-layout{display:flex;gap:32px;align-items:flex-start;}
 .ds-player{display:flex;flex-direction:column;align-items:center;gap:10px;}
 .ds-player-label{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;color:rgba(240,230,204,0.5);}
-.ds-deck-list{display:flex;flex-direction:column;gap:6px;width:200px;}
+.ds-deck-list{display:flex;flex-direction:column;gap:6px;width:220px;max-height:60vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;}
 .ds-deck-opt{
-  padding:10px 14px;border-radius:8px;cursor:pointer;
+  padding:8px 12px;border-radius:8px;cursor:pointer;
   background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.18);
   font-size:13px;font-weight:600;transition:all 0.15s;
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;flex-direction:column;gap:6px;
 }
+.ds-deck-opt-header{display:flex;align-items:center;justify-content:space-between;}
+.ds-deck-cards{display:flex;flex-direction:column;gap:2px;max-height:0;overflow:hidden;transition:max-height 0.2s;opacity:0.7;}
+.ds-deck-opt.selected .ds-deck-cards{max-height:400px;}
+.ds-deck-card-row{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(240,230,204,0.6);}
+.ds-deck-card-cost{font-family:'Bebas Neue',cursive;font-size:11px;background:rgba(201,168,76,0.18);color:var(--gold);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ds-deck-arcana-row{font-size:10px;color:rgba(167,139,250,0.7);display:flex;align-items:center;gap:4px;border-top:1px solid rgba(201,168,76,0.1);padding-top:4px;margin-top:2px;}
 .ds-deck-opt:hover{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.35);}
 .ds-deck-opt.selected{background:rgba(201,168,76,0.2);border-color:var(--gold);color:var(--gold);}
 .ds-deck-count{font-size:10px;color:rgba(240,230,204,0.4);}
@@ -421,7 +427,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 .card.sel{border-color:var(--sel)!important;box-shadow:0 0 12px var(--selg),0 0 3px var(--selg) inset!important;transform:translateY(-5px) scale(1.04)!important;}
 .card.sick{border-color:rgba(100,100,100,0.22)!important;opacity:0.62;}
 .card.exhausted{border-color:rgba(100,100,100,0.22)!important;opacity:0.62;}
-.card.stealthy{border-color:rgba(100,116,139,0.3)!important;opacity:0.35;filter:grayscale(0.6);}
+/* .card.stealthy hidden - system remains */
 .card.can-atk{border-color:rgba(251,191,36,0.5)!important;box-shadow:0 0 7px rgba(251,191,36,0.26)!important;}
 .card.atk-tgt{border-color:var(--p2)!important;box-shadow:0 0 13px var(--atkg)!important;animation:pulse-r 0.8s infinite alternate;}
 .card.sel-tgt{border-color:var(--green)!important;box-shadow:0 0 12px rgba(34,197,94,0.48)!important;animation:pulse-g 0.8s infinite alternate;}
@@ -1397,8 +1403,8 @@ const CARD_TYPES=['天使','悪魔','王国','死霊','ニュートラル'];
 
 const KW_LABELS={
   rush:'突進',haste:'疾走',guard:'守護',deathtouch:'必殺',
-  drain:'吸収',pierce:'貫通',stealth:'潜伏',barrier:'障壁',
-  intimidate:'威圧',aura:'覇気'
+  drain:'吸収',pierce:'貫通',
+  stealth:'潜伏',barrier:'障壁',intimidate:'威圧',aura:'覇気' // hidden from UI
 };
 const EFF_LABELS={
   draw:'カードをX枚引く',
@@ -1617,17 +1623,24 @@ const ARC_CONDITIONS=[
   {id:'on_damage_taken',label:'ダメージを受けた時'},
 ];
 const ARC_PASSIVE_EFFECTS=[
-  {id:'heal_leader',    label:'リーダー回復', unit:'点'},
-  {id:'draw',           label:'カードを引く', unit:'枚'},
-  {id:'gain_mana',      label:'マナ加速',     unit:'個'},
-  {id:'buff_ally_all',  label:'味方全体バフ', unit:'(pow/tuf)'},
-  {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
-  {id:'dmg_leader',     label:'相手リーダーダメージ', unit:'点'},
-  {id:'reduce_atk_all', label:'相手全体攻撃力-', unit:'点'},
-  {id:'add_ap_self',    label:'自分AP増加',          unit:'点'},
-  {id:'reduce_ap_self', label:'自分APを消費',         unit:'点'},
-  {id:'add_ap_enemy',   label:'相手AP増加',           unit:'点'},
-  {id:'reduce_ap_enemy',label:'相手AP減少',           unit:'点'},
+  // ── 回復・ドロー ──
+  {id:'heal_leader',     label:'リーダー回復',         unit:'点'},
+  {id:'draw',            label:'カードを引く',          unit:'枚'},
+  {id:'gain_mana',       label:'マナ加速',              unit:'個'},
+  // ── バフ・デバフ ──
+  {id:'buff_ally_all',   label:'味方全体バフ(pow/tuf)', unit:''},
+  {id:'reduce_atk_all',  label:'相手全体攻撃力-',       unit:'点'},
+  // ── ダメージ ──
+  {id:'dmg_enemy_all',   label:'相手全体ダメージ',      unit:'点'},
+  {id:'dmg_enemy_one',   label:'相手1体ダメージ(ランダム)',unit:'点'},
+  {id:'dmg_leader',      label:'相手リーダーダメージ',  unit:'点'},
+  // ── 妨害 ──
+  {id:'discard',         label:'相手手札を捨てさせる',  unit:'枚'},
+  // ── AP ──
+  {id:'add_ap_self',     label:'自分AP増加',            unit:'点'},
+  {id:'reduce_ap_self',  label:'自分AP消費',            unit:'点'},
+  {id:'add_ap_enemy',    label:'相手AP増加',            unit:'点'},
+  {id:'reduce_ap_enemy', label:'相手AP減少',            unit:'点'},
 ];
 const ARC_IMM_EFFECTS=[
   {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
@@ -2404,41 +2417,49 @@ function eDownloadJSON(){
 
 
 // ── Ability Builder ──────────────────────────────────
-const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce','stealth','barrier','intimidate','aura'];
+const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce'];
 const ALL_TRIGGERS=['on_enter','on_attack','on_battle','on_death','on_turn_start','on_turn_end','on_ally_death','on_ally_enter'];
 const ALL_EFFECTS=[
-  {id:'draw',           label:'カードを引く',         params:[{key:'n',label:'枚数',def:1}]},
-  {id:'dmg_enemy_one',  label:'相手ユニット1体にダメージ', params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest','lowest_hp'],def:'choose'}]},
-  {id:'dmg_enemy_n',    label:'相手ユニットN体にダメージ', params:[{key:'n',label:'体数',def:1},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'dmg_enemy_all',  label:'相手ユニット全体にダメージ', params:[{key:'dmg',label:'ダメージ',def:1}]},
-  {id:'dmg_leader',     label:'相手リーダーにダメージ', params:[{key:'dmg',label:'ダメージ',def:1}]},
-  {id:'destroy_one',    label:'相手ユニット1体を破壊', params:[{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest'],def:'choose'}]},
-  {id:'destroy_all',    label:'相手ユニット全体を破壊', params:[]},
-  {id:'return_one',     label:'相手ユニット1体を手札に戻す', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'return_all',     label:'相手ユニット全体を手札に戻す', params:[]},
-  {id:'heal_leader',    label:'自分リーダーを回復',   params:[{key:'amount',label:'回復量',def:1}]},
-  {id:'summon_card',    label:'指定カードを召喚',      params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]}]},
-  {id:'summon_free',    label:'手札から無料召喚',      params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
-  {id:'grant_kw_summoned', label:'この能力で召喚したユニットに付与', params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
-  {id:'grant_kw_one',   label:'自分ユニット1体にキーワード付与', params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
-  {id:'grant_kw_all',   label:'自分ユニット全体にキーワード付与', params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
-  {id:'buff_ally_one',  label:'自分ユニット1体をバフ', params:[{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
-  {id:'buff_ally_all',  label:'自分ユニット全体をバフ', params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1}]},
-  {id:'bind_one',       label:'相手ユニット1体を呪縛', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'silence_one',    label:'相手ユニット1体を沈黙', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'steal_one',      label:'相手ユニット1体を強奪', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'gain_mana',      label:'マナを加速',            params:[{key:'amount',label:'加速量',def:1}]},
-  {id:'add_to_hand',    label:'指定カードを手札に加える', params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]}]},
-  {id:'steal_one',      label:'相手ユニット1体を強奪', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'exile_one',      label:'相手ユニット1体を除外', params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'revive',         label:'墓地からユニットを蘇生', params:[{key:'cost_max',label:'コスト上限(0=制限なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'debuff_enemy_one',label:'相手ユニット1体をデバフ', params:[{key:'pow',label:'-攻撃',def:1},{key:'tuf',label:'-体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'discard',        label:'相手手札をランダムに捨てさせる', params:[{key:'n',label:'枚数',def:1}]},
-  {id:'dmg_any',        label:'任意対象にダメージ', params:[{key:'dmg',label:'ダメージ',def:1}]},
-  {id:'add_ap_self',    label:'自分APを増加',        params:[{key:'amount',label:'増加量',def:1}]},
-  {id:'reduce_ap_self', label:'自分APをコストとして消費', params:[{key:'amount',label:'消費量',def:1}]},
-  {id:'add_ap_enemy',   label:'相手APを増加',         params:[{key:'amount',label:'増加量',def:1}]},
-  {id:'reduce_ap_enemy',label:'相手APを減少',         params:[{key:'amount',label:'減少量',def:1}]},
+  // ── ドロー・手札 ──
+  {id:'draw',            label:'カードを引く',                params:[{key:'n',label:'枚数',def:1}]},
+  {id:'add_to_hand',     label:'指定カードを手札に加える',     params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]}]},
+  {id:'discard',         label:'相手手札を捨てさせる',         params:[{key:'n',label:'枚数',def:1}]},
+  {id:'discard_hand_draw',label:'手札を全捨て→同枚数ドロー',  params:[]},
+  // ── ダメージ ──
+  {id:'dmg_enemy_one',   label:'相手ユニット1体にダメージ',    params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest','lowest_hp'],def:'choose'}]},
+  {id:'dmg_enemy_n',     label:'相手ユニットN体にダメージ',    params:[{key:'n',label:'体数',def:1},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'dmg_enemy_all',   label:'相手ユニット全体にダメージ',   params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_leader',      label:'相手リーダーにダメージ',       params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_any',         label:'任意対象にダメージ',           params:[{key:'dmg',label:'ダメージ',def:1}]},
+  // ── 除去 ──
+  {id:'destroy_one',     label:'相手ユニット1体を破壊',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest'],def:'choose'}]},
+  {id:'destroy_all',     label:'相手ユニット全体を破壊',       params:[]},
+  {id:'exile_one',       label:'相手ユニット1体を除外',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'return_one',      label:'相手ユニット1体を手札に戻す',  params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'return_all',      label:'相手ユニット全体を手札に戻す', params:[]},
+  {id:'steal_one',       label:'相手ユニット1体を強奪',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'bind_one',        label:'相手ユニット1体を呪縛',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'silence_one',     label:'相手ユニット1体を沈黙',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  // ── バフ・デバフ ──
+  {id:'buff_ally_one',   label:'自分ユニット1体をバフ',        params:[{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
+  {id:'buff_ally_all',   label:'自分ユニット全体をバフ',       params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1}]},
+  {id:'debuff_enemy_one',label:'相手ユニット1体をデバフ',      params:[{key:'pow',label:'-攻撃',def:1},{key:'tuf',label:'-体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'reduce_atk_all',  label:'相手ユニット全体の攻撃力-',    params:[{key:'amount',label:'減少量',def:1}]},
+  {id:'grant_kw_one',    label:'自分ユニット1体にキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
+  {id:'grant_kw_all',    label:'自分ユニット全体にキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
+  // ── 回復・リソース ──
+  {id:'heal_leader',     label:'自分リーダーを回復',           params:[{key:'amount',label:'回復量',def:1}]},
+  {id:'gain_mana',       label:'マナを加速',                   params:[{key:'amount',label:'加速量',def:1}]},
+  // ── 召喚・蘇生 ──
+  {id:'summon_card',     label:'指定カードを召喚',             params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]}]},
+  {id:'summon_free',     label:'手札から無料召喚',             params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
+  {id:'grant_kw_summoned',label:'召喚したユニットにキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
+  {id:'revive',          label:'墓地からユニットを蘇生',        params:[{key:'cost_max',label:'コスト上限(0=制限なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  // ── AP ──
+  {id:'add_ap_self',     label:'自分APを増加',                 params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_self',  label:'自分APを消費',                 params:[{key:'amount',label:'消費量',def:1}]},
+  {id:'add_ap_enemy',    label:'相手APを増加',                 params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_enemy', label:'相手APを減少',                 params:[{key:'amount',label:'減少量',def:1}]},
 ];
 
 // current editing abilities array
@@ -3019,7 +3040,37 @@ function dsRender(){
     DECKS.forEach((d,i)=>{
       const opt=document.createElement('div');
       opt.className='ds-deck-opt';
-      opt.innerHTML=`<span>${esc(d.name)}</span><span class="ds-deck-count">${deckTotalCards(d.cards)}枚</span>`;
+      // Header
+      const header=document.createElement('div');
+      header.className='ds-deck-opt-header';
+      header.innerHTML=`<span>${esc(d.name)}</span><span class="ds-deck-count">${deckTotalCards(d.cards)}枚</span>`;
+      opt.appendChild(header);
+      // Card list
+      const cardList=document.createElement('div');
+      cardList.className='ds-deck-cards';
+      // Sort by cost
+      const sorted=[...d.cards].sort((a,b)=>{
+        const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);
+        return (ca?.cost||0)-(cb?.cost||0);
+      });
+      sorted.forEach(e=>{
+        const card=CARDS.find(c=>c.id===e.id);if(!card)return;
+        const row=document.createElement('div');
+        row.className='ds-deck-card-row';
+        row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
+        cardList.appendChild(row);
+      });
+      // Arcana row
+      if(d.arcanaId){
+        const arc=ARCANAS.find(a=>a.id===d.arcanaId);
+        if(arc){
+          const arcRow=document.createElement('div');
+          arcRow.className='ds-deck-arcana-row';
+          arcRow.innerHTML=`<span>✦</span><span>${esc(arc.name)}${arc.number!=null?' (No.'+arc.number+')':''}</span>`;
+          cardList.appendChild(arcRow);
+        }
+      }
+      opt.appendChild(cardList);
       opt.addEventListener('click',()=>{
         dsSelected[pid]=d.cards;
         dsSelectedDeck[pid]=d;
@@ -3316,12 +3367,7 @@ function arcanaNotifyLifeLoss(pid){
   const state=G.p[pid]?.arcana;
   if(!state||!state.id)return;
   const arc=getArcana(pid);
-  const maxG=arcanaGaugeMax(arc);
-  // gauge +1 on life loss (not while reversed)
-  if(!state.reversed&&maxG>0&&state.gauge<maxG){
-    state.gauge++;renderArcana();
-  }
-  // fire on_damage_taken passives
+  // fire on_damage_taken passives only (no automatic gauge increase)
   if(arc){
     const ctx={event:'damage_taken',pid};
     const cond=['on_damage_taken'];
@@ -4804,7 +4850,7 @@ function renderField(pid){
     const cardAura=isAura(card)&&pid!==G.cp; // opp aura card
     const isTgtOption=!cardStealthy&&!cardAura&&targetMode&&targetMode.options.some(o=>o.card&&o.card._uid===card._uid&&(o.pid===undefined||o.pid===pid));
     let cls='card fcard';
-    if(cardStealthy&&pid!==G.cp)cls+=' stealthy';
+    // stealth visual removed (system still functional)
     if(isTgtOption)cls+=' sel-tgt';
     else if(isSel)cls+=' sel';
     else if(card._attacked)cls+=' exhausted';
@@ -4902,10 +4948,7 @@ function imgPath(card){
 }
 
 // keyword SVG overlay marks (潜伏・障壁 — like guard)
-const KW_MARK={
-  stealth: `<svg viewBox="0 0 100 100" fill="none"><ellipse cx="50" cy="50" rx="40" ry="24" stroke="rgba(255,255,255,0.9)" stroke-width="7"/><circle cx="50" cy="50" r="13" stroke="rgba(255,255,255,0.9)" stroke-width="6"/><circle cx="50" cy="50" r="5" fill="rgba(255,255,255,0.9)"/></svg>`,
-  barrier: `<svg viewBox="0 0 100 100" fill="none"><polygon points="50,8 92,50 50,92 8,50" stroke="#e2e8f0" stroke-width="5" stroke-linejoin="round" opacity="0.7" filter="drop-shadow(0 0 4px rgba(226,232,240,0.5))"/></svg>`,
-};
+const KW_MARK={};
 
 // keyword icon badges: 必殺・吸収・貫通 (top-right column)
 const KW_ICONS={
@@ -5193,11 +5236,29 @@ function showOnlineDeckSelect(){
   list.innerHTML='';
   if(!DECKS.length){list.innerHTML='<div style="color:rgba(240,230,204,0.3);text-align:center;padding:20px;">デッキがありません</div>';return;}
   DECKS.forEach((d,i)=>{
-    const btn=document.createElement('button');
-    btn.className='gbtn';
-    btn.textContent=`${d.name} (${deckTotalCards(d.cards)}枚)`;
-    btn.onclick=()=>onlineSelectDeck(d);
-    list.appendChild(btn);
+    const opt=document.createElement('div');
+    opt.className='ds-deck-opt';opt.style.cssText='cursor:pointer;margin-bottom:4px;';
+    const header=document.createElement('div');
+    header.className='ds-deck-opt-header';
+    header.innerHTML=`<span>${esc(d.name)}</span><span class="ds-deck-count">${deckTotalCards(d.cards)}枚</span>`;
+    opt.appendChild(header);
+    const cardList=document.createElement('div');
+    cardList.className='ds-deck-cards';
+    const sorted=[...d.cards].sort((a,b)=>{const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);return (ca?.cost||0)-(cb?.cost||0);});
+    sorted.forEach(e=>{
+      const card=CARDS.find(c=>c.id===e.id);if(!card)return;
+      const row=document.createElement('div');row.className='ds-deck-card-row';
+      row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
+      cardList.appendChild(row);
+    });
+    if(d.arcanaId){const arc=ARCANAS.find(a=>a.id===d.arcanaId);if(arc){const r=document.createElement('div');r.className='ds-deck-arcana-row';r.innerHTML=`<span>✦</span><span>${esc(arc.name)}</span>`;cardList.appendChild(r);}}
+    opt.appendChild(cardList);
+    opt.addEventListener('click',()=>{
+      list.querySelectorAll('.ds-deck-opt').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      onlineSelectDeck(d);
+    });
+    list.appendChild(opt);
   });
 }
 
@@ -5209,13 +5270,15 @@ async function onlineSelectDeck(deck){
   const deckData=deck.cards.map(e=>({id:e.id,count:e.count}));
   await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,status:'deck_ready'});
   document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
-  // Watch for both ready (onlyOnce)
-  fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
+  // Watch for both ready (keep watching until both are ready)
+  const _unsub=fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
     const d=snap.val();
     if(d?.host?.status==='deck_ready'&&d?.guest?.status==='deck_ready'){
+      if(window._onlineBattleStarted)return;
+      window._onlineBattleStarted=true;
       _onlineStartGame(d,snap.key);
     }
-  },{onlyOnce:true});
+  });
 }
 
 // ── Start Game ──
