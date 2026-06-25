@@ -1801,6 +1801,13 @@ function _buildArcTargetSel(ab, opts, extrasEl, valInputRef){
   lbl.textContent='対象:';
   const sel=document.createElement('select');
   sel.style.cssText='flex:1;min-width:80px;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  // 未設定ならデフォルト（先頭）を即書き込む（onchange未発火対策）
+  const curTgt=ab.params?.target||ab.target;
+  if(!curTgt||!opts.includes(curTgt)){
+    if(!ab.params)ab.params={};
+    ab.params.target=opts[0];
+    ab.target=opts[0];
+  }
   opts.forEach(o=>{
     const op=document.createElement('option');op.value=o;
     op.textContent=ARC_TARGET_LABELS[o]||o;
@@ -2738,8 +2745,14 @@ function eRenderTriggerList(){
         const lbl=document.createElement('span');lbl.className='param-label';lbl.textContent=pDef.label+':';
         prow.appendChild(lbl);
         if(pDef.type==='select'){
+          // 未設定ならデフォルト値を即書き込む（onchange未発火対策）
+          const _cur=(ab.params||{})[pDef.key];
+          if(_cur===undefined||!(pDef.opts||[]).includes(_cur)){
+            if(!ab.params)ab.params={};
+            ab.params[pDef.key]=pDef.def!==undefined?pDef.def:(pDef.opts||[])[0];
+          }
           const sel=document.createElement('select');sel.style.cssText='padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
-          (pDef.opts||[]).forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;if((ab.params||{})[pDef.key]===o)op.selected=true;sel.appendChild(op);});
+          (pDef.opts||[]).forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=ARC_TARGET_LABELS[o]||o;if((ab.params||{})[pDef.key]===o)op.selected=true;sel.appendChild(op);});
           sel.onchange=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=e.target.value;eUpdateAbilPreview();}};
           prow.appendChild(sel);
         } else if(pDef.type==='card_list'){
@@ -5024,6 +5037,10 @@ async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQ
   }
   const lpos=getLifeCenter(targetPid);if(lpos)showDmgFloat(lpos.x,lpos.y,dmg);
   log(`${pCol(aCard.name,ap)}→ ${pCol('P'+targetPid+'リーダー',targetPid)}に${dmg}ダメ (残${G.p[targetPid].life})`,'');
+  // Online: broadcast leader attack (only if locally initiated)
+  if(_onlineRoom&&!_onlineProcessingAction){
+    _onlineSendAction({type:'attack_leader',pid:ap,atkUid:auid});
+  }
   if(G.p[targetPid].life<=0){deselectAtk();unlockAnim();render();setTimeout(()=>gameOver(ap),300);return;}
   deselectAtk();unlockAnim();render();
 }
@@ -5059,23 +5076,31 @@ async function endTurn(){
   // arcana gauge update
   await arcanaOnTurnEnd(curPid);
   await new Promise(r=>setTimeout(r,80));
+
+  // ── オンラインモード ──
+  if(_onlineRoom){
+    // 自分がターン終了 → 相手に通知（ターン進行は両者とも end_turn 受信で行う）
+    _onlineSendAction({type:'end_turn'});
+    // 自分側でもターンを進める（相手は end_turn 受信で進める）
+    const next=G.cp===1?2:1;
+    G.cp=next;
+    await startTurn(next);
+    render();
+    _onlineUpdateControls();
+    endTurnPending=false;
+    return;
+  }
+
+  // ── ソロ（AI対戦）──
   const next=G.cp===1?2:1;
   G.cp=next;
   await startTurn(next);
   render();
   if(next===2){
     await aiTurn();
-  } else {
-    // P1's turn: enable controls
-    // turn notification handled by startTurn banner
   }
   endTurnPending=false;
   if(!aiLock) document.getElementById('end-btn').disabled=false;
-  // Online: broadcast end_turn (only if not triggered by opponent action)
-  if(_onlineRoom&&!_onlineProcessingAction){
-    _onlineSendAction({type:'end_turn'});
-    _onlineLockControls();
-  }
 }
 
 function gameOver(winner){
@@ -5108,6 +5133,7 @@ function waitNotif(){
 
 
 async function aiTurn(){
+  if(_onlineRoom){console.warn('[online] aiTurn blocked');return;} // オンライン中はAI起動しない
   if(G.over)return;
   aiLock=true;document.getElementById('end-btn').disabled=true;
   await wait(200);
@@ -6053,15 +6079,17 @@ async function _onlineProcessAction(action){
         break;
       }
       case 'end_turn':{
+        // 相手がターン終了 → 自分側でターンを進める
         const pid=action.pid;
+        if(pid===_onlineRoom.myPid)break; // 自分の送信は無視（既にローカルで処理済み）
         const next=pid===1?2:1;
-        G.cp=next;
         // fire turn_end for the player who ended
         for(const fc of [...G.p[pid].field]){
           const abs=(fc.abilities||[]).filter(a=>a.type==='trigger'&&a.trigger==='on_turn_end');
-          for(const ab of abs) await _execEffect(pid,fc,{...ab,_triggerType:'on_turn_end'},pid===2);
+          for(const ab of abs) await _execEffect(pid,fc,{...ab,_triggerType:'on_turn_end'},false);
         }
         await arcanaOnTurnEnd(pid);
+        G.cp=next;
         await startTurn(next);
         _onlineUpdateControls();
         render();
