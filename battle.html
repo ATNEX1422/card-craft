@@ -1615,12 +1615,15 @@ let _arcRevPassives=[];   // [{condition, effect, val, desc}]  passives while re
 
 // ── Condition / Effect options ──
 const ARC_CONDITIONS=[
-  {id:'my_turn_start',  label:'自分のターン開始時'},
-  {id:'my_turn_end',    label:'自分のターン終了時'},
-  {id:'any_turn_start', label:'両者のターン開始時'},
-  {id:'on_ally_death',  label:'味方破壊時'},
-  {id:'on_enemy_death', label:'相手ユニット破壊時'},
-  {id:'on_damage_taken',label:'ダメージを受けた時'},
+  {id:'my_turn_start',    label:'自分のターン開始時'},
+  {id:'my_turn_end',      label:'自分のターン終了時'},
+  {id:'any_turn_start',   label:'両者のターン開始時'},
+  {id:'on_ally_enter',    label:'自分ユニットが出た時'},
+  {id:'on_enemy_enter',   label:'相手ユニットが出た時'},
+  {id:'on_any_enter',     label:'いずれかのユニットが出た時'},
+  {id:'on_ally_death',    label:'味方破壊時'},
+  {id:'on_enemy_death',   label:'相手ユニット破壊時'},
+  {id:'on_damage_taken',  label:'ダメージを受けた時'},
 ];
 const ARC_PASSIVE_EFFECTS=[
   // ── ドロー・手札 ──
@@ -3191,6 +3194,9 @@ function arcanaConditionMet(condition, pid, context={}){
     case 'on_ally_death':   return context.event==='ally_death'&&context.pid===pid;
     case 'on_enemy_death':  return context.event==='ally_death'&&context.pid!==(pid===1?2:1);
     case 'on_damage_taken': return context.event==='damage_taken'&&context.pid===pid;
+    case 'on_ally_enter':   return context.event==='unit_enter'&&context.pid===pid;
+    case 'on_enemy_enter':  return context.event==='unit_enter'&&context.pid!==(pid===1?2:1);
+    case 'on_any_enter':    return context.event==='unit_enter';
     default: return false;
   }
 }
