@@ -5795,10 +5795,13 @@ async function onlineCreateRoom(){
   try{await fb.onDisconnect(roomRef).remove();}catch(e){}
   document.getElementById('online-room-id-display').textContent=roomId;
   document.getElementById('online-host-status').textContent='相手の参加を待っています…';
-  // watch for guest joining
+  // watch for guest joining (ready or already deck_ready)
+  let _hostDsShown=false;
   fb.onValue(fb.ref(db,`rooms/${roomId}/guest/status`),snap=>{
     const v=snap.val();
-    if(v==='ready'){
+    console.log('[online] host sees guest status=',v);
+    if((v==='ready'||v==='deck_ready')&&!_hostDsShown){
+      _hostDsShown=true;
       document.getElementById('online-host-status').textContent='相手が参加しました！デッキを選択してください';
       showOnlineDeckSelect();
     }
@@ -5957,6 +5960,7 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
 
   // Override uid() to use pre-assigned UIDs from deck
   const p1First=firstPid===1;
+  // ソロ版と同じく初期化で先攻のマナ/turnCountを直接設定（startTurnは呼ばない）
   G={
     turn:1,cp:firstPid,over:false,
     p:{
@@ -5968,6 +5972,7 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
          grave:[],turnCount:p1First?0:1},
     }
   };
+  _p1TurnStarted=(firstPid===1); // 先攻がP1なら既に開始済み扱い
   for(let i=0;i<3;i++){drawCard(1,true);drawCard(2,true);}
   document.getElementById('gameover').classList.remove('open');
   clearLog();
@@ -5986,8 +5991,11 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
   // Start listening for opponent actions
   _onlineListenActions();
 
-  await startTurn(firstPid);
-  // ターン開始後にコントロールを更新（手番でない側はロック）
+  // 先攻プレイヤーの手番演出（startTurnは呼ばない＝初期化で設定済み）
+  const myTurn=firstPid===myPid;
+  showMidNotif(myTurn?'YOUR TURN':'OPPONENT TURN',myTurn?'#60a5fa':'#f87171',2200);
+  render();
+  // ターン開始時にコントロールを更新（手番でない側はロック）
   _onlineUpdateControls();
 }
 
