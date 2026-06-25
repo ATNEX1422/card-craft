@@ -2332,13 +2332,19 @@ async function saveCards(){
   if(fb){
     try{
       const cardsObj={};
+      const _strip=obj=>{
+        const r={};
+        Object.entries(obj).forEach(([k,v])=>{
+          if(v===undefined)return; // undefinedのみ除去、nullは残す
+          if(Array.isArray(v))r[k]=v.map(x=>typeof x==='object'&&x!==null?_strip(x):x);
+          else if(typeof v==='object'&&v!==null)r[k]=_strip(v);
+          else r[k]=v;
+        });
+        return r;
+      };
       CARDS.forEach((c,i)=>{
         const {imageDataUrl,...rest}=c;
-        // Firebase は undefined を受け付けないので除去
-        const clean=JSON.parse(JSON.stringify(rest, (k,v)=>v===undefined?null:v));
-        // null になった任意フィールドは削除
-        Object.keys(clean).forEach(k=>{if(clean[k]===null&&!['image','imageDataUrl'].includes(k))delete clean[k];});
-        cardsObj[c.id||i]=clean;
+        cardsObj[c.id||i]=_strip(rest);
       });
       await fb.set(fb.ref(fb.db,'cards'),cardsObj);
       eToast('Firebase にカードを保存しました');
