@@ -1670,7 +1670,7 @@ const ARC_CONDITIONS=[
 const ARC_PASSIVE_EFFECTS=[
   // ── ドロー・手札 ──
   {id:'draw',               label:'カードを引く',              unit:'枚', target_opts:['self','enemy']},
-  {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy','self']},
+  {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy_all','enemy_choose','enemy_random','self_all','self_choose','self_random']},
   {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー',  unit:'',   target_opts:['self','enemy']},
   {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self','enemy']},
   // ── リソース ──
@@ -1708,7 +1708,7 @@ const ARC_PASSIVE_EFFECTS=[
 const ARC_IMM_EFFECTS=[
   // ── ドロー・手札 ──
   {id:'draw',               label:'カードを引く',              unit:'枚', target_opts:['self','enemy']},
-  {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy','self']},
+  {id:'discard',            label:'手札を捨てさせる',          unit:'枚', target_opts:['enemy_all','enemy_choose','enemy_random','self_all','self_choose','self_random']},
   {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー',  unit:'',   target_opts:['self','enemy']},
   {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self','enemy']},
   // ── 回復 ──
@@ -1773,31 +1773,50 @@ function _getEffectTargetOpts(effectId, effectList){
   return ef?.target_opts||null;
 }
 
-function _buildArcTargetSel(ab, opts, extrasEl){
+// 全体指定かどうかの判定
+function _isAllTarget(tgt){
+  return tgt&&(tgt.endsWith('_all')||tgt==='both'||tgt==='self_all'||tgt==='enemy_all'||tgt==='ally_all'||tgt==='all');
+}
+// 自分側かどうかの判定
+function _isSelfTarget(tgt){
+  return tgt&&(tgt.startsWith('self')||tgt.startsWith('ally'));
+}
+
+function _buildArcTargetSel(ab, opts, extrasEl, valInputRef){
   const wrap=document.createElement('div');
-  wrap.style.cssText='display:flex;align-items:center;gap:5px;margin-top:3px;';
+  wrap.style.cssText='display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap;';
   const lbl=document.createElement('span');
   lbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.5);white-space:nowrap;';
   lbl.textContent='対象:';
   const sel=document.createElement('select');
-  sel.style.cssText='flex:1;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  sel.style.cssText='flex:1;min-width:80px;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
   opts.forEach(o=>{
     const op=document.createElement('option');op.value=o;
     op.textContent=ARC_TARGET_LABELS[o]||o;
     if((ab.params?.target||ab.target)===o)op.selected=true;
     sel.appendChild(op);
   });
+  const updateValVisibility=(tgt)=>{
+    if(valInputRef){
+      valInputRef.style.display=_isAllTarget(tgt)?'none':'';
+    }
+  };
   sel.onchange=e=>{
     if(!ab.params)ab.params={};
     ab.params.target=e.target.value;
     ab.target=e.target.value;
+    updateValVisibility(e.target.value);
   };
+  // 初期状態を反映
+  updateValVisibility(ab.params?.target||ab.target||opts[0]);
   wrap.appendChild(lbl);wrap.appendChild(sel);
   extrasEl.appendChild(wrap);
 }
 
-function _updateArcRowExtras(ab, extrasEl, effectList){
+function _updateArcRowExtras(ab, extrasEl, effectList, valInputRef){
   extrasEl.innerHTML='';
+  // valを初期表示（対象セレクターで再制御）
+  if(valInputRef) valInputRef.style.display='';
   // キーワードチップ
   const needsKw=['grant_kw_unit','grant_kw_all','grant_kw_one','grant_kw_summoned'].includes(ab.effect);
   if(needsKw){
@@ -1811,7 +1830,7 @@ function _updateArcRowExtras(ab, extrasEl, effectList){
   }
   // 対象セレクター
   const opts=_getEffectTargetOpts(ab.effect, effectList||ARC_PASSIVE_EFFECTS);
-  if(opts&&opts.length>1) _buildArcTargetSel(ab, opts, extrasEl);
+  if(opts&&opts.length>1) _buildArcTargetSel(ab, opts, extrasEl, valInputRef);
 }
 
 function _buildPassiveRow(listId, arr, i, effectOptions){
@@ -1852,9 +1871,9 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
 
   const extrasEl=document.createElement('div');
   extrasEl.style.cssText='margin-top:2px;';
-  _updateArcRowExtras(ab,extrasEl,effectOptions);
+  _updateArcRowExtras(ab,extrasEl,effectOptions,inpVal);
 
-  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,effectOptions);};
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,effectOptions,inpVal);};
 
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
@@ -1894,9 +1913,9 @@ function _buildImmRow(arr, i){
 
   const extrasEl=document.createElement('div');
   extrasEl.style.cssText='margin-top:2px;';
-  _updateArcRowExtras(ab,extrasEl,ARC_IMM_EFFECTS);
+  _updateArcRowExtras(ab,extrasEl,ARC_IMM_EFFECTS,inpVal);
 
-  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,ARC_IMM_EFFECTS);};
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,ARC_IMM_EFFECTS,inpVal);};
 
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
@@ -3549,10 +3568,14 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
         if(t._hp<=0){render();await new Promise(r=>setTimeout(r,200));removeCard(opp,t._uid);}
       } break;}
     case 'discard':{
-      const tp2=(ab.params?.target||ab.target);
-      const dispid=(tp2==='self')?pid:opp;
-      log(`✦ ${arc.name} [${label}] → ${dispid===pid?'自分':'相手'}手札${val}枚捨て`,'ll-sys');
-      await discardAnim(dispid,val); break;}
+      const tp2=(ab.params?.target||ab.target||'enemy');
+      const dispid=_isSelfTarget(tp2)?pid:opp;
+      const isAll=_isAllTarget(tp2);
+      const discN=isAll?G.p[dispid].hand.length:val;
+      log(`✦ ${arc.name} [${label}] → ${dispid===pid?'自分':'相手'}手札${isAll?'全て':discN+'枚'}捨て`,'ll-sys');
+      if(isAll)G.p[dispid].hand=[];
+      else await discardAnim(dispid,discN);
+      render(); break;}
   }
   animateArcanaCard(pid);
   render();
