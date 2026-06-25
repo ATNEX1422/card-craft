@@ -1704,10 +1704,47 @@ const ARC_IMM_EFFECTS=[
   {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','self_subtract','enemy_add','enemy_subtract']},
 ];
 
+// キーワードチップUIを生成（アルカナ用）
+function _buildArcKwChips(ab, container){
+  container.innerHTML='';
+  const kws=ab.params?.kws||ab.kws||[];
+  ALL_KEYWORDS.forEach(kw=>{
+    const chip=document.createElement('span');
+    const active=kws.includes(kw);
+    chip.textContent=KW_LABELS[kw]||kw;
+    chip.style.cssText=`display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;cursor:pointer;margin:2px;border:1px solid ${active?'rgba(201,168,76,0.8)':'rgba(201,168,76,0.2)'};background:${active?'rgba(201,168,76,0.2)':'rgba(8,6,16,0.5)'};color:${active?'var(--gold)':'rgba(240,230,204,0.4)'};`;
+    chip.onclick=()=>{
+      if(!ab.params)ab.params={};
+      if(!ab.params.kws)ab.params.kws=[];
+      const idx2=ab.params.kws.indexOf(kw);
+      if(idx2>=0)ab.params.kws.splice(idx2,1);
+      else ab.params.kws.push(kw);
+      _buildArcKwChips(ab,container);
+    };
+    container.appendChild(chip);
+  });
+}
+
+// 効果に応じた追加UIを更新
+function _updateArcRowExtras(ab, extrasEl){
+  extrasEl.innerHTML='';
+  const needsKw=['grant_kw_unit','grant_kw_all','grant_kw_one','grant_kw_summoned'].includes(ab.effect);
+  if(needsKw){
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:10px;color:rgba(201,168,76,0.6);margin-bottom:2px;';
+    lbl.textContent='キーワード:';
+    extrasEl.appendChild(lbl);
+    const chips=document.createElement('div');
+    _buildArcKwChips(ab,chips);
+    extrasEl.appendChild(chips);
+  }
+}
+
 function _buildPassiveRow(listId, arr, i, effectOptions){
   const ab=arr[i];
   const row=document.createElement('div');
   row.className='trigger-row';row.style.gap='6px';
+
   const selCond=document.createElement('select');
   selCond.className='finput';selCond.style.cssText='flex:1;font-size:11px;';
   ARC_CONDITIONS.forEach(c=>{
@@ -1724,7 +1761,6 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
     if(ab.effect===ef.id)o.selected=true;
     selEff.appendChild(o);
   });
-  selEff.onchange=e=>{arr[i].effect=e.target.value;};
 
   const inpVal=document.createElement('input');
   inpVal.type='number';inpVal.min=0;inpVal.max=20;inpVal.value=ab.val??1;
@@ -1740,11 +1776,18 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
   del.type='button';del.className='trigger-del';del.textContent='削除';
   del.onclick=()=>{arr.splice(i,1);arcanaRenderAbilLists();};
 
+  const extrasEl=document.createElement('div');
+  extrasEl.style.cssText='margin-top:2px;';
+  _updateArcRowExtras(ab,extrasEl);
+
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl);};
+
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
   top.appendChild(selCond);top.appendChild(selEff);top.appendChild(inpVal);top.appendChild(del);
   row.appendChild(top);
   row.appendChild(inpDesc);
+  row.appendChild(extrasEl);
   return row;
 }
 
@@ -1760,7 +1803,6 @@ function _buildImmRow(arr, i){
     if(ab.effect===ef.id)o.selected=true;
     selEff.appendChild(o);
   });
-  selEff.onchange=e=>{arr[i].effect=e.target.value;};
 
   const inpVal=document.createElement('input');
   inpVal.type='number';inpVal.min=0;inpVal.max=20;inpVal.value=ab.val??2;
@@ -1776,11 +1818,18 @@ function _buildImmRow(arr, i){
   del.type='button';del.className='trigger-del';del.textContent='削除';
   del.onclick=()=>{arr.splice(i,1);arcanaRenderAbilLists();};
 
+  const extrasEl=document.createElement('div');
+  extrasEl.style.cssText='margin-top:2px;';
+  _updateArcRowExtras(ab,extrasEl);
+
+  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl);};
+
   const top=document.createElement('div');
   top.style.cssText='display:flex;gap:5px;align-items:center;';
   top.appendChild(selEff);top.appendChild(inpVal);top.appendChild(del);
   row.appendChild(top);
   row.appendChild(inpDesc);
+  row.appendChild(extrasEl);
   return row;
 }
 
