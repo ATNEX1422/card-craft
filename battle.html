@@ -1571,7 +1571,7 @@ const ARC_COND_LABELS={
 
 const ARC_EFF_LABELS={
   draw:'Xドロー', draw_enemy:'相手Xドロー',
-  discard:'相手手札X枚捨て', discard_self:'自分手札X枚捨て',
+  discard:'手札X枚捨て', discard_self:'自分手札X枚捨て',
   discard_hand_draw:'手札全捨て→同枚数ドロー', add_to_hand:'指定カードを手札に',
   heal_leader:'リーダーX回復', heal_unit_one:'ユニット1体X回復', heal_unit_all:'ユニット全体X回復',
   heal_ally_one:'味方1体X回復', heal_ally_all:'味方全体X回復',
@@ -1600,9 +1600,13 @@ const ARC_EFF_LABELS={
   revive:'墓地から蘇生', revive_enemy:'相手墓地から蘇生',
 };
 function arcEffText(ab, showCond=true){
-  const eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
+  let eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
   const val=ab.val||ab.amount||1;
-  const effStr=eff.replace(/X/g,val);
+  const tgt=ab.params?.target||ab.target||'';
+  // 対象テキストを付加
+  const tgtLbl=ARC_TARGET_LABELS[tgt]||'';
+  if(tgtLbl&&eff.includes('手札')) eff=eff.replace('手札',`（${tgtLbl}）手札`);
+  const effStr=eff.replace(/X/g,_isAllTarget(tgt)?'全て':val);
   if(!showCond) return ab.desc||effStr;
   const cond=ARC_COND_LABELS[ab.condition]||ab.condition||'';
   return cond?(cond+': '+effStr):effStr;
@@ -1638,23 +1642,30 @@ let _arcRevPassives=[];   // [{condition, effect, val, desc}]  passives while re
 
 // ── Condition / Effect options ──
 const ARC_TARGET_LABELS={
-  // 自分・相手・両方（全体）
-  'self':'自分・全体','enemy':'相手・全体','both':'両者・全体',
+  // リーダー・全体指定
+  'self':'自分','enemy':'相手','both':'両者',
+  'self_all':'自分・全体','enemy_all':'相手・全体',
   // 自分ユニット
-  'ally_all':'自分・全体','ally_choose':'自分・選択','ally_random':'自分・ランダム','ally_self':'自身',
-  'ally_lowest_hp':'自分・最低HP','ally_highest_atk':'自分・最高攻撃',
+  'ally_all':'自分・全体','ally_choose':'自分・選択X','ally_random':'自分・ランダムX',
+  'ally_self':'自身','ally_lowest_hp':'自分・最低HP','ally_highest_atk':'自分・最高攻撃',
   // 相手ユニット
-  'enemy_all':'相手・全体','enemy_choose':'相手・選択','enemy_random':'相手・ランダム',
+  'enemy_choose':'相手・選択X','enemy_random':'相手・ランダムX',
   'enemy_strongest':'相手・最強','enemy_weakest':'相手・最弱',
   'enemy_lowest_hp':'相手・最低HP','enemy_highest_atk':'相手・最高攻撃',
-  // マナ関連
-  'self_restore':'自分・回復','self_add_max':'自分・最大UP','self_sub_current':'自分・現在-','self_sub_max':'自分・最大-',
-  'enemy_restore':'相手・回復','enemy_add_max':'相手・最大UP','enemy_sub_current':'相手・現在-','enemy_sub_max':'相手・最大-',
-  // AP関連
-  'self_add':'自分・増加','self_subtract':'自分・消費','enemy_add':'相手・増加','enemy_subtract':'相手・減少',
+  // マナ
+  'self_restore':'自分・回復','self_add_max':'自分・最大UP',
+  'self_sub_current':'自分・現在-','self_sub_max':'自分・最大-',
+  'enemy_restore':'相手・回復','enemy_add_max':'相手・最大UP',
+  'enemy_sub_current':'相手・現在-','enemy_sub_max':'相手・最大-',
+  // AP
+  'self_add':'自分・増加','self_subtract':'自分・消費',
+  'enemy_add':'相手・増加','enemy_subtract':'相手・減少',
+  // 手札
+  'self_random':'自分・ランダムX','self_choose':'自分・選択X',
+  // 蘇生
+  'self_choose_revive':'自分・選択','enemy_random_revive':'相手・ランダム',
   // その他
-  'self_random':'自分・ランダム','self_choose':'自分・選択',
-  'any_choose':'任意・選択','enemy_choose_any':'相手・選択',
+  'any_choose':'任意・選択',
 };
 const ARC_CONDITIONS=[
   {id:'my_turn_start',    label:'自分のターン開始時'},
