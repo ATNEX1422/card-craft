@@ -1586,9 +1586,9 @@ function arcEffText(ab, showCond=true){
 }
 function buildArcanaText(arc){
   const parts=[];
-  (arc.upright||[]).forEach(ab=>parts.push('[正] '+(ab.desc||arcEffText(ab))));
-  (arc.revImmediate||[]).forEach(ab=>parts.push('[逆] '+(ab.desc||arcEffText(ab,false))));
-  (arc.revPassive||[]).forEach(ab=>parts.push('[逆継続] '+(ab.desc||arcEffText(ab))));
+  (arc.upright||[]).forEach(ab=>parts.push('正: '+(ab.desc||arcEffText(ab))));
+  (arc.revImmediate||[]).forEach(ab=>parts.push('逆: '+(ab.desc||arcEffText(ab,false))));
+  (arc.revPassive||[]).forEach(ab=>parts.push('転: '+(ab.desc||arcEffText(ab))));
   return parts.join('\n')||'（効果なし）';
 }
 
@@ -1624,39 +1624,103 @@ const ARC_CONDITIONS=[
 ];
 const ARC_PASSIVE_EFFECTS=[
   // ── 回復・ドロー ──
-  {id:'heal_leader',     label:'リーダー回復',         unit:'点'},
-  {id:'draw',            label:'カードを引く',          unit:'枚'},
-  {id:'gain_mana',       label:'マナ加速',              unit:'個'},
+  {id:'heal_leader',        label:'自分リーダー回復',              unit:'点'},
+  {id:'heal_ally_one',      label:'自分ユニット1体回復(ランダム)', unit:'点'},
+  {id:'heal_ally_all',      label:'自分ユニット全体回復',          unit:'点'},
+  {id:'draw',               label:'カードを引く(自分)',             unit:'枚'},
+  {id:'draw_enemy',         label:'カードを引く(相手)',             unit:'枚'},
+  {id:'discard',            label:'相手手札を捨てさせる',          unit:'枚'},
+  {id:'discard_self',       label:'自分手札を捨てる(ランダム)',    unit:'枚'},
+  {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー',      unit:''},
+  {id:'add_to_hand',        label:'指定カードを手札に加える',      unit:''},
+  // ── リソース ──
+  {id:'gain_mana',          label:'マナ加速(自分)',                 unit:'個'},
+  {id:'lose_mana',          label:'マナ減少(相手)',                 unit:'個'},
+  {id:'add_ap_self',        label:'自分AP増加',                    unit:'点'},
+  {id:'reduce_ap_self',     label:'自分AP消費',                    unit:'点'},
+  {id:'add_ap_enemy',       label:'相手AP増加',                    unit:'点'},
+  {id:'reduce_ap_enemy',    label:'相手AP減少',                    unit:'点'},
   // ── バフ・デバフ ──
-  {id:'buff_ally_all',   label:'味方全体バフ(pow/tuf)', unit:''},
-  {id:'reduce_atk_all',  label:'相手全体攻撃力-',       unit:'点'},
+  {id:'buff_ally_one',      label:'自分ユニット1体バフ(ランダム)', unit:''},
+  {id:'buff_ally_all',      label:'自分ユニット全体バフ(pow/tuf)', unit:''},
+  {id:'debuff_enemy_one',   label:'相手ユニット1体デバフ(ランダム)',unit:''},
+  {id:'debuff_enemy_all',   label:'相手ユニット全体デバフ(pow/tuf)',unit:''},
+  {id:'reduce_atk_all',     label:'相手全体攻撃力-',               unit:'点'},
+  {id:'grant_kw_one',       label:'自分ユニット1体にキーワード付与',unit:''},
+  {id:'grant_kw_all',       label:'自分ユニット全体にキーワード付与',unit:''},
   // ── ダメージ ──
-  {id:'dmg_enemy_all',   label:'相手全体ダメージ',      unit:'点'},
-  {id:'dmg_enemy_one',   label:'相手1体ダメージ(ランダム)',unit:'点'},
-  {id:'dmg_leader',      label:'相手リーダーダメージ',  unit:'点'},
-  // ── 妨害 ──
-  {id:'discard',         label:'相手手札を捨てさせる',  unit:'枚'},
-  // ── AP ──
-  {id:'add_ap_self',     label:'自分AP増加',            unit:'点'},
-  {id:'reduce_ap_self',  label:'自分AP消費',            unit:'点'},
-  {id:'add_ap_enemy',    label:'相手AP増加',            unit:'点'},
-  {id:'reduce_ap_enemy', label:'相手AP減少',            unit:'点'},
+  {id:'dmg_enemy_one',      label:'相手ユニット1体ダメージ(ランダム)',unit:'点'},
+  {id:'dmg_enemy_all',      label:'相手ユニット全体ダメージ',      unit:'点'},
+  {id:'dmg_all_units',      label:'全ユニットにダメージ',          unit:'点'},
+  {id:'dmg_leader',         label:'相手リーダーダメージ',          unit:'点'},
+  {id:'dmg_leader_self',    label:'自分リーダーにダメージ',        unit:'点'},
+  {id:'dmg_any',            label:'ランダム対象ダメージ',          unit:'点'},
+  // ── 除去・状態異常 ──
+  {id:'destroy_one',        label:'相手ユニット1体を破壊(ランダム)',unit:''},
+  {id:'destroy_all',        label:'相手ユニット全体を破壊',        unit:''},
+  {id:'return_one',         label:'相手ユニット1体を手札に戻す',   unit:''},
+  {id:'return_all',         label:'相手ユニット全体を手札に戻す',  unit:''},
+  {id:'steal_one',          label:'相手ユニット1体を強奪(ランダム)',unit:''},
+  {id:'exile_one',          label:'相手ユニット1体を除外(ランダム)',unit:''},
+  {id:'exile_all',          label:'相手ユニット全体を除外',        unit:''},
+  {id:'bind_one',           label:'相手ユニット1体を呪縛(ランダム)',unit:''},
+  {id:'bind_all',           label:'相手ユニット全体を呪縛',        unit:''},
+  {id:'silence_one',        label:'相手ユニット1体を沈黙(ランダム)',unit:''},
+  // ── 召喚・蘇生 ──
+  {id:'summon_card',        label:'指定カードを召喚',              unit:''},
+  {id:'revive',             label:'墓地から蘇生(ランダム)',        unit:''},
 ];
 const ARC_IMM_EFFECTS=[
-  {id:'dmg_enemy_all',  label:'相手全体ダメージ', unit:'点'},
-  {id:'dmg_enemy_one',  label:'相手1体ダメージ（ランダム）', unit:'点'},
-  {id:'dmg_leader',     label:'相手リーダーダメージ', unit:'点'},
-  {id:'heal_leader',    label:'リーダー回復', unit:'点'},
-  {id:'draw',           label:'カードを引く', unit:'枚'},
-  {id:'destroy_one',    label:'相手1体を破壊（ランダム）', unit:''},
-  {id:'return_one',     label:'相手1体を手札に戻す（ランダム）', unit:''},
-  {id:'buff_ally_all',  label:'味方全体バフ', unit:'(pow/tuf)'},
-  {id:'return_all',     label:'相手全体を手札に戻す', unit:''},
-  {id:'destroy_all',    label:'相手全体を破壊', unit:''},
-  {id:'add_ap_self',    label:'自分AP増加',     unit:'点'},
-  {id:'reduce_ap_self', label:'自分APを消費',   unit:'点'},
-  {id:'add_ap_enemy',   label:'相手AP増加',     unit:'点'},
-  {id:'reduce_ap_enemy',label:'相手AP減少',     unit:'点'},
+  // ── ドロー・手札 ──
+  {id:'draw',               label:'カードを引く(自分)',             unit:'枚'},
+  {id:'draw_enemy',         label:'カードを引く(相手)',             unit:'枚'},
+  {id:'discard',            label:'相手手札を捨てさせる',          unit:'枚'},
+  {id:'discard_self',       label:'自分手札を捨てる(ランダム)',    unit:'枚'},
+  {id:'discard_hand_draw',  label:'手札全捨て→同枚数ドロー(自分)',unit:''},
+  {id:'add_to_hand',        label:'指定カードを手札に加える',      unit:''},
+  // ── 回復 ──
+  {id:'heal_leader',        label:'自分リーダー回復',              unit:'点'},
+  {id:'heal_ally_one',      label:'自分ユニット1体回復(ランダム)', unit:'点'},
+  {id:'heal_ally_all',      label:'自分ユニット全体回復',          unit:'点'},
+  // ── ダメージ ──
+  {id:'dmg_enemy_all',      label:'相手ユニット全体ダメージ',      unit:'点'},
+  {id:'dmg_enemy_one',      label:'相手ユニット1体ダメージ(ランダム)',unit:'点'},
+  {id:'dmg_all_units',      label:'全ユニットにダメージ',          unit:'点'},
+  {id:'dmg_leader',         label:'相手リーダーダメージ',          unit:'点'},
+  {id:'dmg_leader_self',    label:'自分リーダーにダメージ',        unit:'点'},
+  // ── 除去 ──
+  {id:'destroy_one',        label:'相手ユニット1体を破壊(ランダム)',unit:''},
+  {id:'destroy_all',        label:'相手ユニット全体を破壊',        unit:''},
+  {id:'return_one',         label:'相手ユニット1体を手札に戻す',   unit:''},
+  {id:'return_all',         label:'相手ユニット全体を手札に戻す',  unit:''},
+  {id:'return_ally_one',    label:'自分ユニット1体を手札に戻す',   unit:''},
+  {id:'steal_one',          label:'相手ユニット1体を強奪(ランダム)',unit:''},
+  {id:'exile_one',          label:'相手ユニット1体を除外(ランダム)',unit:''},
+  {id:'exile_all',          label:'相手ユニット全体を除外',        unit:''},
+  // ── 状態異常 ──
+  {id:'bind_one',           label:'相手ユニット1体を呪縛(ランダム)',unit:''},
+  {id:'bind_all',           label:'相手ユニット全体を呪縛',        unit:''},
+  {id:'silence_one',        label:'相手ユニット1体を沈黙(ランダム)',unit:''},
+  {id:'silence_all',        label:'相手ユニット全体を沈黙',        unit:''},
+  // ── バフ・デバフ ──
+  {id:'buff_ally_all',      label:'自分ユニット全体バフ(pow/tuf)', unit:''},
+  {id:'buff_ally_one',      label:'自分ユニット1体バフ(ランダム)', unit:''},
+  {id:'debuff_enemy_all',   label:'相手ユニット全体デバフ(pow/tuf)',unit:''},
+  {id:'reduce_atk_all',     label:'相手全体攻撃力-',               unit:'点'},
+  {id:'grant_kw_all',       label:'自分ユニット全体にキーワード付与',unit:''},
+  {id:'grant_kw_one',       label:'自分ユニット1体にキーワード付与',unit:''},
+  // ── リソース ──
+  {id:'gain_mana',          label:'マナ加速(自分)',                 unit:'個'},
+  {id:'lose_mana',          label:'マナ減少(相手)',                 unit:'個'},
+  // ── 召喚・蘇生 ──
+  {id:'summon_card',        label:'指定カードを召喚',              unit:''},
+  {id:'revive',             label:'墓地から蘇生(ランダム)',        unit:''},
+  {id:'revive_enemy',       label:'相手墓地から蘇生(ランダム)',    unit:''},
+  // ── AP ──
+  {id:'add_ap_self',        label:'自分AP増加',                    unit:'点'},
+  {id:'reduce_ap_self',     label:'自分AP消費',                    unit:'点'},
+  {id:'add_ap_enemy',       label:'相手AP増加',                    unit:'点'},
+  {id:'reduce_ap_enemy',    label:'相手AP減少',                    unit:'点'},
 ];
 
 function _buildPassiveRow(listId, arr, i, effectOptions){
@@ -2421,45 +2485,67 @@ const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce'];
 const ALL_TRIGGERS=['on_enter','on_attack','on_battle','on_death','on_turn_start','on_turn_end','on_ally_death','on_ally_enter'];
 const ALL_EFFECTS=[
   // ── ドロー・手札 ──
-  {id:'draw',            label:'カードを引く',                params:[{key:'n',label:'枚数',def:1}]},
-  {id:'add_to_hand',     label:'指定カードを手札に加える',     params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]}]},
-  {id:'discard',         label:'相手手札を捨てさせる',         params:[{key:'n',label:'枚数',def:1}]},
-  {id:'discard_hand_draw',label:'手札を全捨て→同枚数ドロー',  params:[]},
+  {id:'draw',              label:'カードを引く（自分）',              params:[{key:'n',label:'枚数',def:1}]},
+  {id:'draw_enemy',        label:'カードを引く（相手）',              params:[{key:'n',label:'枚数',def:1}]},
+  {id:'add_to_hand',       label:'指定カードを手札に加える（自分）',  params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]}]},
+  {id:'add_to_hand_enemy', label:'指定カードを手札に加える（相手）',  params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]}]},
+  {id:'discard',           label:'相手手札を捨てさせる',              params:[{key:'n',label:'枚数',def:1}]},
+  {id:'discard_self',      label:'自分手札を捨てる（ランダム）',      params:[{key:'n',label:'枚数',def:1}]},
+  {id:'discard_hand_draw', label:'手札を全捨て→同枚数ドロー（自分）',params:[]},
   // ── ダメージ ──
-  {id:'dmg_enemy_one',   label:'相手ユニット1体にダメージ',    params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest','lowest_hp'],def:'choose'}]},
-  {id:'dmg_enemy_n',     label:'相手ユニットN体にダメージ',    params:[{key:'n',label:'体数',def:1},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'dmg_enemy_all',   label:'相手ユニット全体にダメージ',   params:[{key:'dmg',label:'ダメージ',def:1}]},
-  {id:'dmg_leader',      label:'相手リーダーにダメージ',       params:[{key:'dmg',label:'ダメージ',def:1}]},
-  {id:'dmg_any',         label:'任意対象にダメージ',           params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_enemy_one',     label:'相手ユニット1体にダメージ',         params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest','lowest_hp'],def:'choose'}]},
+  {id:'dmg_enemy_n',       label:'相手ユニットN体にダメージ',         params:[{key:'n',label:'体数',def:1},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'dmg_enemy_all',     label:'相手ユニット全体にダメージ',        params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_ally_one',      label:'自分ユニット1体にダメージ',         params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['random','self'],def:'random'}]},
+  {id:'dmg_ally_all',      label:'自分ユニット全体にダメージ',        params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_all_units',     label:'全ユニットにダメージ',              params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_leader',        label:'相手リーダーにダメージ',            params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_leader_self',   label:'自分リーダーにダメージ',            params:[{key:'dmg',label:'ダメージ',def:1}]},
+  {id:'dmg_any',           label:'任意対象にダメージ',                params:[{key:'dmg',label:'ダメージ',def:1}]},
+  // ── 回復 ──
+  {id:'heal_leader',       label:'自分リーダーを回復',                params:[{key:'amount',label:'回復量',def:1}]},
+  {id:'heal_leader_enemy', label:'相手リーダーを回復',                params:[{key:'amount',label:'回復量',def:1}]},
+  {id:'heal_ally_one',     label:'自分ユニット1体を回復',             params:[{key:'amount',label:'回復量',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','self','lowest_hp'],def:'choose'}]},
+  {id:'heal_ally_all',     label:'自分ユニット全体を回復',            params:[{key:'amount',label:'回復量',def:1}]},
   // ── 除去 ──
-  {id:'destroy_one',     label:'相手ユニット1体を破壊',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest'],def:'choose'}]},
-  {id:'destroy_all',     label:'相手ユニット全体を破壊',       params:[]},
-  {id:'exile_one',       label:'相手ユニット1体を除外',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'return_one',      label:'相手ユニット1体を手札に戻す',  params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'return_all',      label:'相手ユニット全体を手札に戻す', params:[]},
-  {id:'steal_one',       label:'相手ユニット1体を強奪',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'bind_one',        label:'相手ユニット1体を呪縛',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'silence_one',     label:'相手ユニット1体を沈黙',        params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'destroy_one',       label:'相手ユニット1体を破壊',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','weakest','highest_atk','lowest_hp'],def:'choose'}]},
+  {id:'destroy_all',       label:'相手ユニット全体を破壊',            params:[]},
+  {id:'destroy_ally_one',  label:'自分ユニット1体を破壊',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'exile_one',         label:'相手ユニット1体を除外',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'exile_all',         label:'相手ユニット全体を除外',            params:[]},
+  {id:'return_one',        label:'相手ユニット1体を手札に戻す',       params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'return_all',        label:'相手ユニット全体を手札に戻す',      params:[]},
+  {id:'return_ally_one',   label:'自分ユニット1体を手札に戻す',       params:[{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
+  {id:'steal_one',         label:'相手ユニット1体を強奪',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  // ── 状態異常 ──
+  {id:'bind_one',          label:'相手ユニット1体を呪縛',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'bind_all',          label:'相手ユニット全体を呪縛',            params:[]},
+  {id:'silence_one',       label:'相手ユニット1体を沈黙',             params:[{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'silence_all',       label:'相手ユニット全体を沈黙',            params:[]},
   // ── バフ・デバフ ──
-  {id:'buff_ally_one',   label:'自分ユニット1体をバフ',        params:[{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
-  {id:'buff_ally_all',   label:'自分ユニット全体をバフ',       params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1}]},
-  {id:'debuff_enemy_one',label:'相手ユニット1体をデバフ',      params:[{key:'pow',label:'-攻撃',def:1},{key:'tuf',label:'-体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
-  {id:'reduce_atk_all',  label:'相手ユニット全体の攻撃力-',    params:[{key:'amount',label:'減少量',def:1}]},
-  {id:'grant_kw_one',    label:'自分ユニット1体にキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
-  {id:'grant_kw_all',    label:'自分ユニット全体にキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
-  // ── 回復・リソース ──
-  {id:'heal_leader',     label:'自分リーダーを回復',           params:[{key:'amount',label:'回復量',def:1}]},
-  {id:'gain_mana',       label:'マナを加速',                   params:[{key:'amount',label:'加速量',def:1}]},
+  {id:'buff_ally_one',     label:'自分ユニット1体をバフ',             params:[{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','self','highest_atk','lowest_hp'],def:'choose'}]},
+  {id:'buff_ally_all',     label:'自分ユニット全体をバフ',            params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1}]},
+  {id:'debuff_enemy_one',  label:'相手ユニット1体をデバフ',           params:[{key:'pow',label:'-攻撃',def:1},{key:'tuf',label:'-体力',def:1},{key:'target',label:'対象',type:'select',opts:['choose','random','strongest','highest_atk'],def:'choose'}]},
+  {id:'debuff_enemy_all',  label:'相手ユニット全体をデバフ',          params:[{key:'pow',label:'-攻撃',def:0},{key:'tuf',label:'-体力',def:1}]},
+  {id:'reduce_atk_all',    label:'相手ユニット全体の攻撃力-',         params:[{key:'amount',label:'減少量',def:1}]},
+  {id:'grant_kw_one',      label:'自分ユニット1体にキーワード付与',   params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['choose','random','self'],def:'choose'}]},
+  {id:'grant_kw_all',      label:'自分ユニット全体にキーワード付与',  params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
+  {id:'grant_kw_enemy_one',label:'相手ユニット1体にキーワード付与',   params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'random'}]},
+  // ── リソース ──
+  {id:'gain_mana',         label:'マナを加速（自分）',                params:[{key:'amount',label:'加速量',def:1}]},
+  {id:'lose_mana',         label:'マナを減らす（相手）',              params:[{key:'amount',label:'減少量',def:1}]},
+  {id:'add_max_mana',      label:'最大マナを増やす（自分）',          params:[{key:'amount',label:'増加量',def:1}]},
   // ── 召喚・蘇生 ──
-  {id:'summon_card',     label:'指定カードを召喚',             params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]}]},
-  {id:'summon_free',     label:'手札から無料召喚',             params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
-  {id:'grant_kw_summoned',label:'召喚したユニットにキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
-  {id:'revive',          label:'墓地からユニットを蘇生',        params:[{key:'cost_max',label:'コスト上限(0=制限なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'summon_card',       label:'指定カードを召喚',                  params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]}]},
+  {id:'summon_free',       label:'手札から無料召喚',                  params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
+  {id:'grant_kw_summoned', label:'召喚したユニットにキーワード付与',  params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
+  {id:'revive',            label:'墓地からユニットを蘇生（自分）',    params:[{key:'cost_max',label:'コスト上限(0=制限なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'revive_enemy',      label:'墓地からユニットを蘇生（相手）',    params:[{key:'cost_max',label:'コスト上限(0=制限なし)',def:0}]},
   // ── AP ──
-  {id:'add_ap_self',     label:'自分APを増加',                 params:[{key:'amount',label:'増加量',def:1}]},
-  {id:'reduce_ap_self',  label:'自分APを消費',                 params:[{key:'amount',label:'消費量',def:1}]},
-  {id:'add_ap_enemy',    label:'相手APを増加',                 params:[{key:'amount',label:'増加量',def:1}]},
-  {id:'reduce_ap_enemy', label:'相手APを減少',                 params:[{key:'amount',label:'減少量',def:1}]},
+  {id:'add_ap_self',       label:'自分APを増加',                      params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_self',    label:'自分APを消費',                      params:[{key:'amount',label:'消費量',def:1}]},
+  {id:'add_ap_enemy',      label:'相手APを増加',                      params:[{key:'amount',label:'増加量',def:1}]},
+  {id:'reduce_ap_enemy',   label:'相手APを減少',                      params:[{key:'amount',label:'減少量',def:1}]},
 ];
 
 // current editing abilities array
@@ -3199,6 +3285,165 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
       const st=G.p[opp].arcana;
       if(st){st.gauge=Math.max(0,st.gauge-val);renderArcana();}
       log(`✦ ${arc.name} [${label}] → 相手AP-${val}`,'ll-sys'); break;}
+    case 'buff_ally_one':{
+      if(G.p[pid].field.length){
+        const t=G.p[pid].field[Math.floor(Math.random()*G.p[pid].field.length)];
+        t.power+=val;t.toughness+=val;t._hp+=val;
+        log(`✦ ${arc.name} [${label}] → 味方1体+${val}/+${val}`,'ll-sys');
+      } break;}
+    case 'debuff_enemy_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        t.power=Math.max(0,t.power-val);t.toughness=Math.max(1,t.toughness-val);t._hp=Math.min(t._hp,t.toughness);
+        if(t._hp<=0){render();await new Promise(r=>setTimeout(r,150));removeCard(opp,t._uid);}
+        log(`✦ ${arc.name} [${label}] → 相手1体-${val}/-${val}`,'ll-sys');
+      } break;}
+    case 'destroy_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        log(`✦ ${arc.name} [${label}] → ${t.name}を破壊`,'ll-sys');
+        render();await new Promise(r=>setTimeout(r,200));removeCard(opp,t._uid);
+      } break;}
+    case 'destroy_all':{
+      const dead=[...G.p[opp].field];
+      dead.forEach(c=>removeCard(opp,c._uid));
+      log(`✦ ${arc.name} [${label}] → 相手全体破壊`,'ll-sys'); break;}
+    case 'return_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        removeCard(opp,t._uid);
+        const base=CARDS.find(c=>c.id===t.id)||t;
+        G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
+        log(`✦ ${arc.name} [${label}] → 相手1体を手札に戻す`,'ll-sys');
+      } break;}
+    case 'return_all':{
+      const ts=[...G.p[opp].field];
+      ts.forEach(t=>{removeCard(opp,t._uid);const base=CARDS.find(c=>c.id===t.id)||t;G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});});
+      log(`✦ ${arc.name} [${label}] → 相手全体を手札に戻す`,'ll-sys'); break;}
+    case 'steal_one':{
+      if(G.p[opp].field.length&&G.p[pid].field.length<7){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        G.p[opp].field=G.p[opp].field.filter(c=>c._uid!==t._uid);
+        t._sick=true;t._attacked=false;G.p[pid].field.push(t);
+        log(`✦ ${arc.name} [${label}] → 相手1体を強奪`,'ll-sys');
+      } break;}
+    case 'exile_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        G.p[opp].field=G.p[opp].field.filter(c=>c._uid!==t._uid);
+        log(`✦ ${arc.name} [${label}] → 相手1体を除外`,'ll-sys');
+      } break;}
+    case 'revive':{
+      if(G.p[pid].grave.length&&G.p[pid].field.length<7){
+        const entry=G.p[pid].grave[Math.floor(Math.random()*G.p[pid].grave.length)];
+        const base=CARDS.find(c=>c.name===entry.name)||entry.card;
+        if(base){const nfc=mkCard(base);nfc._sick=true;G.p[pid].field.push(nfc);
+          entry.count--;if(entry.count<=0)G.p[pid].grave=G.p[pid].grave.filter(g=>g.name!==entry.name);
+          log(`✦ ${arc.name} [${label}] → ${base.name}を蘇生`,'ll-sys');
+          render();await animateSummon(pid,nfc._uid);}
+      } break;}
+    case 'summon_card':{
+      const entries2=(ab.params?.cards||[]);
+      for(const e2 of entries2){
+        if(G.p[pid].field.length>=7)break;
+        const base=CARDS.find(c=>c.name===e2.name);if(!base)continue;
+        const nfc=mkCard(base);G.p[pid].field.push(nfc);
+        log(`✦ ${arc.name} [${label}] → ${base.name}を召喚`,'ll-sys');
+        render();await animateSummon(pid,nfc._uid);
+      } break;}
+    case 'add_to_hand':{
+      const entries3=(ab.params?.cards||[]);
+      for(const e3 of entries3){
+        const base=CARDS.find(c=>c.name===e3.name);if(!base)continue;
+        G.p[pid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
+        log(`✦ ${arc.name} [${label}] → ${base.name}を手札に加える`,'ll-sys');
+      } break;}
+    case 'bind_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        t._bound=true;
+        log(`✦ ${arc.name} [${label}] → 相手1体を呪縛`,'ll-sys');
+      } break;}
+    case 'silence_one':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        t._silenced=true;t.abilities=[];t.ability=null;
+        log(`✦ ${arc.name} [${label}] → 相手1体を沈黙`,'ll-sys');
+      } break;}
+    case 'discard_hand_draw':{
+      const n2=G.p[pid].hand.length;
+      G.p[pid].hand=[];render();
+      log(`✦ ${arc.name} [${label}] → 手札${n2}枚捨て→${n2}枚ドロー`,'ll-sys');
+      await drawCardAnim(pid,n2); break;}
+    case 'grant_kw_all':{
+      const kws2=(ab.params?.kws||[]);
+      G.p[pid].field.forEach(t=>{kws2.forEach(kw=>{if(!(t.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)){if(!t.abilities)t.abilities=[];t.abilities.push({type:'keyword',id:kw});}});});
+      const kwTxt2=kws2.map(k=>KW_LABELS[k]||k).join('・');
+      log(`✦ ${arc.name} [${label}] → 味方全体に${kwTxt2||'能力'}付与`,'ll-sys'); break;}
+    case 'grant_kw_one':{
+      if(G.p[pid].field.length){
+        const kws3=(ab.params?.kws||[]);const t=G.p[pid].field[0];
+        kws3.forEach(kw=>{if(!(t.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)){if(!t.abilities)t.abilities=[];t.abilities.push({type:'keyword',id:kw});}});
+        const kwTxt3=kws3.map(k=>KW_LABELS[k]||k).join('・');
+        log(`✦ ${arc.name} [${label}] → 味方1体に${kwTxt3||'能力'}付与`,'ll-sys');
+      } break;}
+    case 'dmg_any':{
+      if(G.p[opp].field.length){
+        const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
+        t._hp-=val;if(t._hp<=0){render();await new Promise(r=>setTimeout(r,150));removeCard(opp,t._uid);}
+      } else {
+        G.p[opp].life=Math.max(0,G.p[opp].life-val);
+        if(G.p[opp].life<=0){render();setTimeout(()=>gameOver(pid),300);}
+      }
+      log(`✦ ${arc.name} [${label}] → ${val}ダメージ`,'ll-sys'); break;}
+    case 'draw_enemy':
+      log(`✦ ${arc.name} [${label}] → 相手${val}枚ドロー`,'ll-sys');
+      await drawCardAnim(opp,val); break;
+    case 'discard_self':
+      log(`✦ ${arc.name} [${label}] → 自分手札${val}枚を捨てる`,'ll-sys');
+      await discardAnim(pid,val); break;
+    case 'dmg_ally_all':{
+      G.p[pid].field.forEach(c=>c._hp-=val);
+      const dead2=G.p[pid].field.filter(c=>c._hp<=0);dead2.forEach(c=>removeCard(pid,c._uid));
+      log(`✦ ${arc.name} [${label}] → 味方全体に${val}ダメージ`,'ll-sys'); break;}
+    case 'dmg_all_units':{
+      [pid,opp].forEach(p2=>{G.p[p2].field.forEach(c=>c._hp-=val);});
+      [pid,opp].forEach(p2=>{G.p[p2].field.filter(c=>c._hp<=0).forEach(c=>removeCard(p2,c._uid));});
+      log(`✦ ${arc.name} [${label}] → 全ユニットに${val}ダメージ`,'ll-sys'); break;}
+    case 'dmg_leader_self':
+      G.p[pid].life=Math.max(0,G.p[pid].life-val);
+      log(`✦ ${arc.name} [${label}] → 自分リーダーに${val}ダメージ`,'ll-sys');
+      if(G.p[pid].life<=0){render();setTimeout(()=>gameOver(opp),300);}
+      break;
+    case 'heal_ally_one':{
+      if(G.p[pid].field.length){const t2=G.p[pid].field.reduce((a,b)=>a._hp<b._hp?a:b);t2._hp=Math.min(t2.toughness,t2._hp+val);log(`✦ ${arc.name} [${label}] → 味方1体${val}回復`,'ll-sys');}break;}
+    case 'heal_ally_all':
+      G.p[pid].field.forEach(c=>{c._hp=Math.min(c.toughness,c._hp+val);});
+      log(`✦ ${arc.name} [${label}] → 味方全体${val}回復`,'ll-sys'); break;
+    case 'exile_all':
+      G.p[opp].field=[]; log(`✦ ${arc.name} [${label}] → 相手全体を除外`,'ll-sys'); break;
+    case 'bind_all':
+      G.p[opp].field.forEach(c=>{c._bound=true;});
+      log(`✦ ${arc.name} [${label}] → 相手全体を呪縛`,'ll-sys'); break;
+    case 'silence_all':
+      G.p[opp].field.forEach(c=>{c._silenced=true;c.abilities=[];c.ability=null;});
+      log(`✦ ${arc.name} [${label}] → 相手全体を沈黙`,'ll-sys'); break;
+    case 'debuff_enemy_all':{
+      const dp=val,dt=val;
+      G.p[opp].field.forEach(c=>{c.power=Math.max(0,c.power-dp);c.toughness=Math.max(1,c.toughness-dt);c._hp=Math.min(c._hp,c.toughness);});
+      const dead3=G.p[opp].field.filter(c=>c._hp<=0);dead3.forEach(c=>removeCard(opp,c._uid));
+      log(`✦ ${arc.name} [${label}] → 相手全体-${dp}/-${dt}`,'ll-sys'); break;}
+    case 'lose_mana':
+      G.p[opp].mana=Math.max(0,G.p[opp].mana-val);
+      log(`✦ ${arc.name} [${label}] → 相手マナ-${val}`,'ll-sys'); break;
+    case 'revive_enemy':{
+      if(G.p[opp].grave.length&&G.p[opp].field.length<7){
+        const entry=G.p[opp].grave[Math.floor(Math.random()*G.p[opp].grave.length)];
+        const base=CARDS.find(c=>c.name===entry.name)||entry.card;
+        if(base){const nfc=mkCard(base);nfc._sick=true;G.p[opp].field.push(nfc);
+          entry.count--;if(entry.count<=0)G.p[opp].grave=G.p[opp].grave.filter(g=>g.name!==entry.name);
+          log(`✦ ${arc.name} [${label}] → 相手墓地から${base.name}を蘇生`,'ll-sys');render();await animateSummon(opp,nfc._uid);}
+      } break;}
     case 'dmg_enemy_one':{
       if(G.p[opp].field.length){
         const t=G.p[opp].field[Math.floor(Math.random()*G.p[opp].field.length)];
@@ -4295,6 +4540,150 @@ async function _execEffect(pid, fc, ab, isAI){
       renderArcana();render();
     }
     return;
+  }
+  if(e==='draw_enemy'){
+    const n=pr.n||1;
+    log(`${pCol(fc.name,pid)}→ 相手${n}枚ドロー`,'ll-s');
+    await drawCardAnim(opp,n); return;
+  }
+  if(e==='add_to_hand_enemy'){
+    const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
+    for(const entry of entries){
+      const base=CARDS.find(c=>c.name===entry.name);if(!base)continue;
+      for(let i=0;i<(entry.n||1);i++) G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
+      log(`${pCol(fc.name,pid)}→ 相手手札に${pCol(base.name,opp)}を加える`,'ll-s');
+    } render();return;
+  }
+  if(e==='discard_self'){
+    const n=pr.n||1;
+    log(`${pCol(fc.name,pid)}→ 自分手札${n}枚を捨てる`,'ll-s');
+    await discardAnim(pid,n); return;
+  }
+  if(e==='dmg_ally_one'){
+    if(!p.field.length){log(`「${fc.name}」→ 対象なし`,'');return;}
+    let t;
+    if(pr.target==='self') t=fc;
+    else t=p.field[Math.floor(Math.random()*p.field.length)];
+    const tgt=p.field.find(c=>c._uid===t?._uid);
+    if(tgt){await dmgCard(pid,tgt._uid,pr.dmg||1);log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}に${pr.dmg||1}ダメージ`,'');}
+    render();return;
+  }
+  if(e==='dmg_ally_all'){
+    const ts=[...p.field];const dmg=pr.dmg||1;
+    ts.forEach(t=>{t._hp-=dmg;});render();
+    await new Promise(r=>setTimeout(r,300));
+    const dead=p.field.filter(t=>t._hp<=0);
+    for(const t of dead){await animateDestroy(pid,t._uid);removeCard(pid,t._uid);}
+    log(`${pCol(fc.name,pid)}→ 味方全体に${dmg}ダメージ`,''); render();return;
+  }
+  if(e==='dmg_all_units'){
+    const dmg=pr.dmg||1;
+    [[1,pid],[2,opp]].forEach(([fpid])=>{
+      G.p[fpid].field.forEach(t=>{t._hp-=dmg;});
+    });
+    render();await new Promise(r=>setTimeout(r,300));
+    for(const fpid of [1,2]){
+      const dead=G.p[fpid].field.filter(t=>t._hp<=0);
+      for(const t of dead){await animateDestroy(fpid,t._uid);removeCard(fpid,t._uid);}
+    }
+    log(`${pCol(fc.name,pid)}→ 全ユニットに${dmg}ダメージ`,''); render();return;
+  }
+  if(e==='dmg_leader_self'){
+    const dmg=pr.dmg||1;
+    p.life=Math.max(0,p.life-dmg);
+    const lpos=getLifeCenter(pid);if(lpos)showDmgFloat(lpos.x,lpos.y,dmg);
+    log(`${pCol(fc.name,pid)}→ 自分リーダーに${dmg}ダメージ`,'');
+    if(p.life<=0){render();setTimeout(()=>gameOver(opp),300);}
+    render();return;
+  }
+  if(e==='heal_leader_enemy'){
+    const amt=pr.amount||1;
+    G.p[opp].life=Math.min(20,G.p[opp].life+amt);
+    log(`${pCol(fc.name,pid)}→ 相手リーダーを${amt}回復`,''); render();return;
+  }
+  if(e==='heal_ally_one'){
+    if(!p.field.length){render();return;}
+    let t;
+    if(pr.target==='self') t=fc;
+    else if(pr.target==='lowest_hp') t=p.field.reduce((a,b)=>a._hp<b._hp?a:b);
+    else if(!isAI) {render();const r=await selectTarget(`${fc.name}: 回復対象`,p.field.map(c=>({card:c,pid})));if(!r){render();return;}t=r.card;}
+    else t=p.field.reduce((a,b)=>a._hp<b._hp?a:b);
+    const tgt=p.field.find(c=>c._uid===t?._uid);
+    if(tgt){const hp=pr.amount||1;tgt._hp=Math.min(tgt.toughness,tgt._hp+hp);const pos=getCardCenter(pid,tgt._uid);if(pos)showDmgFloat(pos.x,pos.y,hp,true);log(`${pCol(fc.name,pid)}→ ${pCol(tgt.name,pid)}を${hp}回復`,'');}
+    render();return;
+  }
+  if(e==='heal_ally_all'){
+    const hp=pr.amount||1;
+    p.field.forEach(t=>{t._hp=Math.min(t.toughness,t._hp+hp);});
+    log(`${pCol(fc.name,pid)}→ 味方全体を${hp}回復`,''); render();return;
+  }
+  if(e==='destroy_ally_one'){
+    if(!p.field.length){render();return;}
+    let t=isAI?p.field[Math.floor(Math.random()*p.field.length)]:null;
+    if(!isAI){render();const r=await selectTarget(`${fc.name}: 破壊対象`,p.field.map(c=>({card:c,pid})));if(!r)return;t=r.card;}
+    const tgt=p.field.find(c=>c._uid===t._uid);
+    if(tgt){log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を破壊`,'');await animateDestroy(pid,tgt._uid);removeCard(pid,tgt._uid);}
+    render();return;
+  }
+  if(e==='exile_all'){
+    const ts=[...op.field];ts.forEach(t=>{op.field=op.field.filter(c=>c._uid!==t._uid);});
+    log(`${pCol(fc.name,pid)}→ 相手全体を除外`,''); render();return;
+  }
+  if(e==='return_ally_one'){
+    if(!p.field.length){render();return;}
+    let t;
+    if(pr.target==='self') t=fc;
+    else if(!isAI){render();const r=await selectTarget(`${fc.name}: 手札に戻す対象`,p.field.map(c=>({card:c,pid})));if(!r)return;t=r.card;}
+    else t=p.field[Math.floor(Math.random()*p.field.length)];
+    const tgt=p.field.find(c=>c._uid===t._uid);
+    if(tgt){removeCard(pid,tgt._uid);const base=CARDS.find(c=>c.id===tgt.id)||tgt;p.hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を手札に戻す`,'');}
+    render();return;
+  }
+  if(e==='bind_all'){
+    op.field.forEach(t=>{t._bound=true;});
+    log(`${pCol(fc.name,pid)}→ 相手全体を呪縛`,''); render();return;
+  }
+  if(e==='silence_all'){
+    op.field.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;});
+    log(`${pCol(fc.name,pid)}→ 相手全体を沈黙`,''); render();return;
+  }
+  if(e==='debuff_enemy_all'){
+    const dpow=pr.pow||0,dtuf=pr.tuf||1;
+    op.field.forEach(t=>{t.power=Math.max(0,t.power-dpow);t.toughness=Math.max(1,t.toughness-dtuf);t._hp=Math.min(t._hp,t.toughness);});
+    const dead=op.field.filter(t=>t._hp<=0);
+    for(const t of dead){await animateDestroy(opp,t._uid);removeCard(opp,t._uid);}
+    log(`${pCol(fc.name,pid)}→ 相手全体に-${dpow}/-${dtuf}`,''); render();return;
+  }
+  if(e==='grant_kw_enemy_one'){
+    if(!op.field.length){render();return;}
+    const kws=(pr.kws||[]).filter(Boolean);
+    let t=op.field[Math.floor(Math.random()*op.field.length)];
+    for(const kw of kws){if(!(t.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)){if(!t.abilities)t.abilities=[];t.abilities.push({type:'keyword',id:kw});}}
+    const kwTxt=kws.map(k=>KW_LABELS[k]||k).join('・');
+    log(`${pCol(fc.name,pid)}→ 相手${pCol(t.name,opp)}に${kwTxt}付与`,''); render();return;
+  }
+  if(e==='lose_mana'){
+    const amt=pr.amount||1;
+    G.p[opp].mana=Math.max(0,G.p[opp].mana-amt);
+    log(`${pCol(fc.name,pid)}→ 相手マナ-${amt}`,''); render();return;
+  }
+  if(e==='add_max_mana'){
+    const amt=pr.amount||1;
+    p.maxMana=Math.min(10,p.maxMana+amt);p.mana=Math.min(p.mana+amt,p.maxMana);
+    log(`${pCol(fc.name,pid)}→ 最大マナ+${amt}`,''); render();return;
+  }
+  if(e==='revive_enemy'){
+    const gr=G.p[opp].grave;
+    if(!gr.length||G.p[opp].field.length>=7){render();return;}
+    const costMax=pr.cost_max||0;
+    const eligible=gr.filter(g=>!costMax||(g.card?.cost||0)<=costMax);
+    if(!eligible.length){render();return;}
+    const entry=eligible[Math.floor(Math.random()*eligible.length)];
+    const base=CARDS.find(c=>c.name===entry.name)||entry.card;
+    if(base){const nfc=mkCard(base);nfc._sick=true;G.p[opp].field.push(nfc);
+      entry.count--;if(entry.count<=0)G.p[opp].grave=G.p[opp].grave.filter(g=>g.name!==entry.name);
+      log(`${pCol(fc.name,pid)}→ 相手墓地から${pCol(base.name,opp)}を蘇生`,'');render();await animateSummon(opp,nfc._uid);}
+    render();return;
   }
   if(e==='discard_hand_draw'){
     const discarded=p.hand.length;
