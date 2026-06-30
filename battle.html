@@ -32,6 +32,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    MENU SCREEN
 ═══════════════════════════════════ */
 #screen-menu{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.menu-art{
+  position:absolute;
+  right:-5%;
+  top:50%;
+  transform:translateY(-50%);
+  height:85vh;
+  max-height:820px;
+  width:auto;
+  object-fit:contain;
+  opacity:0.22;
+  filter:grayscale(0.3) brightness(0.9) drop-shadow(0 0 60px rgba(201,168,76,0.15));
+  pointer-events:none;
+  z-index:0;
+  -webkit-mask-image:linear-gradient(to left, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
+  mask-image:linear-gradient(to left, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
+}
+@media (max-width:760px){
+  .menu-art{display:none;}
+}
+#screen-menu > *:not(.menu-art){position:relative;z-index:1;}
 #screen-online{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 .online-box{background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.25);border-radius:10px;
   padding:20px 28px;display:flex;flex-direction:column;gap:12px;min-width:300px;align-items:center;}
@@ -43,10 +63,25 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   color:var(--gold);text-shadow:0 0 16px rgba(201,168,76,0.5);}
 .online-status{font-size:11px;color:rgba(240,230,204,0.5);letter-spacing:0.05em;min-height:18px;text-align:center;}
 #screen-deckselect-online{display:flex;flex-direction:column;align-items:center;gap:16px;}
-.menu-title{font-family:'Cinzel Decorative',cursive;font-size:clamp(22px,5vw,42px);text-align:center;
+.menu-title{font-family:'Cinzel Decorative',cursive;font-size:clamp(32px,7vw,62px);text-align:center;line-height:0.85;
   background:linear-gradient(90deg,var(--gold-d),var(--gold),var(--gold-l));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
 .menu-sub{font-size:12px;color:rgba(240,230,204,0.35);letter-spacing:0.1em;text-align:center;margin-bottom:24px;}
+#menu-art-trigger{
+  position:absolute;bottom:10px;right:10px;width:18px;height:18px;
+  cursor:pointer;z-index:2;opacity:0;
+}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal-box{background:linear-gradient(135deg,#1a1410,#0e0c08);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
+.menu-title-rev{
+  display:inline-block;transform:scaleY(-1);
+  font-size:0.78em;
+  background:linear-gradient(90deg,var(--gold-d),var(--gold),var(--gold-l));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  opacity:0.55;
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
+  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
+}
 .menu-btn{
   font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:0.12em;
   background:linear-gradient(135deg,var(--gold-d),var(--gold));
@@ -1014,12 +1049,37 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 <!-- ═══ MENU SCREEN ═══ -->
 <div id="screen-menu" class="screen hidden">
-  <div class="menu-title">Card Game Studio</div>
+  <img id="menu-art" class="menu-art" src="images/mon_013.gif" alt="">
+  <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVERSED</span></div>
   <div class="menu-sub">PROTOTYPE BATTLE SYSTEM</div>
   <button class="menu-btn" onclick="showDeckSelect()">ソロプレイ</button>
   <button class="menu-btn" onclick="showOnlineMenu()">マルチプレイ</button>
   <button class="menu-btn secondary" onclick="showScreen('screen-deck')">デッキ編成</button>
   <button class="menu-btn secondary" onclick="showScreen('screen-editor')">カード一覧</button>
+  <div id="menu-art-trigger" onclick="openMenuArtSettings()" title=""></div>
+</div>
+
+<!-- ═══ MENU ART SETTINGS (hidden panel) ═══ -->
+<div id="menu-art-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:380px;">
+    <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px;">タイトル画像設定</div>
+    <div style="font-size:11px;color:rgba(240,230,204,0.6);margin-bottom:10px;">images/フォルダ内のファイル名、または完全なURLを入力してください</div>
+    <input id="menu-art-input" type="text" placeholder="mon_013.gif または https://..." style="width:100%;padding:8px 10px;font-size:12px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:6px;color:var(--parchment);outline:none;margin-bottom:10px;box-sizing:border-box;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <label style="font-size:11px;color:rgba(240,230,204,0.6);display:flex;align-items:center;gap:5px;">
+        透明度
+        <input id="menu-art-opacity" type="range" min="0" max="100" value="22" style="width:90px;">
+      </label>
+    </div>
+    <div style="width:100%;height:140px;border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+      <img id="menu-art-preview" style="max-width:100%;max-height:100%;object-fit:contain;" src="">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="gbtn" style="flex:1;" onclick="saveMenuArtSettings()">保存</button>
+      <button class="gbtn" style="flex:1;background:rgba(120,40,40,0.3);" onclick="resetMenuArtSettings()">リセット</button>
+      <button class="gbtn" style="flex:1;" onclick="closeMenuArtSettings()">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ ONLINE SCREEN ═══ -->
@@ -1425,7 +1485,36 @@ const TRIG_LABELS={
   on_enter:'登場時',on_attack:'攻撃時',on_battle:'交戦時',
   on_death:'破壊時',on_turn_start:'ターン開始',on_turn_end:'ターン終了',
   on_ally_death:'味方破壊時',on_ally_enter:'味方登場時',
+  on_enemy_enter:'相手登場時',on_enemy_death:'相手破壊時',on_damage_taken:'被ダメージ時',
 };
+
+// 対象ラベル（カードテキスト用・簡潔）
+const _TGT_TXT={
+  enemy_choose:'相手1体（選択）', enemy_random:'相手ランダム1体',
+  enemy_highest_atk:'相手の最大攻撃力', enemy_lowest_atk:'相手の最小攻撃力',
+  enemy_highest_hp:'相手の最大体力', enemy_lowest_hp:'相手の最小体力',
+  ally_choose:'味方1体（選択）', ally_random:'味方ランダム1体', ally_self:'自身',
+  ally_highest_atk:'味方の最大攻撃力', ally_lowest_atk:'味方の最小攻撃力',
+  ally_highest_hp:'味方の最大体力', ally_lowest_hp:'味方の最小体力',
+  // 旧形式
+  choose:'1体（選択）', random:'ランダム1体', self:'自身',
+  strongest:'最大攻撃力', weakest:'最小体力', lowest_hp:'最小体力', highest_atk:'最大攻撃力',
+};
+function _tgtSide(t){return t&&(t.startsWith('ally')||t==='self')?'味方':'相手';}
+function _tgtOne(t,defSide,n){ // 1体系の対象文（n体対応）
+  n=n||1;
+  const cnt=n>1?n+'体':'1体';
+  if(!t) return defSide+cnt;
+  if(_TGT_TXT[t]){
+    // "選択"等のサフィックスはそのまま、数字部分だけ差し替え
+    if(n>1){
+      if(t.includes('random')) return `${_tgtSide(t)}ランダム${n}体`;
+      if(t.includes('choose')) return `${_tgtSide(t)}${n}体（選択）`;
+    }
+    return _TGT_TXT[t];
+  }
+  return defSide+cnt;
+}
 
 function buildAbilityText(card){
   const abs=card.abilities||[];
@@ -1436,51 +1525,96 @@ function buildAbilityText(card){
   abs.filter(a=>a.type==='trigger').forEach(a=>{
     const trig=TRIG_LABELS[a.trigger]||a.trigger;
     const p=a.params||{};
+    const tgt=p.target||'';
+    const isAll=tgt&&(tgt.endsWith('_all')||tgt==='both'||tgt==='self_all'||tgt==='enemy_all'||tgt==='ally_all');
+    const kwTxt=()=>(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・')||'キーワード';
     let desc=`【${trig}】`;
     switch(a.effect){
-      case 'draw':            desc+=`${p.n||1}枚引く`; break;
-      case 'dmg_enemy_one':   desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}に${p.dmg}ダメージ`; break;
-      case 'dmg_enemy_n':     desc+=`相手ユニット${p.target==='random'?'ランダム':''}${p.n}体に${p.dmg}ダメージ`; break;
-      case 'dmg_enemy_all':   desc+=`相手ユニット全体に${p.dmg}ダメージ`; break;
-      case 'dmg_leader':      desc+=`相手リーダーに${p.dmg}ダメージ`; break;
+      // ── ドロー・手札 ──
+      case 'draw':            desc+=`${_tgtSide(tgt)==='相手'&&tgt?'相手が':''}${p.n||1}枚引く`; break;
+      case 'discard':{
+        const side=_tgtSide(tgt||'enemy');
+        desc+= isAll?`${side}の手札を全て捨てる`:`${side}の手札をランダムに${p.n||1}枚捨てる`;
+        break;
+      }
+      case 'discard_hand_draw': desc+=`${_tgtSide(tgt||'self')}の手札を全て捨てて同じ枚数引く`; break;
+      case 'add_to_hand':{const e=(p.cards||[]);desc+=(e.length?e.map(x=>`${x.name}×${x.n||1}`).join('・'):'カード')+`を${_tgtSide(tgt||'self')}の手札に加える`;break;}
+      // ── ダメージ ──
+      case 'dmg_unit_one':    desc+=`${_tgtOne(tgt,'相手',p.n)}に${p.dmg||1}ダメージ`; break;
+      case 'dmg_unit_n':      desc+=`${_tgtSide(tgt||'enemy')}ユニット${tgt&&tgt.includes('random')?'ランダム':''}${p.n||2}体に${p.dmg||1}ダメージ`; break;
+      case 'dmg_unit_all':    desc+= tgt==='both'?`全ユニットに${p.dmg||1}ダメージ`:`${_tgtSide(tgt||'enemy')}ユニット全体に${p.dmg||1}ダメージ`; break;
+      case 'dmg_leader':      desc+=`${_tgtSide(tgt||'enemy')}リーダーに${p.dmg||1}ダメージ`; break;
+      case 'dmg_any':         desc+=`任意の対象に${p.dmg||1}ダメージ`; break;
+      // 旧ID互換
+      case 'dmg_enemy_one':   desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}に${p.dmg||1}ダメージ`; break;
+      case 'dmg_enemy_all':   desc+=`相手ユニット全体に${p.dmg||1}ダメージ`; break;
+      // ── 回復 ──
+      case 'heal_leader':     desc+=`${_tgtSide(tgt||'self')}リーダーを${p.amount||1}回復`; break;
+      case 'heal_unit_one':   desc+=`${_tgtOne(tgt,'味方',p.n)}を${p.amount||1}回復`; break;
+      case 'heal_unit_all':   desc+=`${_tgtSide(tgt||'ally')}ユニット全体を${p.amount||1}回復`; break;
+      // ── 除去 ──
+      case 'destroy_unit_one': desc+=`${_tgtOne(tgt,'相手',p.n)}を破壊`; break;
+      case 'destroy_unit_all': desc+=`${_tgtSide(tgt||'enemy')}ユニット全体を破壊`; break;
       case 'destroy_one':     desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}を破壊`; break;
-      case 'destroy_all':     desc+=`相手ユニット全体を破壊`; break;
+      case 'exile_unit_one':  desc+=`${_tgtOne(tgt,'相手',p.n)}を除外`; break;
+      case 'exile_unit_all':  desc+=`${_tgtSide(tgt||'enemy')}ユニット全体を除外`; break;
+      case 'return_unit_one': desc+=`${_tgtOne(tgt,'相手',p.n)}を手札に戻す`; break;
+      case 'return_unit_all': desc+=`${_tgtSide(tgt||'enemy')}ユニット全体を手札に戻す`; break;
       case 'return_one':      desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}を手札に戻す`; break;
-      case 'return_all':      desc+=`相手ユニット全体を手札に戻す`; break;
-      case 'grant_kw_summoned':{const kws=(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・');desc+=`この能力で召喚したユニットに${kws||'キーワード'}付与`; break;}
-      case 'grant_kw_one':{const kws=(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・');desc+=`自分ユニット1体に${kws||'キーワード'}付与`; break;}
-      case 'grant_kw_all':{const kws=(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・');desc+=`自分ユニット全体に${kws||'キーワード'}付与`; break;}
-      case 'heal_leader':     desc+=`自分リーダーを${p.amount}回復`; break;
+      case 'steal_unit_one':  desc+=`${_tgtOne(tgt,'相手',p.n)}を強奪`; break;
+      case 'steal_one':       desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}を強奪`; break;
+      // ── 状態異常 ──
+      case 'bind_unit':       desc+= isAll?`${_tgtSide(tgt)}ユニット全体を呪縛`:`${_tgtOne(tgt,'相手',p.n)}を呪縛`; break;
+      case 'silence_unit':    desc+= isAll?`${_tgtSide(tgt)}ユニット全体を沈黙`:`${_tgtOne(tgt,'相手',p.n)}を沈黙`; break;
+      // ── バフ・デバフ ──
+      case 'buff_unit_one':   desc+=`${_tgtOne(tgt,'味方',p.n)}を+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_unit_all':   desc+=`${_tgtSide(tgt||'ally')}ユニット全体を+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_ally_one':   desc+=`自分ユニット1体を+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_ally_all':   desc+=`自分ユニット全体を+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'debuff_enemy_one':desc+=`相手ユニット1体に-${p.pow||0}/-${p.tuf||0}`; break;
+      case 'reduce_atk_all':  desc+=`相手ユニット全体の攻撃力-${p.amount||1}`; break;
+      case 'set_stats':       desc+=`${_tgtOne(tgt,'相手',p.n)}のステータスを${p.pow||1}/${p.tuf||1}にする`; break;
+      case 'set_leader_life': desc+=`${_tgtSide(tgt||'enemy')}リーダーのHPを${p.amount||10}にする`; break;
+      case 'grant_kw_unit':   desc+= isAll?`${_tgtSide(tgt)}ユニット全体に${kwTxt()}付与`:`${_tgtOne(tgt,'味方',p.n)}に${kwTxt()}付与`; break;
+      case 'grant_kw_all':    desc+=`自分ユニット全体に${kwTxt()}付与`; break;
+      case 'grant_kw_one':    desc+=`自分ユニット1体に${kwTxt()}付与`; break;
+      case 'grant_kw_summoned':desc+=`この能力で召喚したユニットに${kwTxt()}付与`; break;
+      // ── リソース ──
+      case 'change_mana':{
+        const t=p.target||'self_restore';const amt=p.amount||1;
+        const m={self_restore:`自分のマナを${amt}回復`,self_add_max:`自分の最大マナを${amt}増やす`,
+          self_sub_current:`自分のマナを${amt}減らす`,self_sub_max:`自分の最大マナを${amt}減らす`,
+          enemy_restore:`相手のマナを${amt}回復`,enemy_add_max:`相手の最大マナを${amt}増やす`,
+          enemy_sub_current:`相手のマナを${amt}減らす`,enemy_sub_max:`相手の最大マナを${amt}減らす`};
+        desc+=m[t]||`マナ変更${amt}`; break;
+      }
+      case 'change_ap':{
+        const t=p.target||'self_add';const amt=p.amount||1;
+        const m={self_add:`自分のAP+${amt}`,self_subtract:`自分のAP-${amt}`,enemy_add:`相手のAP+${amt}`,enemy_subtract:`相手のAP-${amt}`};
+        desc+=m[t]||`AP変更${amt}`; break;
+      }
+      // ── 召喚・蘇生 ──
       case 'summon_free':{
         let cond=`コスト${p.cost_max}以下`;
         if(p.filter==='no_ability') cond+=`・能力なし`;
         desc+=`手札から${cond}のユニットを無料召喚`;
         break;
       }
-      case 'summon_card':
-        if(p.cards&&p.cards.length) desc+=(p.cards.map(e=>`${e.name}×${e.n||1}`).join('・'))+'を召喚';
-        else if(p.name) desc+=`${p.name}を${p.n||1}体召喚`;
+      case 'summon_card':{
+        const side=tgt==='enemy'?'相手側に':'';
+        if(p.cards&&p.cards.length) desc+=side+(p.cards.map(e=>`${e.name}×${e.n||1}`).join('・'))+'を召喚';
+        else if(p.name) desc+=`${side}${p.name}を${p.n||1}体召喚`;
         break;
-      case 'buff_ally_one': desc+=`自分ユニット1体を+${p.pow||0}/+${p.tuf||0}`; break;
-      case 'buff_ally_all': desc+=`自分ユニット全体を+${p.pow||0}/+${p.tuf||0}`; break;
-      case 'add_to_hand':{const entries=(p.cards||[]);desc+=entries.length?entries.map(e=>`${e.name}×${e.n||1}`).join('・')+'を手札に':'カードを手札に';break;}
-      case 'steal_one':    desc+=`相手ユニット1体を強奪`; break;
-      case 'exile_one':    desc+=`相手ユニット1体を除外`; break;
+      }
       case 'revive':{
         let rcond='墓地から';
         if(p.cost_max>0) rcond+=`コスト${p.cost_max}以下の`;
         if(p.type) rcond+=`${p.type}の`;
-        desc+=`${rcond}ユニットを蘇生`;
+        const how=tgt&&tgt.includes('random')?'ランダムに':tgt&&tgt.includes('choose')?'（選択して）':'';
+        desc+=`${rcond}ユニットを${how}蘇生`;
         break;
       }
-      case 'debuff_enemy_one':{const p2=a.params||{};desc+=`相手ユニット1体に-${p2.pow||0}/-${p2.tuf||0}`;break;}
-      case 'discard':      desc+=`相手手札を${(a.params?.n||1)}枚捨てさせる`; break;
-      case 'dmg_any':      desc+=`任意の対象に${(a.params?.dmg||1)}ダメージ`; break;
-      case 'add_ap_self':    desc+=`自分AP+${a.params?.amount||1}`; break;
-      case 'reduce_ap_self': desc+=`自分AP-${a.params?.amount||1}（コスト）`; break;
-      case 'add_ap_enemy':   desc+=`相手AP+${a.params?.amount||1}`; break;
-      case 'reduce_ap_enemy':desc+=`相手AP-${a.params?.amount||1}`; break;
-      default: desc+=(EFF_LABELS[a.effect]||a.effect);
+      default: desc+=(EFF_LABELS&&EFF_LABELS[a.effect])||a.effect;
     }
     parts.push(desc);
   });
@@ -1603,7 +1737,10 @@ function arcEffText(ab, showCond=true){
   let eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
   const val=ab.val||ab.amount||1;
   const tgt=ab.params?.target||ab.target||'';
-  const tgtLbl=ARC_TARGET_LABELS[tgt]||'';
+  let tgtLbl=ARC_TARGET_LABELS[tgt]||'';
+  const n=ab.params?.n;
+  // X(対象数)をtgtLblに反映
+  if(tgtLbl.includes('X')) tgtLbl=tgtLbl.replace('X', n&&n>1?n+'体':'1体');
   // 対象ラベルを先頭に付ける（誰に効果が及ぶか明示）
   let effStr=eff.replace(/X/g,_isAllTarget(tgt)?'全':val);
   if(tgtLbl) effStr=`[${tgtLbl}]`+effStr;
@@ -1647,11 +1784,13 @@ const ARC_TARGET_LABELS={
   'self_all':'自分・全体','enemy_all':'相手・全体',
   // 自分ユニット
   'ally_all':'自分・全体','ally_choose':'自分・選択X','ally_random':'自分・ランダムX',
-  'ally_self':'自身','ally_lowest_hp':'自分・最低HP','ally_highest_atk':'自分・最高攻撃',
+  'ally_self':'自身',
+  'ally_highest_atk':'自分・最大攻撃力','ally_lowest_atk':'自分・最小攻撃力',
+  'ally_highest_hp':'自分・最大体力','ally_lowest_hp':'自分・最小体力',
   // 相手ユニット
   'enemy_choose':'相手・選択X','enemy_random':'相手・ランダムX',
-  'enemy_strongest':'相手・最強','enemy_weakest':'相手・最弱',
-  'enemy_lowest_hp':'相手・最低HP','enemy_highest_atk':'相手・最高攻撃',
+  'enemy_highest_atk':'相手・最大攻撃力','enemy_lowest_atk':'相手・最小攻撃力',
+  'enemy_highest_hp':'相手・最大体力','enemy_lowest_hp':'相手・最小体力',
   // マナ
   'self_restore':'自分・回復','self_add_max':'自分・最大UP',
   'self_sub_current':'自分・現在-','self_sub_max':'自分・最大-',
@@ -1689,28 +1828,28 @@ const ARC_PASSIVE_EFFECTS=[
   {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','self_subtract','enemy_add','enemy_subtract']},
   // ── 回復 ──
   {id:'heal_leader',        label:'リーダーを回復',            unit:'点', target_opts:['self','enemy']},
-  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp','enemy_random']},
+  {id:'heal_unit_one',      label:'ユニットを回復',         unit:'点', target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','enemy_random']},
   {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── バフ・デバフ ──
-  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_atk','enemy_choose','enemy_random']},
+  {id:'buff_unit_one',      label:'ユニットをバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_choose','enemy_random']},
   {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally_all','enemy_all','both']},
   {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','enemy_choose','enemy_random']},
   {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['self','enemy']},
   {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
   // ── ダメージ ──
-  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_lowest_hp','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'dmg_unit_one',       label:'ユニットにダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','enemy_lowest_hp','enemy_highest_hp','ally_choose','ally_random','ally_self']},
   {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy_all','ally_all','both']},
   {id:'dmg_leader',         label:'リーダーにダメージ',        unit:'点', target_opts:['enemy','self']},
   {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:['enemy_random']},
   // ── 除去・状態異常 ──
-  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'destroy_unit_one',   label:'ユニットを破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','ally_choose','ally_random','ally_self']},
   {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy_all','ally_all','both']},
-  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
+  {id:'exile_unit_one',     label:'ユニットを除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
   {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy_all','both']},
-  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
+  {id:'return_unit_one',    label:'ユニットを手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
   {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy_all','ally_all']},
-  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest']},
-  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random']},
+  {id:'steal_unit_one',     label:'ユニットを強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk']},
+  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self']},
   {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all']},
   // ── 召喚・蘇生 ──
   {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:['self','enemy']},
@@ -1724,27 +1863,27 @@ const ARC_IMM_EFFECTS=[
   {id:'add_to_hand',        label:'指定カードを手札に加える',  unit:'',   target_opts:['self','enemy']},
   // ── 回復 ──
   {id:'heal_leader',        label:'リーダーを回復',            unit:'点', target_opts:['self','enemy']},
-  {id:'heal_unit_one',      label:'ユニット1体を回復',         unit:'点', target_opts:['ally_random','ally_lowest_hp','enemy_random']},
+  {id:'heal_unit_one',      label:'ユニットを回復',         unit:'点', target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','enemy_random']},
   {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── ダメージ ──
   {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy_all','ally_all','both']},
-  {id:'dmg_unit_one',       label:'ユニット1体にダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_lowest_hp','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'dmg_unit_one',       label:'ユニットにダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','enemy_lowest_hp','enemy_highest_hp','ally_choose','ally_random','ally_self']},
   {id:'dmg_leader',         label:'リーダーにダメージ',        unit:'点', target_opts:['enemy','self']},
   {id:'dmg_any',            label:'ランダム対象ダメージ',      unit:'点', target_opts:['enemy_random']},
   // ── 除去 ──
-  {id:'destroy_unit_one',   label:'ユニット1体を破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest','enemy_highest_atk','ally_choose','ally_random']},
+  {id:'destroy_unit_one',   label:'ユニットを破壊',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','ally_choose','ally_random','ally_self']},
   {id:'destroy_unit_all',   label:'ユニット全体を破壊',        unit:'',   target_opts:['enemy_all','ally_all','both']},
-  {id:'exile_unit_one',     label:'ユニット1体を除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
+  {id:'exile_unit_one',     label:'ユニットを除外',         unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random']},
   {id:'exile_unit_all',     label:'ユニット全体を除外',        unit:'',   target_opts:['enemy_all','both']},
-  {id:'return_unit_one',    label:'ユニット1体を手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
+  {id:'return_unit_one',    label:'ユニットを手札に戻す',   unit:'',   target_opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self']},
   {id:'return_unit_all',    label:'ユニット全体を手札に戻す',  unit:'',   target_opts:['enemy_all','ally_all']},
-  {id:'steal_unit_one',     label:'ユニット1体を強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_strongest']},
+  {id:'steal_unit_one',     label:'ユニットを強奪',         unit:'',   target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk']},
   // ── 状態異常 ──
-  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random']},
+  {id:'bind_unit',          label:'ユニットを呪縛',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self']},
   {id:'silence_unit',       label:'ユニットを沈黙',            unit:'',   target_opts:['enemy_choose','enemy_random','enemy_all']},
   // ── バフ・デバフ ──
   {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally_all','enemy_all','both']},
-  {id:'buff_unit_one',      label:'ユニット1体をバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_highest_atk','enemy_choose','enemy_random']},
+  {id:'buff_unit_one',      label:'ユニットをバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_highest_atk','enemy_choose','enemy_random']},
   {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','enemy_choose','enemy_random']},
   {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['self','enemy']},
   {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
@@ -1824,6 +1963,15 @@ function _buildArcTargetSel(ab, opts, extrasEl, valInputRef){
     ab.params.target=e.target.value;
     ab.target=e.target.value;
     updateValVisibility(e.target.value);
+    // 体数入力の表示も対象に応じて更新
+    const existingN=extrasEl.querySelector('.arc-n-wrap');
+    if(existingN)existingN.remove();
+    if(_ARC_N_CAPABLE&&_ARC_N_CAPABLE.includes(ab.effect)){
+      const tgt=e.target.value;
+      if(!tgt.endsWith('_all')&&!tgt.endsWith('self')&&tgt!=='self'&&tgt!=='enemy'&&tgt!=='both'){
+        _buildArcNInput(ab, extrasEl);
+      }
+    }
   };
   // 初期状態を反映
   updateValVisibility(ab.params?.target||ab.target||opts[0]);
@@ -1831,10 +1979,34 @@ function _buildArcTargetSel(ab, opts, extrasEl, valInputRef){
   extrasEl.appendChild(wrap);
 }
 
+const _ARC_N_CAPABLE=['dmg_unit_one','destroy_unit_one','exile_unit_one','return_unit_one','steal_unit_one','bind_unit','silence_unit','heal_unit_one','buff_unit_one','set_stats','grant_kw_unit','revive'];
+function _buildArcNInput(ab, extrasEl){
+  const wrap=document.createElement('div');
+  wrap.className='arc-n-wrap';
+  wrap.style.cssText='display:flex;align-items:center;gap:5px;margin-top:3px;';
+  const lbl=document.createElement('span');
+  lbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.5);white-space:nowrap;';
+  lbl.textContent='体数:';
+  const inp=document.createElement('input');
+  inp.type='number';inp.min=1;inp.max=10;
+  inp.value=ab.params?.n||1;
+  inp.style.cssText='width:48px;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+  inp.oninput=e=>{if(!ab.params)ab.params={};ab.params.n=parseInt(e.target.value)||1;};
+  wrap.appendChild(lbl);wrap.appendChild(inp);
+  extrasEl.appendChild(wrap);
+}
+
 function _updateArcRowExtras(ab, extrasEl, effectList, valInputRef){
   extrasEl.innerHTML='';
   // valを初期表示（対象セレクターで再制御）
   if(valInputRef) valInputRef.style.display='';
+  // 体数入力（全体・自身指定でない場合のみ）
+  if(_ARC_N_CAPABLE.includes(ab.effect)){
+    const tgt=ab.params?.target||ab.target||'';
+    if(!tgt.endsWith('_all')&&!tgt.endsWith('self')&&tgt!=='self'&&tgt!=='enemy'&&tgt!=='both'){
+      _buildArcNInput(ab, extrasEl);
+    }
+  }
   // キーワードチップ
   const needsKw=['grant_kw_unit','grant_kw_all','grant_kw_one','grant_kw_summoned'].includes(ab.effect);
   if(needsKw){
@@ -2157,7 +2329,7 @@ function deckSelectArcana(){
   if(!ARCANAS.length){eToast('アルカナがありません。カード一覧 > アルカナから追加してください',true);return;}
   const list=document.getElementById('arcana-select-list');
   list.innerHTML='';
-  ARCANAS.forEach(arc=>{
+  [...ARCANAS].sort((a,b)=>(a.number??99)-(b.number??99)).forEach(arc=>{
     const row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;cursor:pointer;border:1px solid rgba(167,139,250,0.15);background:rgba(8,6,16,0.4);';
     row.onmouseenter=()=>row.style.background='rgba(167,139,250,0.1)';
@@ -2444,6 +2616,53 @@ function exportCardsJSON(){
 // ═══════════════════════════════════════════════════════════
 // SCREEN NAVIGATION
 // ═══════════════════════════════════════════════════════════
+// ── Menu Art Settings (hidden panel) ──
+function _loadMenuArtSettings(){
+  try{
+    const saved=localStorage.getItem('cg_menu_art');
+    if(saved){
+      const d=JSON.parse(saved);
+      const img=document.getElementById('menu-art');
+      if(d.src) img.src=d.src;
+      if(d.opacity!=null) img.style.opacity=d.opacity/100;
+    }
+  }catch(e){}
+}
+function openMenuArtSettings(){
+  const img=document.getElementById('menu-art');
+  const input=document.getElementById('menu-art-input');
+  const opacity=document.getElementById('menu-art-opacity');
+  input.value=img.src.includes('images/')?img.src.split('images/')[1]:img.src;
+  opacity.value=Math.round(parseFloat(img.style.opacity||0.22)*100);
+  document.getElementById('menu-art-preview').src=img.src;
+  document.getElementById('menu-art-modal').style.display='flex';
+  input.oninput=()=>{
+    const v=input.value.trim();
+    document.getElementById('menu-art-preview').src=v.startsWith('http')?v:`images/${v}`;
+  };
+  opacity.oninput=()=>{};
+}
+function closeMenuArtSettings(){
+  document.getElementById('menu-art-modal').style.display='none';
+}
+function saveMenuArtSettings(){
+  const v=document.getElementById('menu-art-input').value.trim();
+  const op=document.getElementById('menu-art-opacity').value;
+  const src=v.startsWith('http')?v:`images/${v}`;
+  const img=document.getElementById('menu-art');
+  img.src=src;
+  img.style.opacity=op/100;
+  localStorage.setItem('cg_menu_art',JSON.stringify({src,opacity:parseInt(op)}));
+  closeMenuArtSettings();
+}
+function resetMenuArtSettings(){
+  localStorage.removeItem('cg_menu_art');
+  const img=document.getElementById('menu-art');
+  img.src='images/mon_013.gif';
+  img.style.opacity=0.22;
+  closeMenuArtSettings();
+}
+
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>{
     s.style.display='none';
@@ -2460,6 +2679,7 @@ function showScreen(id){
 // 起動時にデータ読み込み後メニューを表示
 (async()=>{
   await initData();
+  _loadMenuArtSettings();
   showScreen('screen-menu');
 })();
 
@@ -2637,43 +2857,42 @@ const ALL_TRIGGERS=['on_enter','on_attack','on_battle','on_death','on_turn_start
 const ALL_EFFECTS=[
   // ── ドロー・手札 ──
   {id:'draw',              label:'カードを引く',              params:[{key:'n',label:'枚数',def:1},{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
-  {id:'discard',           label:'手札を捨てる',          params:[{key:'n',label:'枚数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy','self'],def:'enemy'}]},
+  {id:'discard',           label:'手札を捨てる',              params:[{key:'n',label:'枚数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy','self'],def:'enemy'}]},
   {id:'discard_hand_draw', label:'手札を全捨て→同枚数ドロー', params:[{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
-  {id:'add_to_hand',       label:'指定カードを手札に加える', params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]},{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
+  {id:'add_to_hand',       label:'指定カードを手札に加える',  params:[{key:'cards',label:'カードリスト',type:'card_list',def:[]},{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
   // ── ダメージ ──
-  {id:'dmg_unit_one',      label:'ユニット1体にダメージ',     params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_strongest','enemy_weakest','enemy_lowest_hp','ally_random','ally_self'],def:'enemy_choose'}]},
-  {id:'dmg_unit_n',        label:'ユニットN体にダメージ',     params:[{key:'n',label:'体数',def:2},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_random','ally_random'],def:'enemy_random'}]},
+  {id:'dmg_unit_one',      label:'ユニットにダメージ',        params:[{key:'n',label:'体数',def:1},{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','enemy_lowest_hp','enemy_highest_hp','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'dmg_unit_all',      label:'ユニット全体にダメージ',    params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['enemy','ally','both'],def:'enemy'}]},
   {id:'dmg_leader',        label:'リーダーにダメージ',        params:[{key:'dmg',label:'ダメージ',def:1},{key:'target',label:'対象',type:'select',opts:['enemy','self'],def:'enemy'}]},
   {id:'dmg_any',           label:'任意対象にダメージ',        params:[{key:'dmg',label:'ダメージ',def:1}]},
   // ── 回復 ──
   {id:'heal_leader',       label:'リーダーを回復',            params:[{key:'amount',label:'回復量',def:1},{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
-  {id:'heal_unit_one',     label:'ユニット1体を回復',         params:[{key:'amount',label:'回復量',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_lowest_hp','ally_self','enemy_random'],def:'ally_choose'}]},
+  {id:'heal_unit_one',     label:'ユニットを回復',            params:[{key:'n',label:'体数',def:1},{key:'amount',label:'回復量',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','enemy_random'],def:'ally_choose'}]},
   {id:'heal_unit_all',     label:'ユニット全体を回復',        params:[{key:'amount',label:'回復量',def:1},{key:'target',label:'対象',type:'select',opts:['ally','enemy','both'],def:'ally'}]},
   // ── 除去 ──
-  {id:'destroy_unit_one',  label:'ユニット1体を破壊',         params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_strongest','enemy_weakest','enemy_highest_atk','ally_random','ally_choose'],def:'enemy_choose'}]},
+  {id:'destroy_unit_one',  label:'ユニットを破壊',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'destroy_unit_all',  label:'ユニット全体を破壊',        params:[{key:'target',label:'対象',type:'select',opts:['enemy','ally','both'],def:'enemy'}]},
-  {id:'exile_unit_one',    label:'ユニット1体を除外',         params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_random'],def:'enemy_choose'}]},
+  {id:'exile_unit_one',    label:'ユニットを除外',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'exile_unit_all',    label:'ユニット全体を除外',        params:[{key:'target',label:'対象',type:'select',opts:['enemy','ally','both'],def:'enemy'}]},
-  {id:'return_unit_one',   label:'ユニット1体を手札に戻す',   params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
+  {id:'return_unit_one',   label:'ユニットを手札に戻す',      params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'return_unit_all',   label:'ユニット全体を手札に戻す',  params:[{key:'target',label:'対象',type:'select',opts:['enemy','ally'],def:'enemy'}]},
-  {id:'steal_unit_one',    label:'ユニット1体を強奪',         params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random'],def:'enemy_choose'}]},
+  {id:'steal_unit_one',    label:'ユニットを強奪',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random'],def:'enemy_choose'}]},
   // ── 状態異常 ──
-  {id:'bind_unit',         label:'ユニットを呪縛',            params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_random'],def:'enemy_choose'}]},
-  {id:'silence_unit',      label:'ユニットを沈黙',            params:[{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_random'],def:'enemy_choose'}]},
+  {id:'bind_unit',         label:'ユニットを呪縛',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
+  {id:'silence_unit',      label:'ユニットを沈黙',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   // ── バフ・デバフ ──
-  {id:'buff_unit_one',     label:'ユニット1体をバフ',         params:[{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_hp','enemy_random'],def:'ally_choose'}]},
+  {id:'buff_unit_one',     label:'ユニットをバフ',            params:[{key:'n',label:'体数',def:1},{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_random'],def:'ally_choose'}]},
   {id:'buff_unit_all',     label:'ユニット全体をバフ',        params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally','enemy','both'],def:'ally'}]},
-  {id:'set_stats',         label:'ユニットのスタッツを指定値に',params:[{key:'pow',label:'攻撃力',def:1},{key:'tuf',label:'体力',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
+  {id:'set_stats',         label:'ユニットのスタッツを指定値に',params:[{key:'n',label:'体数',def:1},{key:'pow',label:'攻撃力',def:1},{key:'tuf',label:'体力',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'set_leader_life',   label:'リーダーのHPを指定値に',   params:[{key:'amount',label:'HP値',def:10},{key:'target',label:'対象',type:'select',opts:['enemy','self'],def:'enemy'}]},
-  {id:'grant_kw_unit',     label:'ユニットにキーワード付与',  params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_all','enemy_random'],def:'ally_choose'}]},
+  {id:'grant_kw_unit',     label:'ユニットにキーワード付与',  params:[{key:'n',label:'体数',def:1},{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_all','enemy_random'],def:'ally_choose'}]},
   {id:'grant_kw_summoned', label:'召喚したユニットにキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
   // ── リソース ──
   {id:'change_mana',       label:'マナを変更',                params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_add_max','enemy_sub_current','enemy_sub_max'],def:'self_restore'}]},
   // ── 召喚・蘇生 ──
   {id:'summon_card',       label:'指定カードを召喚',          params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]},{key:'target',label:'召喚先',type:'select',opts:['self','enemy'],def:'self'}]},
   {id:'summon_free',       label:'手札から無料召喚',          params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
-  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
+  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'n',label:'体数',def:1},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
   // ── AP ──
   {id:'change_ap',         label:'APを変更',                  params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_add','self_subtract','enemy_add','enemy_subtract'],def:'self_add'}]},
 ];
@@ -3460,8 +3679,9 @@ async function arcanaApplyReversedEffect(pid, arc){
     const fakeFc={name:arc.name, _uid:-1, abilities:[]};
     const params={
       ...(ab.params||{}),
-      n:val, dmg:val, amount:val,
+      dmg:val, amount:val,
       pow:(ab.params?.pow??val), tuf:(ab.params?.tuf??val),
+      n:(ab.params?.n||(ab.effect==='draw'||ab.effect==='discard'?val:1)),
       target:(ab.params?.target||ab.target),
     };
     const abEx={effect:ab.effect, params, _triggerType:'arcana'};
@@ -4638,42 +4858,55 @@ async function _execEffect(pid, fc, ab, isAI){
   // ── 新統合効果 ──
   // targetパラメータ解釈ヘルパー
   function _resolveTargets(tgt){
-    // tgt: 'enemy_choose','enemy_random','enemy_strongest'等
+    // tgt: 'enemy_choose','enemy_random','enemy_highest_atk'等
     const side=tgt&&tgt.startsWith('ally')?'ally':'enemy';
     const how=tgt?(tgt.includes('_')?tgt.split('_').slice(1).join('_'):'random'):'random';
     const pool=side==='ally'?p.field:op.field;
     const poolPid=side==='ally'?pid:opp;
     return {side,how,pool,poolPid};
   }
+  // n体まとめて対象を選ぶ汎用ヘルパー。selfは1体固定。choose時はn回連続選択。
+  async function _pickTargets(tgt, n, promptLabel){
+    const {pool,poolPid,how}=_resolveTargets(tgt);
+    if(how==='self'){
+      return fc&&fc._uid>0 ? {targets:[fc],poolPid:pid} : {targets:[],poolPid:pid};
+    }
+    if(!pool.length) return {targets:[],poolPid};
+    const count=Math.min(n||1,pool.length);
+    let targets=[];
+    if(how==='choose'&&!isAI){
+      let remaining=[...pool];
+      for(let i=0;i<count;i++){
+        if(!remaining.length)break;
+        render();
+        const r=await selectTarget(`${fc.name}: ${promptLabel} (${i+1}/${count})`,remaining.map(c=>({card:c,pid:poolPid})));
+        if(!r)break;
+        const picked=remaining.find(c=>c._uid===r.card._uid);
+        if(picked){targets.push(picked);remaining=remaining.filter(c=>c._uid!==picked._uid);}
+      }
+    } else if(how==='highest_atk'||how==='strongest'){
+      targets=[...pool].sort((a,b)=>b.power-a.power).slice(0,count);
+    } else if(how==='lowest_atk'){
+      targets=[...pool].sort((a,b)=>a.power-b.power).slice(0,count);
+    } else if(how==='highest_hp'){
+      targets=[...pool].sort((a,b)=>b._hp-a._hp).slice(0,count);
+    } else if(how==='lowest_hp'||how==='weakest'){
+      targets=[...pool].sort((a,b)=>a._hp-b._hp).slice(0,count);
+    } else {
+      // random
+      const shuffled=[...pool].sort(()=>Math.random()-0.5);
+      targets=shuffled.slice(0,count);
+    }
+    return {targets,poolPid};
+  }
   if(e==='dmg_unit_one'){
     const tgt=pr.target||'enemy_random';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else if(how==='strongest') t=pool.reduce((a,b)=>a.power>b.power?a:b);
-    else if(how==='weakest') t=pool.reduce((a,b)=>a.toughness<b.toughness?a:b);
-    else if(how==='lowest_hp') t=pool.reduce((a,b)=>a._hp<b._hp?a:b);
-    else if(how==='self') t=fc;
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t?._uid);
-    if(tgt2){await dmgCard(poolPid,tgt2._uid,pr.dmg||1);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に${pr.dmg||1}ダメージ`,'');}
-    render();return;
-  }
-  if(e==='dmg_unit_n'){
-    const tgt=pr.target||'enemy_random';
-    const {pool,poolPid}=_resolveTargets(tgt);
-    const n=Math.min(pr.n||2,pool.length);if(!n){render();return;}
-    const chosen=[];
-    for(let i=0;i<n;i++){
-      const rem=pool.filter(t=>!chosen.find(c=>c._uid===t._uid));if(!rem.length)break;
-      chosen.push(rem[Math.floor(Math.random()*rem.length)]);
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'ダメージ対象');
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){await dmgCard(poolPid,tgt2._uid,pr.dmg||1);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に${pr.dmg||1}ダメージ`,'');}
     }
-    const dmg=pr.dmg||1;
-    chosen.forEach(t=>{const c=pool.find(x=>x._uid===t._uid);if(c)c._hp-=dmg;});
-    render();await new Promise(r=>setTimeout(r,300));
-    pool.filter(t=>t._hp<=0).forEach(t=>{removeCard(poolPid,t._uid);});
-    log(`${pCol(fc.name,pid)}→ ${chosen.length}体に${dmg}ダメージ`,'');render();return;
+    render();return;
   }
   if(e==='dmg_unit_all'){
     const tgt=pr.target||'enemy';
@@ -4686,15 +4919,12 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='heal_unit_one'){
     const tgt=pr.target||'ally_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt.replace('ally_','').replace('enemy_','').length?tgt:'ally_random');
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 回復対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else if(how==='lowest_hp') t=pool.reduce((a,b)=>a._hp<b._hp?a:b);
-    else if(how==='self') t=fc;
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t?._uid);
-    if(tgt2){const hp=pr.amount||1;tgt2._hp=Math.min(tgt2.toughness,tgt2._hp+hp);const pos=getCardCenter(poolPid,tgt2._uid);if(pos)showDmgFloat(pos.x,pos.y,hp,true);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${hp}回復`,'');}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'回復対象');
+    const hp=pr.amount||1;
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){tgt2._hp=Math.min(tgt2.toughness,tgt2._hp+hp);const pos=getCardCenter(poolPid,tgt2._uid);if(pos)showDmgFloat(pos.x,pos.y,hp,true);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${hp}回復`,'');}
+    }
     render();return;
   }
   if(e==='heal_unit_all'){
@@ -4706,16 +4936,11 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='destroy_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 破壊対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else if(how==='strongest') t=pool.reduce((a,b)=>a.power>b.power?a:b);
-    else if(how==='weakest') t=pool.reduce((a,b)=>a.toughness<b.toughness?a:b);
-    else if(how==='highest_atk') t=pool.reduce((a,b)=>a.power>b.power?a:b);
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t._uid);
-    if(tgt2){log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を破壊`,'');await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'破壊対象');
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を破壊`,'');await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}
+    }
     render();return;
   }
   if(e==='destroy_unit_all'){
@@ -4726,13 +4951,11 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='exile_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 除外対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t._uid);
-    if(tgt2){G.p[poolPid].field=G.p[poolPid].field.filter(c=>c._uid!==tgt2._uid);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を除外`,'');}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'除外対象');
+    for(const t of targets){
+      G.p[poolPid].field=G.p[poolPid].field.filter(c=>c._uid!==t._uid);
+      log(`${pCol(fc.name,pid)}→${pCol(t.name,poolPid)}を除外`,'');
+    }
     render();return;
   }
   if(e==='exile_unit_all'){
@@ -4743,14 +4966,11 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='return_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 手札に戻す対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else if(how==='self') t=fc;
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t._uid);
-    if(tgt2){removeCard(poolPid,tgt2._uid);const base=CARDS.find(c=>c.id===tgt2.id)||tgt2;G.p[poolPid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を手札に戻す`,'');}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'手札に戻す対象');
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){removeCard(poolPid,tgt2._uid);const base=CARDS.find(c=>c.id===tgt2.id)||tgt2;G.p[poolPid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を手札に戻す`,'');}
+    }
     render();return;
   }
   if(e==='return_unit_all'){
@@ -4760,44 +4980,50 @@ async function _execEffect(pid, fc, ab, isAI){
     log(`${pCol(fc.name,pid)}→ ユニット全体を手札に戻す`,'');render();return;
   }
   if(e==='steal_unit_one'){
-    if(!op.field.length){render();return;}
     const tgt=pr.target||'enemy_choose';
     const {how}=_resolveTargets(tgt);
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 強奪対象`,op.field.map(c=>({card:c,pid:opp})));if(!r)return;t=r.card;}
-    else t=op.field[Math.floor(Math.random()*op.field.length)];
-    const tgt2=op.field.find(c=>c._uid===t._uid);
-    if(tgt2&&p.field.length<7){op.field=op.field.filter(c=>c._uid!==tgt2._uid);tgt2._sick=true;tgt2._attacked=false;p.field.push(tgt2);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,opp)}を強奪`,'');}
+    const count=Math.min(pr.n||1, 7-p.field.length);
+    let pool=[...op.field];
+    let stolen=0;
+    for(let i=0;i<count&&pool.length&&p.field.length<7;i++){
+      let t;
+      if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 強奪対象 (${i+1}/${count})`,pool.map(c=>({card:c,pid:opp})));if(!r)break;t=r.card;}
+      else t=pool[Math.floor(Math.random()*pool.length)];
+      const tgt2=op.field.find(c=>c._uid===t._uid);
+      if(tgt2){op.field=op.field.filter(c=>c._uid!==tgt2._uid);tgt2._sick=true;tgt2._attacked=false;p.field.push(tgt2);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,opp)}を強奪`,'');stolen++;}
+      pool=pool.filter(c=>c._uid!==t._uid);
+    }
     render();return;
   }
   if(e==='bind_unit'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    if(how==='all'||tgt.endsWith('all')){pool.forEach(t=>{t._bound=true;});log(`${pCol(fc.name,pid)}→ 全体呪縛`,'');}
-    else{let t;if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 呪縛対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}else t=pool[Math.floor(Math.random()*pool.length)];const tgt2=pool.find(c=>c._uid===t._uid);if(tgt2){tgt2._bound=true;log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を呪縛`,'');}}
+    if(tgt.endsWith('_all')){
+      const {pool}=_resolveTargets(tgt);
+      pool.forEach(t=>{t._bound=true;});
+      log(`${pCol(fc.name,pid)}→ 全体呪縛`,'');render();return;
+    }
+    const {targets}=await _pickTargets(tgt,pr.n||1,'呪縛対象');
+    targets.forEach(t=>{t._bound=true;log(`${pCol(fc.name,pid)}→${pCol(t.name,pid)}を呪縛`,'');});
     render();return;
   }
   if(e==='silence_unit'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    if(how==='all'||tgt.endsWith('all')){pool.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;});log(`${pCol(fc.name,pid)}→ 全体沈黙`,'');}
-    else{let t;if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 沈黙対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}else t=pool[Math.floor(Math.random()*pool.length)];const tgt2=pool.find(c=>c._uid===t._uid);if(tgt2){tgt2._silenced=true;tgt2.abilities=[];tgt2.ability=null;log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を沈黙`,'');}}
+    if(tgt.endsWith('_all')){
+      const {pool}=_resolveTargets(tgt);
+      pool.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;});
+      log(`${pCol(fc.name,pid)}→ 全体沈黙`,'');render();return;
+    }
+    const {targets}=await _pickTargets(tgt,pr.n||1,'沈黙対象');
+    targets.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;log(`${pCol(fc.name,pid)}→${pCol(t.name,pid)}を沈黙`,'');});
     render();return;
   }
   if(e==='buff_unit_one'){
     const tgt=pr.target||'ally_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: バフ対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else if(how==='highest_atk') t=pool.reduce((a,b)=>a.power>b.power?a:b);
-    else if(how==='lowest_hp') t=pool.reduce((a,b)=>a._hp<b._hp?a:b);
-    else if(how==='self') t=fc;
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t?._uid);
-    if(tgt2){tgt2.power+=pr.pow||0;tgt2.toughness+=pr.tuf||0;tgt2._hp+=pr.tuf||0;log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に+${pr.pow||0}/+${pr.tuf||0}`,'');}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'バフ対象');
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){tgt2.power+=pr.pow||0;tgt2.toughness+=pr.tuf||0;tgt2._hp+=pr.tuf||0;log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に+${pr.pow||0}/+${pr.tuf||0}`,'');}
+    }
     render();return;
   }
   if(e==='buff_unit_all'){
@@ -4808,27 +5034,22 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='grant_kw_unit'){
     const tgt=pr.target||'ally_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
     const kws=(pr.kws||[]).filter(Boolean);
     if(!kws.length){render();return;}
     let targets=[];
-    if(how==='all'||tgt.endsWith('all')) targets=pool;
-    else if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 付与対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;targets=[r.card];}
-    else if(how==='self') targets=[fc];
-    else targets=[pool[Math.floor(Math.random()*pool.length)]].filter(Boolean);
+    if(tgt.endsWith('all')){const {pool}=_resolveTargets(tgt);targets=pool;}
+    else{const r=await _pickTargets(tgt,pr.n||1,'付与対象');targets=r.targets;}
     targets.forEach(t=>{kws.forEach(kw=>{if(!(t.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)){if(!t.abilities)t.abilities=[];t.abilities.push({type:'keyword',id:kw});if(kw==='barrier')t._barrier=true;if(kw==='rush'&&t._sick){t._rushOnly=true;t._sick=false;}if(kw==='haste'){t._haste=true;t._sick=false;t._rushOnly=false;}}});});
     const kwTxt=kws.map(k=>KW_LABELS[k]||k).join('・');
     log(`${pCol(fc.name,pid)}→ ${kwTxt}付与`,'');render();return;
   }
   if(e==='set_stats'){
     const tgt=pr.target||'enemy_choose';
-    const {pool,poolPid,how}=_resolveTargets(tgt);
-    if(!pool.length){render();return;}
-    let t;
-    if(how==='choose'&&!isAI){render();const r=await selectTarget(`${fc.name}: 対象`,pool.map(c=>({card:c,pid:poolPid})));if(!r)return;t=r.card;}
-    else t=pool[Math.floor(Math.random()*pool.length)];
-    const tgt2=pool.find(c=>c._uid===t?._uid);
-    if(tgt2){tgt2.power=pr.pow||1;tgt2.toughness=pr.tuf||1;tgt2._hp=Math.min(tgt2._hp,tgt2.toughness);if(tgt2._hp<=0){await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}else{log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${pr.pow}/${pr.tuf}に変更`,'');}}
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'対象');
+    for(const t of targets){
+      const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
+      if(tgt2){tgt2.power=pr.pow||1;tgt2.toughness=pr.tuf||1;tgt2._hp=Math.min(tgt2._hp,tgt2.toughness);if(tgt2._hp<=0){await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}else{log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${pr.pow}/${pr.tuf}に変更`,'');}}
+    }
     render();return;
   }
   if(e==='set_leader_life'){
@@ -5725,6 +5946,7 @@ function showOnlineMenu(){
   document.getElementById('online-join-input').value='';
   document.getElementById('online-host-status').textContent='';
   window._onlineBattleStarted=false;
+  _onlineStartGameCalled=false;
   // reset buttons
   document.getElementById('btn-create-room').className='gbtn';
   document.getElementById('btn-join-room').className='gbtn sec';
@@ -5827,6 +6049,7 @@ async function onlineJoinRoom(){
 // ── Deck Select for online ──
 function showOnlineDeckSelect(){
   window._onlineBattleStarted=false;
+  _onlineStartGameCalled=false;
   showScreen('screen-deckselect-online');
   const list=document.getElementById('online-ds-list');
   list.innerHTML='';
@@ -5867,22 +6090,27 @@ async function onlineSelectDeck(deck){
   console.log('[online] selectDeck',roleKey,deck.name,deckData.length,'cards');
   await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,arcanaId:deck.arcanaId||null,status:'deck_ready'});
   document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
-  // Watch for both ready (keep watching until both are ready)
-  const _unsub=fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
+  // Watch the whole room; fire when both are deck_ready
+  fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
     const d=snap.val();
-    console.log('[online] room update: host=',d?.host?.status,'guest=',d?.guest?.status);
-    if(d?.host?.status==='deck_ready'&&d?.guest?.status==='deck_ready'){
+    if(!d)return;
+    console.log('[online] room update: host=',d.host?.status,'guest=',d.guest?.status,'started=',window._onlineBattleStarted);
+    if(d.host?.status==='deck_ready'&&d.guest?.status==='deck_ready'){
       if(window._onlineBattleStarted)return;
-      _onlineStartGame(d,snap.key);
+      // 両者準備完了 → ホストのみが initState を生成、両者が initState 監視で開始
+      _onlineStartGame(d,roomId);
     }
   });
 }
 
 // ── Start Game ──
+let _onlineStartGameCalled=false;
 async function _onlineStartGame(roomData,key){
+  if(_onlineStartGameCalled)return; // 多重呼び出し防止
+  _onlineStartGameCalled=true;
   const fb=_fb();const {roomId,myPid,role}=_onlineRoom;
   const db=fb.db;
-  console.log('[online] _onlineStartGame role=',role,'data=',roomData);
+  console.log('[online] _onlineStartGame role=',role);
 
   // Only host initializes the game state
   if(role==='host'){
@@ -5914,14 +6142,17 @@ async function _onlineStartGame(roomData,key){
   }
 
   // Both: watch for initState (host reads back what it just wrote)
+  let _initFired=false;
   const _initRef=fb.ref(db,`rooms/${roomId}/initState`);
   fb.onValue(_initRef,snap=>{
     if(!snap.exists())return;
-    if(window._onlineBattleStarted)return;
+    if(_initFired)return;
+    _initFired=true;
     window._onlineBattleStarted=true;
     const init=snap.val();
+    console.log('[online] initState received, starting battle. firstPid=',init.firstPid);
     _onlineInitBattle(init);
-  },{onlyOnce:true});
+  });
 }
 
 // ── Initialize Battle from shared state ──
