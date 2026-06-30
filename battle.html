@@ -34,7 +34,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 #screen-menu{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 .menu-art{
   position:absolute;
-  right:-5%;
+  left:-5%;
   top:50%;
   transform:translateY(-50%);
   height:85vh;
@@ -45,8 +45,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(0.3) brightness(0.9) drop-shadow(0 0 60px rgba(201,168,76,0.15));
   pointer-events:none;
   z-index:0;
-  -webkit-mask-image:linear-gradient(to left, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
-  mask-image:linear-gradient(to left, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
+  -webkit-mask-image:linear-gradient(to right, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
+  mask-image:linear-gradient(to right, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 95%);
 }
 @media (max-width:760px){
   .menu-art{display:none;}
@@ -1046,7 +1046,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 <!-- ═══ MENU SCREEN ═══ -->
 <div id="screen-menu" class="screen hidden">
-  <img id="menu-art" class="menu-art" src="images/mon_013.gif" alt="">
+  <img id="menu-art" class="menu-art" src="images/mon_028.gif" alt="">
   <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVER<span id="menu-art-trigger" style="cursor:default;">S</span>ED</span></div>
   <div class="menu-sub">PROTOTYPE BATTLE SYSTEM</div>
   <button class="menu-btn" onclick="showDeckSelect()">ソロプレイ</button>
@@ -1059,7 +1059,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 <div id="menu-art-modal" class="modal-overlay" style="display:none;">
   <div class="modal-box" style="max-width:380px;">
     <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px;">タイトル画像設定</div>
-    <div style="font-size:11px;color:rgba(240,230,204,0.6);margin-bottom:10px;">images/フォルダ内のファイル名、または完全なURLを入力してください</div>
+    <div style="font-size:11px;color:rgba(240,230,204,0.6);margin-bottom:10px;">images/フォルダ内のファイル名・URLを入力、または下に画像をドロップ</div>
     <input id="menu-art-input" type="text" placeholder="mon_028.gif または https://..." style="width:100%;padding:8px 10px;font-size:12px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:6px;color:var(--parchment);outline:none;margin-bottom:10px;box-sizing:border-box;">
     <div style="display:flex;gap:8px;margin-bottom:14px;">
       <label style="font-size:11px;color:rgba(240,230,204,0.6);display:flex;align-items:center;gap:5px;">
@@ -1067,8 +1067,10 @@ textarea.finput{resize:vertical;min-height:64px;}
         <input id="menu-art-opacity" type="range" min="0" max="100" value="22" style="width:90px;">
       </label>
     </div>
-    <div style="width:100%;height:140px;border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+    <div id="menu-art-dropzone" style="width:100%;height:140px;border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.3);border:2px dashed rgba(201,168,76,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:14px;cursor:pointer;position:relative;transition:border-color 0.15s,background 0.15s;">
       <img id="menu-art-preview" style="max-width:100%;max-height:100%;object-fit:contain;" src="">
+      <div id="menu-art-drop-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(240,230,204,0.4);pointer-events:none;">画像をここにドロップ</div>
+      <input id="menu-art-file" type="file" accept="image/*" style="display:none;">
     </div>
     <div style="display:flex;gap:8px;">
       <button class="gbtn" style="flex:1;" onclick="saveMenuArtSettings()">保存</button>
@@ -2646,34 +2648,71 @@ function openMenuArtSettings(){
   const img=document.getElementById('menu-art');
   const input=document.getElementById('menu-art-input');
   const opacity=document.getElementById('menu-art-opacity');
-  input.value=img.src.includes('images/')?img.src.split('images/')[1]:img.src;
+  input.value=img.src.includes('images/')?img.src.split('images/')[1]:(img.src.startsWith('data:')?'':img.src);
   opacity.value=Math.round(parseFloat(img.style.opacity||0.22)*100);
   document.getElementById('menu-art-preview').src=img.src;
   document.getElementById('menu-art-modal').style.display='flex';
   input.oninput=()=>{
     const v=input.value.trim();
-    document.getElementById('menu-art-preview').src=v.startsWith('http')?v:`images/${v}`;
+    document.getElementById('menu-art-preview').src=v.startsWith('http')||v.startsWith('data:')?v:`images/${v}`;
   };
   opacity.oninput=()=>{};
+  _initMenuArtDropzone();
+}
+function _initMenuArtDropzone(){
+  const zone=document.getElementById('menu-art-dropzone');
+  const fileInput=document.getElementById('menu-art-file');
+  const hint=document.getElementById('menu-art-drop-hint');
+  if(zone._wired)return; // 一度だけイベント登録
+  zone._wired=true;
+  const handleFile=(file)=>{
+    if(!file||!file.type.startsWith('image/'))return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      document.getElementById('menu-art-preview').src=reader.result;
+      document.getElementById('menu-art-input').value=''; // ファイル名欄はクリア（データURL優先）
+      zone._pendingDataUrl=reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  zone.addEventListener('click',()=>fileInput.click());
+  fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='rgba(201,168,76,0.7)';zone.style.background='rgba(201,168,76,0.08)';});
+  zone.addEventListener('dragleave',()=>{zone.style.borderColor='rgba(201,168,76,0.25)';zone.style.background='rgba(0,0,0,0.3)';});
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();
+    zone.style.borderColor='rgba(201,168,76,0.25)';zone.style.background='rgba(0,0,0,0.3)';
+    if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);
+  });
 }
 function closeMenuArtSettings(){
   document.getElementById('menu-art-modal').style.display='none';
 }
 function saveMenuArtSettings(){
+  const zone=document.getElementById('menu-art-dropzone');
   const v=document.getElementById('menu-art-input').value.trim();
   const op=document.getElementById('menu-art-opacity').value;
-  const src=v.startsWith('http')?v:`images/${v}`;
+  // ドロップされた画像があれば優先、なければテキスト入力を使う
+  const src=zone._pendingDataUrl?zone._pendingDataUrl:(v.startsWith('http')?v:`images/${v}`);
   const img=document.getElementById('menu-art');
   img.src=src;
   img.style.opacity=op/100;
-  localStorage.setItem('cg_menu_art',JSON.stringify({src,opacity:parseInt(op)}));
+  try{
+    localStorage.setItem('cg_menu_art',JSON.stringify({src,opacity:parseInt(op)}));
+  }catch(e){
+    // データURLが大きすぎてlocalStorageに入らない場合
+    eToast('画像が大きすぎて保存できません。ファイル名指定をお試しください',true);
+  }
+  zone._pendingDataUrl=null;
   closeMenuArtSettings();
 }
 function resetMenuArtSettings(){
   localStorage.removeItem('cg_menu_art');
   const img=document.getElementById('menu-art');
-  img.src='images/mon_013.gif';
+  img.src='images/mon_028.gif';
   img.style.opacity=0.22;
+  const zone=document.getElementById('menu-art-dropzone');
+  if(zone)zone._pendingDataUrl=null;
   closeMenuArtSettings();
 }
 
