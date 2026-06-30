@@ -67,15 +67,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:linear-gradient(90deg,var(--gold-d),var(--gold),var(--gold-l));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
 .menu-sub{font-size:12px;color:rgba(240,230,204,0.35);letter-spacing:0.1em;text-align:center;margin-bottom:24px;}
-#menu-art-trigger{
-  position:absolute;bottom:10px;right:10px;width:28px;height:28px;
-  cursor:pointer;z-index:2;
-  opacity:0.15;
-  border-radius:50%;
-  background:radial-gradient(circle, rgba(201,168,76,0.6), transparent 70%);
-  transition:opacity 0.2s;
-}
-#menu-art-trigger:hover{opacity:0.6;}
+
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;}
 .modal-box{background:linear-gradient(135deg,#1a1410,#0e0c08);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);}
 .menu-title-rev{
@@ -1054,14 +1046,13 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 <!-- ═══ MENU SCREEN ═══ -->
 <div id="screen-menu" class="screen hidden">
-  <img id="menu-art" class="menu-art" src="images/mon_028.gif" alt="">
-  <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVERSED</span></div>
+  <img id="menu-art" class="menu-art" src="images/mon_013.gif" alt="">
+  <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVER<span id="menu-art-trigger" style="cursor:default;">S</span>ED</span></div>
   <div class="menu-sub">PROTOTYPE BATTLE SYSTEM</div>
   <button class="menu-btn" onclick="showDeckSelect()">ソロプレイ</button>
   <button class="menu-btn" onclick="showOnlineMenu()">マルチプレイ</button>
   <button class="menu-btn secondary" onclick="showScreen('screen-deck')">デッキ編成</button>
   <button class="menu-btn secondary" onclick="showScreen('screen-editor')">カード一覧</button>
-  <div id="menu-art-trigger" onclick="openMenuArtSettings()" title=""></div>
 </div>
 
 <!-- ═══ MENU ART SETTINGS (hidden panel) ═══ -->
@@ -2622,6 +2613,24 @@ function exportCardsJSON(){
 // SCREEN NAVIGATION
 // ═══════════════════════════════════════════════════════════
 // ── Menu Art Settings (hidden panel) ──
+// 隠し文字「Q」を1秒長押しで設定パネルを開く
+function _initMenuArtTrigger(){
+  const el=document.getElementById('menu-art-trigger');
+  if(!el)return;
+  let timer=null;
+  const start=(e)=>{
+    e.preventDefault();
+    timer=setTimeout(()=>{openMenuArtSettings();timer=null;},900);
+  };
+  const cancel=()=>{if(timer){clearTimeout(timer);timer=null;}};
+  el.addEventListener('mousedown',start);
+  el.addEventListener('touchstart',start,{passive:false});
+  el.addEventListener('mouseup',cancel);
+  el.addEventListener('mouseleave',cancel);
+  el.addEventListener('touchend',cancel);
+  el.addEventListener('touchcancel',cancel);
+}
+
 function _loadMenuArtSettings(){
   try{
     const saved=localStorage.getItem('cg_menu_art');
@@ -2685,6 +2694,7 @@ function showScreen(id){
 (async()=>{
   await initData();
   _loadMenuArtSettings();
+  _initMenuArtTrigger();
   showScreen('screen-menu');
 })();
 
