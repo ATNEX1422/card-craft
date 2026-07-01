@@ -32,8 +32,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    MENU SCREEN
 ═══════════════════════════════════ */
 #screen-menu{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+#menu-center{display:contents;}
 .menu-art{
-  position:absolute;
+  position:fixed;
   left:8%;
   bottom:-5%;
   height:105vh;
@@ -51,7 +52,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   .menu-art,.menu-art-r{display:none;}
 }
 .menu-art-r{
-  position:absolute;
+  position:fixed;
   right:8%;
   bottom:-5%;
   height:105vh;
@@ -67,7 +68,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   -webkit-mask-image:linear-gradient(to right, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
   mask-image:linear-gradient(to right, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
 }
-#screen-menu > *:not(.menu-art):not(.menu-art-r){position:relative;z-index:1;}
+
 #screen-online{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
 .online-box{background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.25);border-radius:10px;
   padding:20px 28px;display:flex;flex-direction:column;gap:12px;min-width:300px;align-items:center;}
@@ -1061,15 +1062,17 @@ textarea.finput{resize:vertical;min-height:64px;}
 <div id="tooltip"><div id="tt-name"></div><div id="tt-stats"></div><div id="tt-abil"></div><div id="tt-summons" style="display:none;"></div></div>
 
 <!-- ═══ MENU SCREEN ═══ -->
+<img id="menu-art" class="menu-art" src="images/mon_028.gif" alt="">
+<img id="menu-art-r" class="menu-art-r" src="images/mon_128.gif" alt="">
 <div id="screen-menu" class="screen hidden">
-  <img id="menu-art" class="menu-art" src="images/mon_028.gif" alt="">
-  <img id="menu-art-r" class="menu-art-r" src="images/mon_128.gif" alt="">
-  <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVER<span id="menu-art-trigger" style="cursor:default;">S</span>ED</span></div>
-  <div class="menu-sub">PROTOTYPE BATTLE SYSTEM</div>
-  <button class="menu-btn" onclick="showDeckSelect()">ソロプレイ</button>
-  <button class="menu-btn" onclick="showOnlineMenu()">マルチプレイ</button>
-  <button class="menu-btn secondary" onclick="showScreen('screen-deck')">デッキ編成</button>
-  <button class="menu-btn secondary" onclick="showScreen('screen-editor')">カード一覧</button>
+  <div id="menu-center">
+    <div class="menu-title">ARCANA<br><span class="menu-title-rev">REVER<span id="menu-art-trigger" style="cursor:default;">S</span>ED</span></div>
+    <div class="menu-sub">PROTOTYPE BATTLE SYSTEM</div>
+    <button class="menu-btn" onclick="showDeckSelect()">ソロプレイ</button>
+    <button class="menu-btn" onclick="showOnlineMenu()">マルチプレイ</button>
+    <button class="menu-btn secondary" onclick="showScreen('screen-deck')">デッキ編成</button>
+    <button class="menu-btn secondary" onclick="showScreen('screen-editor')">カード一覧</button>
+  </div>
 </div>
 
 <!-- ═══ TYPE MANAGER ═══ -->
@@ -2670,6 +2673,11 @@ function _initMenuArtTrigger(){
 }
 
 function _loadMenuArtSettings(){
+  // 初期は非表示（showScreenで制御）
+  const al=document.getElementById('menu-art');
+  const ar=document.getElementById('menu-art-r');
+  if(al)al.style.display='none';
+  if(ar)ar.style.display='none';
   try{
     const saved=localStorage.getItem('cg_menu_art');
     if(saved){
@@ -2879,6 +2887,11 @@ async function typeManagerAdd(){
 }
 
 function showScreen(id){
+  // menu-artはscreen-menuと連動
+  const artL=document.getElementById('menu-art');
+  const artR=document.getElementById('menu-art-r');
+  if(artL) artL.style.display=id==='screen-menu'?'block':'none';
+  if(artR) artR.style.display=id==='screen-menu'?'block':'none';
   document.querySelectorAll('.screen').forEach(s=>{
     s.style.display='none';
     s.classList.add('hidden');
