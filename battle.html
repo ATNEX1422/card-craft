@@ -1657,7 +1657,7 @@ function buildAbilityText(card){
         case 'ally_no_ability': parts.push(`場の能力なし味方1体につきコスト${amt}軽減`); break;
         case 'ally_any':        parts.push(`場の味方1体につきコスト${amt}軽減`); break;
         case 'enemy_any':       parts.push(`相手フィールド1体につきコスト${amt}軽減`); break;
-        case 'turn_start':      parts.push(`ターン開始時コスト${amt}軽減`); break;
+        case 'turn_start':      parts.push(`ターン経過ごとにコスト${amt}軽減`); break;
         case 'always':          parts.push(`コスト${amt}軽減（常時）`); break;
         default: parts.push(`コスト軽減（${p.per||'条件なし'}）`);
       }
@@ -4157,7 +4157,7 @@ async function _showCoinToss(firstPid){
 function drawCard(pid,silent){
   const p=G.p[pid];
   if(!p.deck.length){if(!silent)log(`P${pid}: デッキ切れ`,'ll-sys');return;}
-  const c=p.deck.shift();p.hand.push(c);
+  const c=p.deck.shift();c._handCostMod=0;p.hand.push(c);
   if(!silent){
     if(pid===1) log(`P1: 「${c.name}」をドロー`,'');
     else log(`AI: 1枚ドロー`,'ll-ai');
@@ -4180,6 +4180,7 @@ async function discardAnim(pid, n){
   for(let i=0;i<n;i++){
     if(!p.hand.length)break;
     const idx=Math.floor(Math.random()*p.hand.length);
+    p.hand[idx]._handCostMod=0;
     p.hand.splice(idx,1);
     render();
     if(i<n-1) await new Promise(r=>setTimeout(r,140));
@@ -4207,6 +4208,10 @@ function calcCost(pid,card){
         const opp=pid===1?2:1;c=Math.max(0,c-G.p[opp].field.length*amt); break;
       }
       case 'always': c=Math.max(0,c-amt); break;
+      case 'turn_start':{
+        // 手札に持ち続けたターン数分コスト軽減（カードインスタンスに蓄積）
+        c=Math.max(0,c-(card._handCostMod||0)*amt); break;
+      }
       default: break;
     }
   }
@@ -4325,7 +4330,10 @@ async function summonCard(pid,idx){
   }
 
   // Pay cost and remove from hand immediately (prevent double-play)
-  p.mana-=cost;p.hand.splice(idx,1);
+  p.mana-=cost;
+  // コスト軽減リセット
+  if(p.hand[idx]) p.hand[idx]._handCostMod=0;
+  p.hand.splice(idx,1);
   render(); // update mana and hand display
 
   // Enqueue: actual placement happens after current ability processing finishes
@@ -5801,6 +5809,11 @@ async function startTurn(pid){
   _clearAllyEnterFired();
   const p=G.p[pid];
   p.turnCount++;
+  // turn_start コスト軽減：手札のカードを1ずつ減らす
+  p.hand.forEach(c=>{
+    const hasTurnStart=(c.abilities||[]).some(a=>a.type==='passive'&&a.id==='cost_reduce_self'&&a.params?.per==='turn_start');
+    if(hasTurnStart) c._handCostMod=(c._handCostMod||0)+1;
+  });
   p.maxMana=Math.min(10,p.turnCount);
   p.mana=p.maxMana;
   p.field.forEach(c=>{clearTurnFlags(c);c._bound=false;});
