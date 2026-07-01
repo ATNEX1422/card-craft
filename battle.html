@@ -1071,6 +1071,19 @@ textarea.finput{resize:vertical;min-height:64px;}
   <button class="menu-btn secondary" onclick="showScreen('screen-editor')">カード一覧</button>
 </div>
 
+<!-- ═══ TYPE MANAGER ═══ -->
+<div id="type-manager-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:320px;">
+    <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px;">種族管理</div>
+    <div id="type-manager-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:240px;overflow-y:auto;"></div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <input id="type-manager-input" type="text" placeholder="新しい種族名" class="finput" style="flex:1;font-size:12px;">
+      <button class="gbtn" onclick="typeManagerAdd()" style="padding:6px 10px;font-size:12px;">追加</button>
+    </div>
+    <button class="gbtn" onclick="closeTypeManager()" style="width:100%;">閉じる</button>
+  </div>
+</div>
+
 <!-- ═══ MENU ART SETTINGS (hidden panel) ═══ -->
 <div id="menu-art-modal" class="modal-overlay" style="display:none;">
   <div class="modal-box" style="max-width:380px;">
@@ -1196,13 +1209,10 @@ textarea.finput{resize:vertical;min-height:64px;}
     <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
         <label class="flabel" style="margin:0;">タイプ</label>
-        <select id="e-type" class="finput" style="padding:4px 8px;font-size:11px;width:auto;">
-          <option value="ニュートラル">タイプなし</option>
-          <option value="天使">天使</option>
-          <option value="悪魔">悪魔</option>
-          <option value="王国">王国</option>
-          <option value="死霊">死霊</option>
-        </select>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <select id="e-type" class="finput" style="padding:4px 8px;font-size:11px;flex:1;"></select>
+          <button type="button" class="gbtn sec" onclick="openTypeManager()" style="padding:4px 8px;font-size:11px;flex-shrink:0;">＋</button>
+        </div>
       </div>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:rgba(240,230,204,0.7);">
         <input type="checkbox" id="e-is-token" style="width:14px;height:14px;accent-color:var(--gold);">
@@ -2459,6 +2469,7 @@ let CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
 let DECKS = [];
 
 async function initData(){
+  await _loadTypes();
   // Wait for Firebase to be ready (max 3s)
   await new Promise(resolve=>{
     if(window._FB) return resolve();
@@ -2776,6 +2787,96 @@ function resetMenuArtSettings(){
   closeMenuArtSettings();
 }
 
+// ── 種族管理 ──
+const DEFAULT_TYPES=['ニュートラル','天使','悪魔','王国','死霊'];
+let _cardTypes=[...DEFAULT_TYPES];
+
+async function _loadTypes(){
+  try{
+    const fb=_fb();
+    if(fb){
+      const snap=await fb.get(fb.ref(fb.db,'types'));
+      if(snap.exists()){
+        const arr=snap.val();
+        if(Array.isArray(arr)&&arr.length) _cardTypes=arr;
+        return;
+      }
+    }
+  }catch(e){console.warn('types load failed',e);}
+  // フォールバック: localStorage
+  try{const s=localStorage.getItem('cg_types');if(s)_cardTypes=JSON.parse(s);}catch(e){}
+}
+async function _saveTypes(types){
+  _cardTypes=types;
+  try{
+    const fb=_fb();
+    if(fb){
+      await fb.set(fb.ref(fb.db,'types'),types);
+      return;
+    }
+  }catch(e){console.warn('types save failed',e);}
+  // フォールバック
+  localStorage.setItem('cg_types',JSON.stringify(types));
+}
+
+function typeRenderSelect(selectedVal){
+  const sel=document.getElementById('e-type');
+  if(!sel)return;
+  const cur=selectedVal||sel.value||'ニュートラル';
+  sel.innerHTML='';
+  _cardTypes.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t; o.textContent=t==='ニュートラル'?'タイプなし':t;
+    if(t===cur)o.selected=true;
+    sel.appendChild(o);
+  });
+}
+function openTypeManager(){
+  typeManagerRenderList();
+  document.getElementById('type-manager-modal').style.display='flex';
+}
+function closeTypeManager(){
+  document.getElementById('type-manager-modal').style.display='none';
+  typeRenderSelect();
+}
+function typeManagerRenderList(){
+  const list=document.getElementById('type-manager-list');
+  list.innerHTML='';
+  _cardTypes.forEach((t,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;';
+    const lbl=document.createElement('span');
+    lbl.textContent=t==='ニュートラル'?`${t}（タイプなし・削除不可）`:t;
+    lbl.style.cssText='flex:1;font-size:12px;color:var(--parchment);';
+    row.appendChild(lbl);
+    if(t!=='ニュートラル'){
+      const del=document.createElement('button');
+      del.className='gbtn sec';del.textContent='削除';
+      del.style.cssText='padding:3px 8px;font-size:11px;background:rgba(120,40,40,0.4);';
+      del.onclick=async()=>{
+        if(!confirm(`「${t}」を削除しますか？\nこの種族を持つカードは「ニュートラル」になります。`))return;
+        // カードの種族を更新
+        CARDS.forEach(c=>{if(c.type===t)c.type='ニュートラル';});
+        _cardTypes.splice(i,1);
+        await _saveTypes(_cardTypes);
+        typeManagerRenderList();
+      };
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  });
+}
+async function typeManagerAdd(){
+  const inp=document.getElementById('type-manager-input');
+  const val=inp.value.trim();
+  if(!val){return;}
+  if(_cardTypes.includes(val)){eToast('その種族名は既に存在します',true);return;}
+  _cardTypes.push(val);
+  await _saveTypes(_cardTypes);
+  inp.value='';
+  typeManagerRenderList();
+}
+
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>{
     s.style.display='none';
@@ -2784,7 +2885,7 @@ function showScreen(id){
   const el=document.getElementById(id);
   el.classList.remove('hidden');
   el.style.display = (id==='screen-battle') ? 'grid' : 'flex';
-  if(id==='screen-editor') eRenderTable();
+  if(id==='screen-editor'){eRenderTable();typeRenderSelect();}
   if(id==='screen-deck') deckRenderAll();
   if(id==='screen-deckselect') dsRender();
 }
@@ -2934,7 +3035,7 @@ function eClear(){
   eDzClear({stopPropagation:()=>{}});
   eInitAbilityUI([]);
   const tok=document.getElementById('e-is-token');if(tok)tok.checked=false;
-  const typeEl2=document.getElementById('e-type');if(typeEl2)typeEl2.value='ニュートラル';
+  typeRenderSelect('ニュートラル');
 }
 
 function eRenderTable(){eRenderGrid();}
@@ -3309,7 +3410,7 @@ function eLoadCardToForm(card){
     document.getElementById('e-dz').classList.add('hi');
   }
   const tokEl=document.getElementById('e-is-token');if(tokEl)tokEl.checked=!!(card.isToken);
-  const typeEl=document.getElementById('e-type');if(typeEl)typeEl.value=card.type||'ニュートラル';
+  typeRenderSelect(card.type||'ニュートラル');
   // save original for cancel/restore; remove from CARDS so re-register acts as update
   _editingCardBackup=JSON.parse(JSON.stringify(card));
   CARDS=CARDS.filter(c=>c.id!==card.id);
