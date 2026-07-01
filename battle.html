@@ -48,7 +48,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   -webkit-mask-image:linear-gradient(to right, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
   mask-image:linear-gradient(to right, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
 }
-@media (max-width:760px){
+@media (max-width:480px){
   .menu-art,.menu-art-r{display:none;}
 }
 .menu-art-r{
@@ -2673,11 +2673,6 @@ function _initMenuArtTrigger(){
 }
 
 function _loadMenuArtSettings(){
-  // 初期は非表示（showScreenで制御）
-  const al=document.getElementById('menu-art');
-  const ar=document.getElementById('menu-art-r');
-  if(al)al.style.display='none';
-  if(ar)ar.style.display='none';
   try{
     const saved=localStorage.getItem('cg_menu_art');
     if(saved){
