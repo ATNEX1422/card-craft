@@ -1643,12 +1643,26 @@ function buildAbilityText(card){
       }
       case 'revive':{
         let rcond='墓地から';
-        if(p.cost_max>0) rcond+=`コスト${p.cost_max}以下の`;
-        if(p.type) rcond+=`${p.type}の`;
-        const how=tgt&&tgt.includes('random')?'ランダムに':tgt&&tgt.includes('choose')?'（選択して）':'';
-        desc+=`${rcond}ユニットを${how}蘇生`;
+        if(p.name) rcond+=`「${p.name}」を`;
+        else{
+          if(p.cost_max>0) rcond+=`コスト${p.cost_max}以下の`;
+          if(p.type) rcond+=`${p.type}の`;
+          rcond+='ユニットを';
+        }
+        const how=tgt&&tgt.includes('random')?'ランダムに蘇生':tgt&&tgt.includes('choose')?'蘇生（選択）':'蘇生';
+        desc+=rcond+how;
         break;
       }
+      case 'fetch_to_hand':{
+        const fromZ={deck:'デッキ',grave:'墓地',enemy_grave:'相手墓地',hand:'手札',hand_any:'相手手札'}[p.from]||p.from;
+        const cond=[p.name?`「${p.name}」`:'',(p.cost_max>0?`コスト${p.cost_max}以下`:''),(p.type||'')].filter(Boolean).join('・')||'カード';
+        const how2=p.target==='choose'?'（選択）':'（ランダム）';
+        desc+=`${fromZ}から${cond}を手札に${how2}`; break;}
+      case 'fetch_to_field':{
+        const fromZ2={deck:'デッキ',grave:'墓地',enemy_grave:'相手墓地',hand:'手札'}[p.from]||p.from;
+        const cond2=[p.name?`「${p.name}」`:'',(p.cost_max>0?`コスト${p.cost_max}以下`:''),(p.type||'')].filter(Boolean).join('・')||'カード';
+        const how3=p.target==='choose'?'（選択）':'（ランダム）';
+        desc+=`${fromZ2}から${cond2}を召喚${how3}`; break;}
       default: desc+=(EFF_LABELS&&EFF_LABELS[a.effect])||a.effect;
     }
     parts.push(desc);
@@ -1889,6 +1903,7 @@ const ARC_PASSIVE_EFFECTS=[
   // ── 召喚・蘇生 ──
   {id:'summon_card',        label:'指定カードを召喚',          unit:'',   target_opts:['self','enemy']},
   {id:'revive',             label:'墓地から蘇生',              unit:'',   target_opts:['self_random','self_choose','enemy_random']},
+  {id:'fetch_to_hand',      label:'指定カードを手札に（ゾーン）',unit:'',   target_opts:[]},
 ];
 const ARC_IMM_EFFECTS=[
   // ── ドロー・手札 ──
@@ -3115,7 +3130,9 @@ const ALL_EFFECTS=[
   // ── 召喚・蘇生 ──
   {id:'summon_card',       label:'指定カードを召喚',          params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]},{key:'target',label:'召喚先',type:'select',opts:['self','enemy'],def:'self'}]},
   {id:'summon_free',       label:'手札から無料召喚',          params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
-  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'n',label:'体数',def:1},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
+  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'n',label:'体数',def:1},{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
+  // ── ゾーン指定移動 ──
+  {id:'fetch_to_hand',     label:'指定カードを手札に（ゾーン指定）', params:[{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'from',label:'取得元',type:'select',opts:['deck','grave','enemy_grave','hand_any'],def:'deck'},{key:'target',label:'選択方法',type:'select',opts:['choose','random'],def:'choose'}]},
   // ── AP ──
   {id:'change_ap',         label:'APを変更',                  params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_add','self_subtract','enemy_add','enemy_subtract'],def:'self_add'}]},
 ];
@@ -5312,6 +5329,111 @@ async function _execEffect(pid, fc, ab, isAI){
     else if(tgt==='enemy_subtract'){const{st}=_getArc(opp);if(st){st.gauge=Math.max(0,st.gauge-amt);renderArcana();}log(`${pCol(fc.name,pid)}→ 相手AP-${amt}`,'');}
     render();return;
   }
+  // ── ゾーン指定移動 ──
+  if(e==='fetch_to_hand'||e==='fetch_to_field'){
+    const toField=e==='fetch_to_field';
+    const fromZone=pr.from||'deck';
+    const cardName=pr.name||'';
+    const costMax=pr.cost_max||0;
+    const cardType=pr.type||'';
+    const how=pr.target||'random';
+
+    // 取得元ゾーンの決定
+    let pool=[], srcPid=pid;
+    if(fromZone==='deck'){
+      pool=p.deck;
+    } else if(fromZone==='grave'){
+      // 墓地はentryの配列 {name, count, card}
+      pool=p.grave.flatMap(g=>Array(g.count).fill(g.card||CARDS.find(c=>c.name===g.name)).filter(Boolean));
+      srcPid=pid;
+    } else if(fromZone==='enemy_grave'){
+      pool=op.grave.flatMap(g=>Array(g.count).fill(g.card||CARDS.find(c=>c.name===g.name)).filter(Boolean));
+      srcPid=opp;
+    } else if(fromZone==='hand'){
+      pool=p.hand;
+    } else if(fromZone==='hand_any'){
+      pool=op.hand;
+      srcPid=opp;
+    }
+
+    // フィルタ
+    let eligible=pool.filter(c=>{
+      if(!c)return false;
+      if(cardName&&c.name!==cardName)return false;
+      if(costMax>0&&(c.cost||0)>costMax)return false;
+      if(cardType&&c.type!==cardType)return false;
+      return true;
+    });
+    if(!eligible.length){log(`${pCol(fc.name,pid)}→ 対象カードなし`,'ll-s');render();return;}
+
+    // 選択
+    let chosen=null;
+    if(how==='choose'&&!isAI){
+      // 一覧を表示して選択
+      const opts=eligible.map((c,i)=>({label:`${c.name}（コスト${c.cost||0}）`,val:i}));
+      const pickIdx=await new Promise(res=>{
+        const overlay=document.createElement('div');
+        overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:900;display:flex;align-items:center;justify-content:center;';
+        const box=document.createElement('div');
+        box.style.cssText='background:#1a1410;border:1px solid rgba(201,168,76,0.4);border-radius:12px;padding:16px;max-width:320px;width:90%;max-height:70vh;overflow-y:auto;';
+        box.innerHTML=`<div style="color:var(--gold);font-size:13px;font-weight:700;margin-bottom:10px;">${fc.name}：カードを選択</div>`;
+        opts.forEach((o,i)=>{
+          const btn=document.createElement('button');
+          btn.className='gbtn';
+          btn.style.cssText='width:100%;margin-bottom:6px;font-size:12px;';
+          btn.textContent=o.label;
+          btn.onclick=()=>{overlay.remove();res(i);};
+          box.appendChild(btn);
+        });
+        const cancel=document.createElement('button');
+        cancel.className='gbtn sec';cancel.textContent='キャンセル';
+        cancel.style.cssText='width:100%;font-size:12px;';
+        cancel.onclick=()=>{overlay.remove();res(-1);};
+        box.appendChild(cancel);
+        overlay.appendChild(box);document.body.appendChild(overlay);
+      });
+      if(pickIdx<0){render();return;}
+      chosen=eligible[pickIdx];
+    } else {
+      chosen=eligible[Math.floor(Math.random()*eligible.length)];
+    }
+
+    // ゾーンから除去
+    const removeFn=(card,zonePid,zone)=>{
+      if(zone==='deck'){
+        const idx2=G.p[zonePid].deck.findIndex(c=>c===card||c.name===card.name);
+        if(idx2>=0)G.p[zonePid].deck.splice(idx2,1);
+      } else if(zone==='grave'||zone==='enemy_grave'){
+        const gp=zonePid;
+        const ge=G.p[gp].grave.find(g=>g.name===card.name);
+        if(ge){ge.count--;if(ge.count<=0)G.p[gp].grave=G.p[gp].grave.filter(g=>g.name!==card.name);}
+      } else if(zone==='hand'||zone==='hand_any'){
+        const idx2=G.p[zonePid].hand.findIndex(c=>c===card||c.name===card.name);
+        if(idx2>=0)G.p[zonePid].hand.splice(idx2,1);
+      }
+    };
+
+    const base=CARDS.find(c=>c.name===chosen.name)||chosen;
+    const zoneLabel={deck:'デッキ',grave:'墓地',enemy_grave:'相手墓地',hand:'手札',hand_any:'相手手札'}[fromZone]||fromZone;
+
+    if(toField){
+      if(p.field.length>=7){log(`${pCol(fc.name,pid)}→ 場が満杯`,'');render();return;}
+      removeFn(chosen,srcPid,fromZone);
+      const nfc=mkCard(base);nfc._sick=true;
+      p.field.push(nfc);
+      log(`${pCol(fc.name,pid)}→ ${zoneLabel}から${pCol(base.name,pid)}を召喚`,'ll-s');
+      render();await animateSummon(pid,nfc._uid);
+      await _fireAllyEnter(pid,nfc._uid,isAI);
+      await _fireAllyEnterArcana(pid,nfc._uid);
+    } else {
+      removeFn(chosen,srcPid,fromZone);
+      const nc={...base,abilities:JSON.parse(JSON.stringify(base.abilities||[])),_handCostMod:0};
+      p.hand.push(nc);
+      log(`${pCol(fc.name,pid)}→ ${zoneLabel}から${pCol(base.name,pid)}を手札に`,'ll-s');
+    }
+    render();return;
+  }
+
   log(`「${fc.name}」→ 能力発動（未実装: ${e}）`,'ll-sys');
 }
 
