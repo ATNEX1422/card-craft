@@ -1561,6 +1561,15 @@ function buildAbilityText(card){
     const trig=TRIG_LABELS[a.trigger]||a.trigger;
     const p=a.params||{};
     const tgt=p.target||'';
+    // 変数表示ヘルパー
+    const _vLabel=(key,def)=>{
+      const vd=p[key+'_var'];
+      if(!vd)return def;
+      const sideL={self:'自分',enemy:'相手',both:'両者'}[vd.side]||vd.side;
+      const typeL={field_count:'場の枚数',hand_count:'手札枚数',grave_count:'墓地枚数',deck_count:'デッキ枚数'}[vd.type]||vd.type;
+      const filt=vd.filter?`(${vd.filter})`:'';
+      return `[${sideL}${typeL}${filt}]`;
+    };
     const isAll=tgt&&(tgt.endsWith('_all')||tgt==='both'||tgt==='self_all'||tgt==='enemy_all'||tgt==='ally_all');
     const kwTxt=()=>(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・')||'キーワード';
     let desc=`【${trig}】`;
@@ -1575,17 +1584,17 @@ function buildAbilityText(card){
       case 'discard_hand_draw': desc+=`${_tgtSide(tgt||'self')}の手札を全て捨てて同じ枚数引く`; break;
       case 'add_to_hand':{const e=(p.cards||[]);desc+=(e.length?e.map(x=>`${x.name}×${x.n||1}`).join('・'):'カード')+`を${_tgtSide(tgt||'self')}の手札に加える`;break;}
       // ── ダメージ ──
-      case 'dmg_unit_one':    desc+=`${_tgtOne(tgt,'相手',p.n)}に${p.dmg||1}ダメージ`; break;
+      case 'dmg_unit_one':    desc+=`${_tgtOne(tgt,'相手',_vLabel('n',p.n))}に${_vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_unit_n':      desc+=`${_tgtSide(tgt||'enemy')}ユニット${tgt&&tgt.includes('random')?'ランダム':''}${p.n||2}体に${p.dmg||1}ダメージ`; break;
       case 'dmg_unit_all':    desc+= tgt==='both'?`全ユニットに${p.dmg||1}ダメージ`:`${_tgtSide(tgt||'enemy')}ユニット全体に${p.dmg||1}ダメージ`; break;
-      case 'dmg_leader':      desc+=`${_tgtSide(tgt||'enemy')}リーダーに${p.dmg||1}ダメージ`; break;
+      case 'dmg_leader':      desc+=`${_tgtSide(tgt||'enemy')}リーダーに${_vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_any':         desc+=`任意の対象に${p.dmg||1}ダメージ`; break;
       // 旧ID互換
       case 'dmg_enemy_one':   desc+=`相手ユニット${p.target==='random'?'ランダム1体':'1体'}に${p.dmg||1}ダメージ`; break;
       case 'dmg_enemy_all':   desc+=`相手ユニット全体に${p.dmg||1}ダメージ`; break;
       // ── 回復 ──
-      case 'heal_leader':     desc+=`${_tgtSide(tgt||'self')}リーダーを${p.amount||1}回復`; break;
-      case 'heal_unit_one':   desc+=`${_tgtOne(tgt,'味方',p.n)}を${p.amount||1}回復`; break;
+      case 'heal_leader':     desc+=`${_tgtSide(tgt||'self')}リーダーを${_vLabel('amount',p.amount||1)}回復`; break;
+      case 'heal_unit_one':   desc+=`${_tgtOne(tgt,'味方',_vLabel('n',p.n))}を${_vLabel('amount',p.amount||1)}回復`; break;
       case 'heal_unit_all':   desc+=`${_tgtSide(tgt||'ally')}ユニット全体を${p.amount||1}回復`; break;
       // ── 除去 ──
       case 'destroy_unit_one': desc+=`${_tgtOne(tgt,'相手',p.n)}を破壊`; break;
@@ -1671,11 +1680,20 @@ function buildAbilityText(card){
     if(a.id==='cost_reduce_self'){
       const p=a.params||{};const amt=p.amount||1;
       switch(p.per){
-        case 'ally_no_ability': parts.push(`場の能力なし味方1体につきコスト${amt}軽減`); break;
-        case 'ally_any':        parts.push(`場の味方1体につきコスト${amt}軽減`); break;
-        case 'enemy_any':       parts.push(`相手フィールド1体につきコスト${amt}軽減`); break;
-        case 'turn_start':      parts.push(`ターン経過ごとにコスト${amt}軽減`); break;
-        case 'always':          parts.push(`コスト${amt}軽減（常時）`); break;
+        case 'ally_no_ability':   parts.push(`場の能力なし味方1体につきコスト${amt}軽減`); break;
+        case 'ally_any':{const f=p.filter?`[${p.filter}]`:'';parts.push(`場の味方${f}1体につきコスト${amt}軽減`);break;}
+        case 'enemy_any':{const f=p.filter?`[${p.filter}]`:'';parts.push(`相手の${f}1体につきコスト${amt}軽減`);break;}
+        case 'hand_count':        parts.push(`手札1枚につきコスト${amt}軽減`); break;
+        case 'enemy_hand_count':  parts.push(`相手の手札1枚につきコスト${amt}軽減`); break;
+        case 'grave_count':{const f=p.filter?`[${p.filter}]`:'';parts.push(`墓地${f}1枚につきコスト${amt}軽減`);break;}
+        case 'deck_count':        parts.push(`デッキ1枚につきコスト${amt}軽減`); break;
+        case 'turn_start':        parts.push(`手札にある間ターン経過ごとにコスト${amt}軽減`); break;
+        case 'always':            parts.push(`コスト${amt}軽減（常時）`); break;
+        case 'no_hand':           parts.push(`手札が0枚のときコスト${amt}軽減`); break;
+        case 'no_ally':           parts.push(`自分フィールドにユニットがいないときコスト${amt}軽減`); break;
+        case 'enemy_no_unit':     parts.push(`相手フィールドにユニットがいないときコスト${amt}軽減`); break;
+        case 'leader_hp_below':   parts.push(`自分リーダーが10以下のときコスト${amt}軽減`); break;
+        case 'leader_hp_above':   parts.push(`相手リーダーが10以上のときコスト${amt}軽減`); break;
         default: parts.push(`コスト軽減（${p.per||'条件なし'}）`);
       }
     }
@@ -3277,9 +3295,44 @@ function eRenderTriggerList(){
           inp.oninput=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=e.target.value;eUpdateAbilPreview();}};
           prow.appendChild(inp);
         } else {
-          const inp=document.createElement('input');inp.type='number';inp.value=(ab.params||{})[pDef.key]??pDef.def??0;inp.min=0;inp.max=99;inp.className='param-input';inp.style.cssText='width:54px;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+          const varKey=pDef.key+'_var';
+          const varDef=(ab.params||{})[varKey];
+          const numWrap=document.createElement('div');numWrap.style.cssText='display:flex;gap:3px;align-items:center;flex-wrap:wrap;';
+          const inp=document.createElement('input');inp.type='number';inp.value=(ab.params||{})[pDef.key]??pDef.def??0;inp.min=0;inp.max=99;inp.className='param-input';
+          inp.style.cssText='width:54px;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
           inp.oninput=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=parseInt(e.target.value)||0;eUpdateAbilPreview();}};
-          prow.appendChild(inp);
+          // 変数トグル
+          const varBtn=document.createElement('button');varBtn.type='button';varBtn.textContent='≈';varBtn.title='変数で指定';
+          varBtn.style.cssText='font-size:9px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid rgba(201,168,76,0.3);background:rgba(8,6,16,0.7);color:rgba(240,230,204,0.5);';
+          const varArea=document.createElement('div');varArea.style.cssText='display:none;gap:3px;align-items:center;flex-wrap:wrap;margin-top:2px;width:100%;';
+          const _VT=[{v:'field_count',l:'場の枚数'},{v:'hand_count',l:'手札枚数'},{v:'grave_count',l:'墓地枚数'},{v:'deck_count',l:'デッキ枚数'}];
+          const _VS=[{v:'self',l:'自分'},{v:'enemy',l:'相手'},{v:'both',l:'両者'}];
+          const vTypeSel=document.createElement('select');vTypeSel.style.cssText='padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);';
+          _VT.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(varDef?.type===t.v)o.selected=true;vTypeSel.appendChild(o);});
+          const vSideSel=document.createElement('select');vSideSel.style.cssText=vTypeSel.style.cssText;
+          _VS.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(varDef?.side===t.v)o.selected=true;vSideSel.appendChild(o);});
+          const vFilter=document.createElement('input');vFilter.type='text';vFilter.placeholder='type:天使 kw:guard';vFilter.value=varDef?.filter||'';
+          vFilter.style.cssText='width:90px;padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--parchment);';
+          const saveVar=()=>{
+            const idx=editAbilities.indexOf(ab);if(idx<0)return;
+            if(!editAbilities[idx].params)editAbilities[idx].params={};
+            editAbilities[idx].params[varKey]={type:vTypeSel.value,side:vSideSel.value,filter:vFilter.value.trim()};
+            inp.style.opacity='0.3';inp.disabled=true;
+            varBtn.style.background='rgba(201,168,76,0.2)';varBtn.style.color='var(--gold)';
+            eUpdateAbilPreview();
+          };
+          const clearVar=()=>{
+            const idx=editAbilities.indexOf(ab);if(idx>=0&&editAbilities[idx].params)delete editAbilities[idx].params[varKey];
+            inp.style.opacity='';inp.disabled=false;
+            varBtn.style.background='rgba(8,6,16,0.7)';varBtn.style.color='rgba(240,230,204,0.5)';
+            varArea.style.display='none';eUpdateAbilPreview();
+          };
+          [vTypeSel,vSideSel,vFilter].forEach(el=>el.addEventListener('input',saveVar));
+          varBtn.onclick=()=>{const show=varArea.style.display==='none';varArea.style.display=show?'flex':'none';if(!show)clearVar();else saveVar();};
+          if(varDef){inp.style.opacity='0.3';inp.disabled=true;varBtn.style.background='rgba(201,168,76,0.2)';varBtn.style.color='var(--gold)';varArea.style.display='flex';}
+          varArea.appendChild(vTypeSel);varArea.appendChild(vSideSel);varArea.appendChild(vFilter);
+          numWrap.appendChild(inp);numWrap.appendChild(varBtn);
+          prow.appendChild(numWrap);prow.appendChild(varArea);
         }
       });
       row.appendChild(prow);
@@ -3297,11 +3350,23 @@ function eAddTrigger(){
 
 // ── Passive cost reduce ──
 const PASSIVE_CONDITIONS=[
-  {id:'ally_no_ability',   label:'場の能力なし味方ユニット1体につき'},
-  {id:'ally_any',          label:'場の味方ユニット1体につき'},
-  {id:'enemy_any',         label:'相手フィールドのユニット1体につき'},
-  {id:'turn_start',        label:'自分のターン開始時（固定値）'},
+  // ── 場の枚数 ──
+  {id:'ally_any',          label:'場の味方1体につき', hasFilter:true},
+  {id:'ally_no_ability',   label:'場の能力なし味方1体につき'},
+  {id:'enemy_any',         label:'相手フィールドの1体につき', hasFilter:true},
+  // ── 手札・デッキ・墓地 ──
+  {id:'hand_count',        label:'自分の手札1枚につき'},
+  {id:'enemy_hand_count',  label:'相手の手札1枚につき'},
+  {id:'grave_count',       label:'自分の墓地1枚につき', hasFilter:true},
+  {id:'deck_count',        label:'自分のデッキ1枚につき'},
+  // ── 固定条件 ──
+  {id:'turn_start',        label:'手札にある自分のターン開始ごとに'},
   {id:'always',            label:'常時（固定値）'},
+  {id:'no_hand',           label:'手札が0枚のとき（固定値）'},
+  {id:'no_ally',           label:'自分フィールドにユニットがいないとき'},
+  {id:'enemy_no_unit',     label:'相手フィールドにユニットがいないとき'},
+  {id:'leader_hp_below',   label:'自分リーダーが10以下のとき（固定値）'},
+  {id:'leader_hp_above',   label:'相手リーダーが10以上のとき（固定値）'},
 ];
 
 function eRenderPassiveList(){
@@ -4220,23 +4285,38 @@ function calcCost(pid,card){
   const passives=(card.abilities||[]).filter(a=>a.type==='passive'&&a.id==='cost_reduce_self');
   for(const pa of passives){
     const pr=pa.params||{};
-    const amt=pr.amount||1;
+    const amt=_getVal(pr,'amount',1);
     switch(pr.per){
       case 'ally_no_ability':{
         const n=G.p[pid].field.filter(x=>!(x.abilities||[]).filter(a=>a.type!=='keyword').length&&!x.ability).length;
         c=Math.max(0,c-n*amt); break;
       }
       case 'ally_any':{
-        c=Math.max(0,c-G.p[pid].field.length*amt); break;
+        const tf=pr.filter||'';
+        const n=G.p[pid].field.filter(x=>!tf||(tf.startsWith('type:')?x.type===tf.slice(5):(x.abilities||[]).some(a=>a.type==='keyword'&&a.id===tf.slice(3)))).length;
+        c=Math.max(0,c-n*amt); break;
       }
       case 'enemy_any':{
-        const opp=pid===1?2:1;c=Math.max(0,c-G.p[opp].field.length*amt); break;
+        const opp2=pid===1?2:1;
+        const tf2=pr.filter||'';
+        const n2=G.p[opp2].field.filter(x=>!tf2||(tf2.startsWith('type:')?x.type===tf2.slice(5):(x.abilities||[]).some(a=>a.type==='keyword'&&a.id===tf2.slice(3)))).length;
+        c=Math.max(0,c-n2*amt); break;
       }
+      case 'hand_count':  c=Math.max(0,c-G.p[pid].hand.length*amt); break;
+      case 'enemy_hand_count':{const opp3=pid===1?2:1;c=Math.max(0,c-G.p[opp3].hand.length*amt);break;}
+      case 'grave_count':{
+        const tf3=pr.filter||'';
+        const gc=G.p[pid].grave.filter(g=>!tf3||CARDS.find(cx=>cx.name===g.name)?.type===tf3.slice(5)).reduce((s,g)=>s+(g.count||0),0);
+        c=Math.max(0,c-gc*amt); break;
+      }
+      case 'deck_count':  c=Math.max(0,c-G.p[pid].deck.length*amt); break;
       case 'always': c=Math.max(0,c-amt); break;
-      case 'turn_start':{
-        // 手札に持ち続けたターン数分コスト軽減（カードインスタンスに蓄積）
-        c=Math.max(0,c-(card._handCostMod||0)*amt); break;
-      }
+      case 'turn_start':  c=Math.max(0,c-(card._handCostMod||0)*amt); break;
+      case 'no_hand':     if(G.p[pid].hand.length===0)c=Math.max(0,c-amt); break;
+      case 'no_ally':     if(G.p[pid].field.length===0)c=Math.max(0,c-amt); break;
+      case 'enemy_no_unit':{const opp4=pid===1?2:1;if(G.p[opp4].field.length===0)c=Math.max(0,c-amt);break;}
+      case 'leader_hp_below': if(G.p[pid].life<=10)c=Math.max(0,c-amt); break;
+      case 'leader_hp_above':{const opp5=pid===1?2:1;if(G.p[opp5].life>=10)c=Math.max(0,c-amt);break;}
       default: break;
     }
   }
@@ -4436,14 +4516,43 @@ async function triggerAbility(pid, fc, isAI, triggerType='on_enter'){
   }catch(e){console.error("triggerAbility error",e);}
 }
 
+// 変数値を解決する（フィールド枚数・手札枚数など）
+function _resolveVarVal(varDef, pid){
+  if(!varDef||!G)return 0;
+  const opp=pid===1?2:1;
+  const side=varDef.side||'self';
+  const filter=varDef.filter||'';
+  const getPids=()=>side==='self'?[pid]:side==='enemy'?[opp]:[pid,opp];
+  const matchCard=(c)=>{
+    if(!filter)return true;
+    if(filter.startsWith('type:')){return c.type===(filter.slice(5));}
+    if(filter.startsWith('kw:')){return (c.abilities||[]).some(a=>a.type==='keyword'&&a.id===filter.slice(3));}
+    return true;
+  };
+  switch(varDef.type){
+    case 'field_count': return getPids().reduce((s,p)=>s+G.p[p].field.filter(matchCard).length,0);
+    case 'hand_count':  return getPids().reduce((s,p)=>s+G.p[p].hand.filter(matchCard).length,0);
+    case 'grave_count': return getPids().reduce((s,p)=>s+G.p[p].grave.reduce((a,g)=>a+(g.count||0),0),0);
+    case 'deck_count':  return getPids().reduce((s,p)=>s+G.p[p].deck.length,0);
+    default: return 0;
+  }
+}
+// パラメータから実際の数値を取得（変数対応）
+function _getVal(pr, key, def){
+  const varKey=key+'_var';
+  if(pr[varKey]) return _resolveVarVal(pr[varKey], _execEffect._curPid||1);
+  return pr[key]??def;
+}
+
 async function _execEffect(pid, fc, ab, isAI){
+  _execEffect._curPid=pid; // _getVal から参照できるよう保存
   const opp=pid===1?2:1;
   const p=G.p[pid], op=G.p[opp];
   const pr=ab.params||{};
   const e=ab.effect;
 
   if(e==='draw'){
-    const n=pr.n||1;
+    const n=_getVal(pr,'n',1);
     log(`「${fc.name}」→ ${n}枚ドロー`,'ll-s');
     await drawCardAnim(pid,n);
     return;
@@ -4476,7 +4585,7 @@ async function _execEffect(pid, fc, ab, isAI){
     }
     const tgt=op.field.find(c=>c._uid===t?._uid);
     if(tgt){
-      await dmgCard(opp,tgt._uid,pr.dmg||1);
+      await dmgCard(opp,tgt._uid,_getVal(pr,'dmg',1));
       log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}に${pr.dmg}ダメージ`,'');
     } else {
       log(`「${fc.name}」→ 対象が見つかりません`,'ll-sys');
@@ -4486,7 +4595,7 @@ async function _execEffect(pid, fc, ab, isAI){
   if(e==='dmg_enemy_all'){
     const targets=[...op.field];
     if(!targets.length){log(`「${fc.name}」→ 対象なし`,'');return;}
-    const dmg=pr.dmg||1;
+    const dmg=_getVal(pr,'dmg',1);
     // simultaneous hit effects
     targets.forEach(t=>{
       if(t._barrier){t._barrier=false;log(`${pCol(t.name,opp)} 障壁で無効化！`,'ll-sys');return;}
@@ -4507,7 +4616,7 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='dmg_enemy_n'){
     const targets=[...op.field];
-    const n=Math.min(pr.n||1,targets.length);
+    const n=Math.min(_getVal(pr,'n',1),targets.length);
     if(!n){log(`「${fc.name}」→ 対象なし`,'');return;}
     // select n targets
     const chosen=[];
@@ -4523,7 +4632,7 @@ async function _execEffect(pid, fc, ab, isAI){
         chosen.push(remaining.reduce((a,b)=>a._hp>b._hp?a:b));
       }
     }
-    const dmgN=pr.dmg||1;
+    const dmgN=_getVal(pr,'dmg',1);
     const chosenTgts=chosen.map(t=>op.field.find(c=>c._uid===t._uid)).filter(Boolean);
     chosenTgts.forEach(tgt=>{
       if(tgt._barrier){tgt._barrier=false;log(`${pCol(tgt.name,opp)} 障壁で無効化！`,'ll-sys');return;}
@@ -4542,7 +4651,7 @@ async function _execEffect(pid, fc, ab, isAI){
     render(); return;
   }
   if(e==='dmg_leader'){
-    const dmg=pr.dmg||1;
+    const dmg=_getVal(pr,'dmg',1);
     op.life=Math.max(0,op.life-dmg);
     arcanaNotifyLifeLoss(opp);
     const lpos=getLifeCenter(opp);if(lpos)showDmgFloat(lpos.x,lpos.y,dmg);
@@ -4613,7 +4722,7 @@ async function _execEffect(pid, fc, ab, isAI){
     render(); return;
   }
   if(e==='heal_leader'){
-    const amt=pr.amount||1;
+    const amt=_getVal(pr,'amount',1);
     G.p[pid].life=Math.min(20,G.p[pid].life+amt);
     log(`${pCol(fc.name,pid)}→ リーダーを${amt}回復`,'');
     render(); return;
@@ -4875,14 +4984,14 @@ async function _execEffect(pid, fc, ab, isAI){
     const tgt=pr.target||'enemy';
     const dispid=_isSelfTarget(tgt)?pid:opp;
     const isAll=_isAllTarget(tgt);
-    const n=isAll?G.p[dispid].hand.length:(pr.n||1);
+    const n=isAll?G.p[dispid].hand.length:(_getVal(pr,'n',1));
     log(`${pCol(fc.name,pid)}→ ${dispid===pid?'自分':'相手'}手札${isAll?'全て':n+'枚'}捨て`,'ll-s');
     if(isAll){G.p[dispid].hand=[];render();}
     else await discardAnim(dispid,n);
     return;
   }
   if(e==='dmg_any'){
-    const dmgVal=pr.dmg||1;
+    const dmgVal=_getVal(pr,'dmg',1);
     const tgtOpt=pr.target||'enemy_choose';
     if(tgtOpt==='enemy_random'||isAI){
       const t=op.field.length?op.field[Math.floor(Math.random()*op.field.length)]:null;
