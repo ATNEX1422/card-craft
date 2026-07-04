@@ -6539,14 +6539,18 @@ function moveTip(e){
   const t=document.getElementById('tooltip');
   const tw=196, th=t.offsetHeight||200;
   let x=e.clientX+13;
-  // always grow upward from cursor
+  // 上に表示（カーソルの上）
   let y=e.clientY-th-8;
-  // clamp horizontally
+  // 水平クランプ
   if(x+tw>window.innerWidth) x=e.clientX-tw-6;
   if(x<3) x=3;
-  // if not enough room above, show below
-  if(y<3) y=e.clientY+16;
-  // final bottom clamp
+  // 上が足りない場合: 手札は画面下なので下表示するとさらに見切れるため
+  // 画面の上半分なら下表示、下半分は上表示を強制
+  if(y<3){
+    if(e.clientY < window.innerHeight/2) y=e.clientY+16; // 上半分なら下に
+    else y=3; // 下半分はトップ固定
+  }
+  // 下クランプ
   if(y+th>window.innerHeight-4) y=window.innerHeight-th-4;
   t.style.left=x+'px';t.style.top=y+'px';
 }
