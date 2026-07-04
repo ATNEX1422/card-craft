@@ -308,6 +308,12 @@ textarea.finput{resize:vertical;min-height:64px;}
 .ds-player{display:flex;flex-direction:column;align-items:center;gap:10px;}
 .ds-player-label{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;color:rgba(240,230,204,0.5);}
 .ds-deck-list{display:flex;flex-direction:column;gap:6px;width:220px;max-height:60vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;}
+/* sort bar */
+.sort-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+.sort-btn{font-family:"Bebas Neue",cursive;font-size:11px;letter-spacing:0.08em;padding:3px 9px;border-radius:5px;cursor:pointer;border:1px solid rgba(201,168,76,0.2);background:rgba(8,6,16,0.6);color:rgba(240,230,204,0.5);transition:all 0.12s;}
+.sort-btn.active{background:rgba(201,168,76,0.18);border-color:rgba(201,168,76,0.6);color:var(--gold);}
+.sort-btn:hover{border-color:rgba(201,168,76,0.4);color:rgba(240,230,204,0.8);}
+.sort-bar input[type=text]{flex:1;min-width:80px;padding:3px 7px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;}
 .ds-deck-opt{
   padding:8px 12px;border-radius:8px;cursor:pointer;
   background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.18);
@@ -1166,6 +1172,18 @@ textarea.finput{resize:vertical;min-height:64px;}
       <button class="gbtn" id="e-save-btn" onclick="eDownloadJSON()" style="font-size:12px;padding:6px 14px;">💾 保存</button>
     </div>
   </div>
+  <!-- Sort bar -->
+  <div class="sort-bar" id="e-sort-bar" style="padding:4px 12px 0;">
+    <input type="text" id="e-search" placeholder="🔍 カード名・種族" oninput="eRenderGrid()">
+    <button class="sort-btn active" data-sort="cost" onclick="setESort('cost',this)">コスト</button>
+    <button class="sort-btn" data-sort="power" onclick="setESort('power',this)">攻撃力</button>
+    <button class="sort-btn" data-sort="toughness" onclick="setESort('toughness',this)">体力</button>
+    <button class="sort-btn" data-sort="name" onclick="setESort('name',this)">名前</button>
+    <button class="sort-btn" data-sort="type" onclick="setESort('type',this)">種族</button>
+    <button class="sort-btn" id="e-sort-dir" onclick="toggleESortDir()" style="min-width:28px;">↑</button>
+  </div>
+  <div style="display:none"><!-- dummy to avoid double close -->
+  </div>
   <!-- Unit card grid -->
   <div class="editor-grid-area" id="e-card-grid">
     <div id="e-empty" style="grid-column:1/-1;text-align:center;padding:48px;color:rgba(240,230,204,0.2);font-size:13px;">カードがありません</div>
@@ -1327,6 +1345,15 @@ textarea.finput{resize:vertical;min-height:64px;}
       <!-- Card pool -->
       <div class="deck-list-col">
         <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(201,168,76,0.45);margin-bottom:4px;">カードプール（クリックでデッキに追加）</div>
+        <div class="sort-bar" id="deck-sort-bar">
+          <input type="text" id="deck-search" placeholder="🔍 カード名・種族" oninput="deckRenderPool()">
+          <button class="sort-btn active" data-sort="cost" onclick="setDeckSort('cost',this)">コスト</button>
+          <button class="sort-btn" data-sort="power" onclick="setDeckSort('power',this)">攻撃力</button>
+          <button class="sort-btn" data-sort="toughness" onclick="setDeckSort('toughness',this)">体力</button>
+          <button class="sort-btn" data-sort="name" onclick="setDeckSort('name',this)">名前</button>
+          <button class="sort-btn" data-sort="type" onclick="setDeckSort('type',this)">種族</button>
+          <button class="sort-btn" id="deck-sort-dir" onclick="toggleDeckSortDir()" style="min-width:28px;">↑</button>
+        </div>
         <div class="card-pool" id="deck-pool"></div>
       </div>
       <!-- Deck contents -->
@@ -3079,6 +3106,49 @@ function eClear(){
   typeRenderSelect('ニュートラル');
 }
 
+// ── カード一覧 ソート ──
+let _eSort='cost', _eSortAsc=true;
+function setESort(key, btn){
+  _eSort=key;
+  document.querySelectorAll('#e-sort-bar .sort-btn[data-sort]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  eRenderGrid();
+}
+function toggleESortDir(){
+  _eSortAsc=!_eSortAsc;
+  document.getElementById('e-sort-dir').textContent=_eSortAsc?'↑':'↓';
+  eRenderGrid();
+}
+
+// ── デッキ編集 ソート ──
+let _deckSort='cost', _deckSortAsc=true;
+function setDeckSort(key, btn){
+  _deckSort=key;
+  document.querySelectorAll('#deck-sort-bar .sort-btn[data-sort]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  deckRenderPool();
+}
+function toggleDeckSortDir(){
+  _deckSortAsc=!_deckSortAsc;
+  document.getElementById('deck-sort-dir').textContent=_deckSortAsc?'↑':'↓';
+  deckRenderPool();
+}
+
+function _sortCards(cards, sortKey, asc){
+  return [...cards].sort((a,b)=>{
+    let v;
+    if(sortKey==='name') v=a.name.localeCompare(b.name,'ja');
+    else if(sortKey==='type') v=(a.type||'').localeCompare(b.type||'','ja');
+    else v=(a[sortKey]||0)-(b[sortKey]||0);
+    return asc?v:-v;
+  });
+}
+function _filterCards(cards, query){
+  if(!query) return cards;
+  const q=query.toLowerCase();
+  return cards.filter(c=>c.name?.toLowerCase().includes(q)||c.type?.toLowerCase().includes(q));
+}
+
 function eRenderTable(){eRenderGrid();}
 function eRenderGrid(){
   const grid=document.getElementById('e-card-grid');
@@ -3088,7 +3158,9 @@ function eRenderGrid(){
   [...grid.children].forEach(c=>{if(c.id!=='e-empty')c.remove();});
   if(!CARDS.length){empty.style.display='block';return;}
   empty.style.display='none';
-  [...CARDS].sort((a,b)=>a.cost-b.cost).forEach(card=>{
+  const query=document.getElementById('e-search')?.value||'';
+  const cards=_sortCards(_filterCards(CARDS,query),_eSort,_eSortAsc);
+  cards.forEach(card=>{
     const div=document.createElement('div');
     div.className='pool-card';
     div.style.cursor='pointer';
@@ -3546,7 +3618,9 @@ function deckRenderAll(){
 function deckRenderPool(){
   const pool=document.getElementById('deck-pool');
   pool.innerHTML='';
-  [...CARDS].filter(c=>!c.isToken).sort((a,b)=>a.cost-b.cost).forEach(card=>{
+  const query2=document.getElementById('deck-search')?.value||'';
+  const poolCards=_sortCards(_filterCards(CARDS.filter(c=>!c.isToken),query2),_deckSort,_deckSortAsc);
+  poolCards.forEach(card=>{
     const inDeck=editingDeck.find(e=>e.id===card.id);
     const cnt=inDeck?inDeck.count:0;
     const total=deckTotalCards(editingDeck);
