@@ -531,13 +531,31 @@ textarea.finput{resize:vertical;min-height:64px;}
 .c-guard{display:none;}
 .c-guard-badge{display:none;}
 .c-guard-field{
-  position:absolute;top:8px;left:0;right:0;bottom:32px;/* イラスト部分のみ */
+  position:absolute;top:8px;left:0;right:0;bottom:32px;
   z-index:4;pointer-events:none;
   display:flex;align-items:center;justify-content:center;
 }
 .c-guard-field svg{
   width:96%;height:96%;opacity:0.6;
   filter:drop-shadow(0 0 4px rgba(34,197,94,0.7));
+}
+.c-bound-field{
+  position:absolute;top:8px;left:0;right:0;bottom:32px;
+  z-index:4;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.c-bound-field svg{
+  width:96%;height:96%;opacity:0.55;
+  filter:drop-shadow(0 0 6px rgba(167,139,250,0.8));
+}
+.c-silenced-field{
+  position:absolute;top:8px;left:0;right:0;bottom:32px;
+  z-index:4;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.c-silenced-field svg{
+  width:96%;height:96%;opacity:0.5;
+  filter:drop-shadow(0 0 4px rgba(100,100,120,0.7));
 }
 
 /* overlays */
@@ -3643,8 +3661,16 @@ function buildPoolCard(card,cnt,maxed){
   const tokenBadge=card.isToken?'<span style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:0.06em;background:rgba(167,139,250,0.2);border-radius:3px;padding:0 4px;margin:0 3px;">TOKEN</span>':''; 
   const _hasNKA=!!(card.ability||(card.abilities||[]).filter(a=>a.type!=='keyword').length);
   const guardIco=isGuard(card)?'<div class="c-guard"></div>':'';
-  const _silBadge=card._silenced?'<div style="position:absolute;top:2px;left:2px;font-size:9px;background:rgba(100,100,100,0.85);color:#ddd;border-radius:3px;padding:0 3px;z-index:6;">沈</div>':'';
-  const _bndBadge=card._bound?'<div style="position:absolute;bottom:18px;left:2px;font-size:9px;background:rgba(120,60,200,0.85);color:#e8d5ff;border-radius:3px;padding:0 3px;z-index:6;">縛</div>':'';
+  // 呪縛オーバーレイ（紫の鎖SVG）
+  const _bndBadge=card._bound?`<div class="c-bound-field"><svg viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="36" stroke="rgba(167,139,250,0.7)" stroke-width="5" stroke-dasharray="14 8" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="18" stroke="rgba(167,139,250,0.5)" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"/>
+  </svg></div>`:'';
+  // 沈黙オーバーレイ（グレーの斜線×SVG）
+  const _silBadge=card._silenced?`<div class="c-silenced-field"><svg viewBox="0 0 100 100" fill="none">
+    <line x1="20" y1="20" x2="80" y2="80" stroke="rgba(180,180,200,0.65)" stroke-width="7" stroke-linecap="round"/>
+    <line x1="80" y1="20" x2="20" y2="80" stroke="rgba(180,180,200,0.65)" stroke-width="7" stroke-linecap="round"/>
+  </svg></div>`:'';
   const abilDot2=_hasNKA?'<div class="c-abil-dot"></div>':'';
   const abilDot=_hasNKA?'<div class="c-abil-dot"></div>':'';
   return `<div class="c-cost">${card.cost}</div>${cntBadge}${guardIco}${abilDot2}${_silBadge||''}${_bndBadge||''}
