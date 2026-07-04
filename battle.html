@@ -1609,7 +1609,7 @@ const _TGT_TXT={
   enemy_choose:'相手1体（選択）', enemy_random:'相手ランダム1体',
   enemy_highest_atk:'相手の最大攻撃力', enemy_lowest_atk:'相手の最小攻撃力',
   enemy_highest_hp:'相手の最大体力', enemy_lowest_hp:'相手の最小体力',
-  ally_choose:'味方1体（選択）', ally_random:'味方ランダム1体', ally_self:'自身',
+  ally_choose:'味方1体（選択）', ally_random:'味方ランダム1体', ally_self:'自身', ally_entering:'登場したユニット',
   ally_highest_atk:'味方の最大攻撃力', ally_lowest_atk:'味方の最小攻撃力',
   ally_highest_hp:'味方の最大体力', ally_lowest_hp:'味方の最小体力',
   // 旧形式
@@ -1933,6 +1933,7 @@ const ARC_TARGET_LABELS={
   // 自分ユニット
   'ally_all':'自分・全体','ally_choose':'自分・選択X','ally_random':'自分・ランダムX',
   'ally_self':'自身',
+  'ally_entering':'登場したユニット',
   'ally_highest_atk':'自分・最大攻撃力','ally_lowest_atk':'自分・最小攻撃力',
   'ally_highest_hp':'自分・最大体力','ally_lowest_hp':'自分・最小体力',
   // 相手ユニット
@@ -1976,7 +1977,7 @@ const ARC_PASSIVE_EFFECTS=[
   {id:'change_ap',          label:'APを変更',                  unit:'点', target_opts:['self_add','self_subtract','enemy_add','enemy_subtract']},
   // ── 回復 ──
   {id:'heal_leader',        label:'リーダーを回復',            unit:'点', target_opts:['self','enemy']},
-  {id:'heal_unit_one',      label:'ユニットを回復',         unit:'点', target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','enemy_random']},
+  {id:'heal_unit_one',      label:'ユニットを回復',         unit:'点', target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','ally_entering','enemy_random']},
   {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── バフ・デバフ ──
   {id:'buff_unit_one',      label:'ユニットをバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_choose','enemy_random']},
@@ -3308,11 +3309,11 @@ const ALL_EFFECTS=[
   {id:'bind_unit',         label:'ユニットを呪縛',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'silence_unit',      label:'ユニットを沈黙',            params:[{key:'n',label:'体数',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','enemy_all','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   // ── バフ・デバフ ──
-  {id:'buff_unit_one',     label:'ユニットをバフ',            params:[{key:'n',label:'体数',def:1},{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_random'],def:'ally_choose'}]},
+  {id:'buff_unit_one',     label:'ユニットをバフ',            params:[{key:'n',label:'体数',def:1},{key:'pow',label:'+攻撃',def:1},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_entering','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_random'],def:'ally_choose'}]},
   {id:'buff_unit_all',     label:'ユニット全体をバフ',        params:[{key:'pow',label:'+攻撃',def:0},{key:'tuf',label:'+体力',def:1},{key:'target',label:'対象',type:'select',opts:['ally','enemy','both'],def:'ally'}]},
   {id:'set_stats',         label:'ユニットのスタッツを指定値に',params:[{key:'n',label:'体数',def:1},{key:'pow',label:'攻撃力',def:1},{key:'tuf',label:'体力',def:1},{key:'target',label:'対象',type:'select',opts:['enemy_choose','enemy_random','ally_choose','ally_random','ally_self'],def:'enemy_choose'}]},
   {id:'set_leader_life',   label:'リーダーのHPを指定値に',   params:[{key:'amount',label:'HP値',def:10},{key:'target',label:'対象',type:'select',opts:['enemy','self'],def:'enemy'}]},
-  {id:'grant_kw_unit',     label:'ユニットにキーワード付与',  params:[{key:'n',label:'体数',def:1},{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_all','enemy_random'],def:'ally_choose'}]},
+  {id:'grant_kw_unit',     label:'ユニットにキーワード付与',  params:[{key:'n',label:'体数',def:1},{key:'kws',label:'キーワード',type:'kw_multi',def:[]},{key:'target',label:'対象',type:'select',opts:['ally_choose','ally_random','ally_self','ally_entering','ally_all','enemy_random'],def:'ally_choose'}]},
   {id:'grant_kw_summoned', label:'召喚したユニットにキーワード付与',params:[{key:'kws',label:'キーワード',type:'kw_multi',def:[]}]},
   // ── リソース ──
   {id:'change_mana',       label:'マナを変更',                params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_add_max','enemy_sub_current','enemy_sub_max'],def:'self_restore'}]},
@@ -4553,7 +4554,10 @@ async function _fireAllyEnter(pid, newUid, isAI){
     const key=`${ally._uid}:${newUid}`;
     if(_allyEnterFired.has(key))continue;
     _allyEnterFired.add(key);
+    // 登場したユニットのUIDを一時的にセット（対象指定で参照できるように）
+    ally._enteringUid=newUid;
     try{await triggerAbility(pid,ally,isAI,'on_ally_enter');}catch(e){}
+    delete ally._enteringUid;
   }
 }
 function _clearAllyEnterFired(){_allyEnterFired.clear();}
@@ -4824,7 +4828,7 @@ async function _execEffect(pid, fc, ab, isAI){
     const dead=op.field.filter(t=>t._hp<=0);
     if(dead.length){
       await Promise.all(dead.map(t=>animateDestroy(opp,t._uid)));
-      dead.forEach(t=>removeCard(opp,t._uid));
+      for(const t of dead) await removeCard(opp,t._uid);
     }
     log(`${pCol(fc.name,pid)}→ 相手全体に${dmg}ダメージ`,'');
     render(); return;
@@ -4860,7 +4864,7 @@ async function _execEffect(pid, fc, ab, isAI){
     const deadN=chosenTgts.filter(t=>t._hp<=0);
     if(deadN.length){
       await Promise.all(deadN.map(t=>animateDestroy(opp,t._uid)));
-      deadN.forEach(t=>removeCard(opp,t._uid));
+      for(const t of deadN) await removeCard(opp,t._uid);
     }
     log(`${pCol(fc.name,pid)}→ 相手${chosenTgts.length}体に${dmgN}ダメージ`,'');
     render(); return;
@@ -4890,7 +4894,7 @@ async function _execEffect(pid, fc, ab, isAI){
       t=op.field.reduce((a,b)=>a._hp>b._hp?a:b);
     }
     const tgt=op.field.find(c=>c._uid===t._uid);
-    if(tgt){log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}を破壊！`,'');await animateDestroy(opp,tgt._uid);removeCard(opp,tgt._uid);}
+    if(tgt){log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}を破壊！`,'');await animateDestroy(opp,tgt._uid);await removeCard(opp,tgt._uid);}
     render(); return;
   }
   if(e==='destroy_all'){
@@ -4898,7 +4902,7 @@ async function _execEffect(pid, fc, ab, isAI){
     if(!targets.length){log(`「${fc.name}」→ 対象なし`,'');return;}
     log(`${pCol(fc.name,pid)}→ 相手全体を破壊！`,'');
     await Promise.all(targets.map(t=>animateDestroy(opp,t._uid)));
-    targets.forEach(t=>removeCard(opp,t._uid));
+    for(const t of targets) await removeCard(opp,t._uid);
     render(); return;
   }
   if(e==='return_one'){
@@ -4918,7 +4922,7 @@ async function _execEffect(pid, fc, ab, isAI){
     }
     const tgt=op.field.find(c=>c._uid===t._uid);
     if(tgt){
-      removeCard(opp,tgt._uid);
+      await removeCard(opp,tgt._uid);
       // return base card to hand (strip field props)
       const base=CARDS.find(c=>c.id===tgt.id)||tgt;
       G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
@@ -4928,11 +4932,11 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='return_all'){
     const targets=[...op.field];
-    targets.forEach(t=>{
-      removeCard(opp,t._uid);
+    for(const t of targets){
+      await removeCard(opp,t._uid);
       const base=CARDS.find(c=>c.id===t.id)||t;
       G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
-    });
+    }
     log(`${pCol(fc.name,pid)}→ 相手全体を手札に戻す`,'');
     render(); return;
   }
@@ -5194,7 +5198,7 @@ async function _execEffect(pid, fc, ab, isAI){
       dtgt.power=Math.max(0,dtgt.power-(pr.pow||0));
       dtgt.toughness=Math.max(1,dtgt.toughness-(pr.tuf||0));
       dtgt._hp=Math.min(dtgt._hp,dtgt.toughness);
-      if(dtgt._hp<=0){log(`${pCol(dtgt.name,opp)}撃破！`,'');await animateDestroy(opp,dtgt._uid);removeCard(opp,dtgt._uid);}
+      if(dtgt._hp<=0){log(`${pCol(dtgt.name,opp)}撃破！`,'');await animateDestroy(opp,dtgt._uid);await removeCard(opp,dtgt._uid);}
       else log(`${pCol(fc.name,pid)}→${pCol(dtgt.name,opp)}に-${pr.pow||0}/-${pr.tuf||0}`,'ll-s');
     }
     render();return;
@@ -5310,7 +5314,7 @@ async function _execEffect(pid, fc, ab, isAI){
     ts.forEach(t=>{t._hp-=dmg;});render();
     await new Promise(r=>setTimeout(r,300));
     const dead=p.field.filter(t=>t._hp<=0);
-    for(const t of dead){await animateDestroy(pid,t._uid);removeCard(pid,t._uid);}
+    for(const t of dead){await animateDestroy(pid,t._uid);await removeCard(pid,t._uid);}
     log(`${pCol(fc.name,pid)}→ 味方全体に${dmg}ダメージ`,''); render();return;
   }
   if(e==='dmg_all_units'){
@@ -5321,7 +5325,7 @@ async function _execEffect(pid, fc, ab, isAI){
     render();await new Promise(r=>setTimeout(r,300));
     for(const fpid of [1,2]){
       const dead=G.p[fpid].field.filter(t=>t._hp<=0);
-      for(const t of dead){await animateDestroy(fpid,t._uid);removeCard(fpid,t._uid);}
+      for(const t of dead){await animateDestroy(fpid,t._uid);await removeCard(fpid,t._uid);}
     }
     log(`${pCol(fc.name,pid)}→ 全ユニットに${dmg}ダメージ`,''); render();return;
   }
@@ -5359,7 +5363,7 @@ async function _execEffect(pid, fc, ab, isAI){
     let t=isAI?p.field[Math.floor(Math.random()*p.field.length)]:null;
     if(!isAI){render();const r=await selectTarget(`${fc.name}: 破壊対象`,p.field.map(c=>({card:c,pid})));if(!r)return;t=r.card;}
     const tgt=p.field.find(c=>c._uid===t._uid);
-    if(tgt){log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を破壊`,'');await animateDestroy(pid,tgt._uid);removeCard(pid,tgt._uid);}
+    if(tgt){log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を破壊`,'');await animateDestroy(pid,tgt._uid);await removeCard(pid,tgt._uid);}
     render();return;
   }
   if(e==='exile_all'){
@@ -5373,7 +5377,7 @@ async function _execEffect(pid, fc, ab, isAI){
     else if(!isAI){render();const r=await selectTarget(`${fc.name}: 手札に戻す対象`,p.field.map(c=>({card:c,pid})));if(!r)return;t=r.card;}
     else t=p.field[Math.floor(Math.random()*p.field.length)];
     const tgt=p.field.find(c=>c._uid===t._uid);
-    if(tgt){removeCard(pid,tgt._uid);const base=CARDS.find(c=>c.id===tgt.id)||tgt;p.hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を手札に戻す`,'');}
+    if(tgt){await removeCard(pid,tgt._uid);const base=CARDS.find(c=>c.id===tgt.id)||tgt;p.hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→ 味方${pCol(tgt.name,pid)}を手札に戻す`,'');}
     render();return;
   }
   if(e==='bind_all'){
@@ -5388,7 +5392,7 @@ async function _execEffect(pid, fc, ab, isAI){
     const dpow=pr.pow||0,dtuf=pr.tuf||1;
     op.field.forEach(t=>{t.power=Math.max(0,t.power-dpow);t.toughness=Math.max(1,t.toughness-dtuf);t._hp=Math.min(t._hp,t.toughness);});
     const dead=op.field.filter(t=>t._hp<=0);
-    for(const t of dead){await animateDestroy(opp,t._uid);removeCard(opp,t._uid);}
+    for(const t of dead){await animateDestroy(opp,t._uid);await removeCard(opp,t._uid);}
     log(`${pCol(fc.name,pid)}→ 相手全体に-${dpow}/-${dtuf}`,''); render();return;
   }
   if(e==='grant_kw_enemy_one'){
@@ -5448,6 +5452,11 @@ async function _execEffect(pid, fc, ab, isAI){
     if(how==='self'){
       return fc&&fc._uid>0 ? {targets:[fc],poolPid:pid} : {targets:[],poolPid:pid};
     }
+    if(how==='entering'){
+      const enteringUid=fc?._enteringUid;
+      const entering=enteringUid?G.p[pid].field.find(c=>c._uid===enteringUid):null;
+      return entering ? {targets:[entering],poolPid:pid} : {targets:[],poolPid:pid};
+    }
     const filteredPool=excludeSelf&&fc?pool.filter(c=>c._uid!==fc._uid):pool;
     if(!filteredPool.length) return {targets:[],poolPid};
     const count=Math.min(n||1,filteredPool.length);
@@ -5492,7 +5501,7 @@ async function _execEffect(pid, fc, ab, isAI){
     const dmg=pr.dmg||1;
     pools.forEach(([,pl])=>pl.forEach(t=>{t._hp-=dmg;}));
     render();await new Promise(r=>setTimeout(r,300));
-    pools.forEach(([fpid,pl])=>pl.filter(t=>t._hp<=0).forEach(t=>{removeCard(fpid,t._uid);}));
+    for(const [fpid,pl] of pools) for(const t of pl.filter(t=>t._hp<=0)) await removeCard(fpid,t._uid);
     log(`${pCol(fc.name,pid)}→ 全体に${dmg}ダメージ`,'');render();return;
   }
   if(e==='heal_unit_one'){
@@ -5517,14 +5526,14 @@ async function _execEffect(pid, fc, ab, isAI){
     const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'破壊対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
-      if(tgt2){log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を破壊`,'');await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}
+      if(tgt2){log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を破壊`,'');await animateDestroy(poolPid,tgt2._uid);await removeCard(poolPid,tgt2._uid);}
     }
     render();return;
   }
   if(e==='destroy_unit_all'){
     const tgt=pr.target||'enemy';
     const pools=tgt==='both'?[[pid,p.field],[opp,op.field]]:tgt==='ally'?[[pid,p.field]]:[[opp,op.field]];
-    pools.forEach(([fpid,pl])=>{[...pl].forEach(t=>{removeCard(fpid,t._uid);});});
+    for(const [fpid,pl] of pools) for(const t of [...pl]) await removeCard(fpid,t._uid);
     log(`${pCol(fc.name,pid)}→ ユニット全体を破壊`,'');render();return;
   }
   if(e==='exile_unit_one'){
@@ -5547,14 +5556,14 @@ async function _execEffect(pid, fc, ab, isAI){
     const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'手札に戻す対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
-      if(tgt2){removeCard(poolPid,tgt2._uid);const base=CARDS.find(c=>c.id===tgt2.id)||tgt2;G.p[poolPid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を手札に戻す`,'');}
+      if(tgt2){await removeCard(poolPid,tgt2._uid);const base=CARDS.find(c=>c.id===tgt2.id)||tgt2;G.p[poolPid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を手札に戻す`,'');}
     }
     render();return;
   }
   if(e==='return_unit_all'){
     const tgt=pr.target||'enemy';
     const pools=tgt==='ally'?[[pid,p.field]]:[[opp,op.field]];
-    pools.forEach(([fpid,pl])=>{[...pl].forEach(t=>{removeCard(fpid,t._uid);const base=CARDS.find(c=>c.id===t.id)||t;G.p[fpid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});});});
+    for(const [fpid,pl] of pools){for(const t of [...pl]){await removeCard(fpid,t._uid);const base=CARDS.find(c=>c.id===t.id)||t;G.p[fpid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});}}
     log(`${pCol(fc.name,pid)}→ ユニット全体を手札に戻す`,'');render();return;
   }
   if(e==='steal_unit_one'){
@@ -5626,7 +5635,7 @@ async function _execEffect(pid, fc, ab, isAI){
     const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
-      if(tgt2){tgt2.power=pr.pow||1;tgt2.toughness=pr.tuf||1;tgt2._hp=Math.min(tgt2._hp,tgt2.toughness);if(tgt2._hp<=0){await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}else{log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${pr.pow}/${pr.tuf}に変更`,'');}}
+      if(tgt2){tgt2.power=pr.pow||1;tgt2.toughness=pr.tuf||1;tgt2._hp=Math.min(tgt2._hp,tgt2.toughness);if(tgt2._hp<=0){await animateDestroy(poolPid,tgt2._uid);await removeCard(poolPid,tgt2._uid);}else{log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${pr.pow}/${pr.tuf}に変更`,'');}}
     }
     render();return;
   }
@@ -5800,7 +5809,7 @@ async function _legacyTrigger(pid,fc,isAI){
       let t=isAI?op.field.reduce((a,b)=>a._hp>b._hp?a:b):null;
       if(!isAI){render();const r=await selectTarget(`${fc.name}: 破壊対象`,op.field.map(c=>({card:c,pid:opp})));if(!r){render();return;}t=r.card;}
       const tgt=op.field.find(c=>c._uid===t._uid);
-      if(tgt){log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}を破壊！`,'');await animateDestroy(opp,tgt._uid);removeCard(opp,tgt._uid);}
+      if(tgt){log(`${pCol(fc.name,pid)}→${pCol(tgt.name,opp)}を破壊！`,'');await animateDestroy(opp,tgt._uid);await removeCard(opp,tgt._uid);}
     }
     render();return;
   }
@@ -5896,10 +5905,10 @@ async function doAttackUnit(targetPid,targetUid){
   if(aDies) log(`  ${pCol(aCard.name,ap)}撃破！`,'');
   if(dDies&&aDies){
     await Promise.all([animateDestroy(targetPid,targetUid),animateDestroy(ap,auid)]);
-    removeCard(targetPid,targetUid); removeCard(ap,auid);
+    await removeCard(targetPid,targetUid); await removeCard(ap,auid);
   } else {
-    if(dDies){await animateDestroy(targetPid,targetUid);removeCard(targetPid,targetUid);}
-    if(aDies){await animateDestroy(ap,auid);removeCard(ap,auid);}
+    if(dDies){await animateDestroy(targetPid,targetUid);await removeCard(targetPid,targetUid);}
+    if(aDies){await animateDestroy(ap,auid);await removeCard(ap,auid);}
   }
   // pierce leader check after destroy
   if(isPierce(aCard)&&dCard._hp<0&&G.p[targetPid].life<=0){
@@ -6176,8 +6185,8 @@ async function aiTurn(){
         const _td=t._hp<=0,_ad=atk._hp<=0;
         if(_td)log(`  ${pCol(t.name,opp)}撃破！`,'');
         if(_ad)log(`  ${pCol(atk.name,pid)}撃破！`,'');
-        if(_td&&_ad){await Promise.all([animateDestroy(opp,t._uid),animateDestroy(pid,atk._uid)]);removeCard(opp,t._uid);removeCard(pid,atk._uid);}
-        else{if(_td){await animateDestroy(opp,t._uid);removeCard(opp,t._uid);}if(_ad){await animateDestroy(pid,atk._uid);removeCard(pid,atk._uid);}}
+        if(_td&&_ad){await Promise.all([animateDestroy(opp,t._uid),animateDestroy(pid,atk._uid)]);await removeCard(opp,t._uid);await removeCard(pid,atk._uid);}
+        else{if(_td){await animateDestroy(opp,t._uid);await removeCard(opp,t._uid);}if(_ad){await animateDestroy(pid,atk._uid);await removeCard(pid,atk._uid);}}
         render();await wait(300);didAtk=true;if(G.over)break;
       }
     }
@@ -6213,12 +6222,12 @@ async function dmgCard(pid,cuid,dmg){
     render();
     await new Promise(r=>setTimeout(r,350));
     await animateDestroy(pid,cuid);
-    removeCard(pid,cuid);
+    await removeCard(pid,cuid);
   }
 }
 
 
-function removeCard(pid,cuid){
+async function removeCard(pid,cuid){
   const dying=G.p[pid].field.find(c=>c._uid===cuid);
   G.p[pid].field=G.p[pid].field.filter(c=>c._uid!==cuid);
   if(dying){
@@ -6231,10 +6240,21 @@ function removeCard(pid,cuid){
   // fire on_death trigger
   if(dying && !G.over){
     const hasDeathTrig=(dying.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_death');
-    if(hasDeathTrig) triggerAbility(pid,dying,G.cp!==pid,'on_death');
+    if(hasDeathTrig) await triggerAbility(pid,dying,G.cp!==pid,'on_death');
+    // fire on_ally_death for surviving allies on the same team
+    for(const ally of [...G.p[pid].field]){
+      const hasAllyDeathTrig=(ally.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_ally_death');
+      if(hasAllyDeathTrig) await triggerAbility(pid,ally,G.cp!==pid,'on_ally_death');
+    }
+    // fire on_enemy_death for opponent's units
+    const oppPidE=pid===1?2:1;
+    for(const ally of [...G.p[oppPidE].field]){
+      const hasEnemyDeathTrig=(ally.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_enemy_death');
+      if(hasEnemyDeathTrig) await triggerAbility(oppPidE,ally,G.cp!==oppPidE,'on_enemy_death');
+    }
     // arcana on_ally_death
     const ctx={event:'ally_death',pid};
-    const allyPid=pid; // the player who lost the unit
+    const allyPid=pid;
     const arcState=G.p[allyPid].arcana;
     if(arcState&&arcState.id){
       const arc=getArcana(allyPid);
@@ -6245,7 +6265,7 @@ function removeCard(pid,cuid){
         else arcanaFirePassives(allyPid,arc,f(arc.revPassive||[]),'逆位置',ctx);
       }
     }
-    // arcana on_enemy_death: opponent's arcana
+    // arcana on_enemy_death
     const oppPid=pid===1?2:1;
     const oppArcState=G.p[oppPid].arcana;
     if(oppArcState&&oppArcState.id){
@@ -7073,8 +7093,8 @@ async function _replayAttackUnit(pid,opp,atk,tgt){
   if(isDrain(atk)&&ap2>0){G.p[pid].life=Math.min(20,G.p[pid].life+ap2);}
   if(isPierce(atk)&&tgt._hp<0){const ex=-tgt._hp;G.p[opp].life=Math.max(0,G.p[opp].life-ex);}
   const td=tgt._hp<=0,ad=atk._hp<=0;
-  if(td&&ad){await Promise.all([animateDestroy(opp,tgt._uid),animateDestroy(pid,atk._uid)]);removeCard(opp,tgt._uid);removeCard(pid,atk._uid);}
-  else{if(td){await animateDestroy(opp,tgt._uid);removeCard(opp,tgt._uid);}if(ad){await animateDestroy(pid,atk._uid);removeCard(pid,atk._uid);}}
+  if(td&&ad){await Promise.all([animateDestroy(opp,tgt._uid),animateDestroy(pid,atk._uid)]);await removeCard(opp,tgt._uid);await removeCard(pid,atk._uid);}
+  else{if(td){await animateDestroy(opp,tgt._uid);await removeCard(opp,tgt._uid);}if(ad){await animateDestroy(pid,atk._uid);await removeCard(pid,atk._uid);}}
   render();await wait(400);
   if(G.p[opp].life<=0){gameOver(pid);}
 }
