@@ -4982,7 +4982,11 @@ async function _execEffect(pid, fc, ab, isAI){
           spawnedUids.push(nfc._uid);
           log(`${pCol(fc.name,pid)}→${pCol(base.name,tgtPid)}を召喚`,'ll-s');
           render();await animateSummon(tgtPid,nfc._uid);
+          // 召喚されたユニット自身の on_enter 能力を発動
+          await triggerAbility(tgtPid,nfc,tgtPid===2,'on_enter');
+          // 他のユニットの on_ally_enter を発動
           await _fireAllyEnter(tgtPid,nfc._uid,tgtPid===2);
+          await _fireAllyEnterArcana(tgtPid,nfc._uid);
         }
       }
     }
@@ -5749,6 +5753,7 @@ async function _execEffect(pid, fc, ab, isAI){
       p.field.push(nfc);
       log(`${pCol(fc.name,pid)}→ ${zoneLabel}から${pCol(base.name,pid)}を召喚`,'ll-s');
       render();await animateSummon(pid,nfc._uid);
+      await triggerAbility(pid,nfc,isAI,'on_enter');
       await _fireAllyEnter(pid,nfc._uid,isAI);
       await _fireAllyEnterArcana(pid,nfc._uid);
     } else {
