@@ -314,6 +314,8 @@ textarea.finput{resize:vertical;min-height:64px;}
 .sort-btn.active{background:rgba(201,168,76,0.18);border-color:rgba(201,168,76,0.6);color:var(--gold);}
 .sort-btn:hover{border-color:rgba(201,168,76,0.4);color:rgba(240,230,204,0.8);}
 .sort-bar input[type=text]{flex:1;min-width:80px;padding:3px 7px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;}
+.sort-bar select{padding:3px 4px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;cursor:pointer;}
+.sort-bar select option{background:#1a1410;}
 .ds-deck-opt{
   padding:8px 12px;border-radius:8px;cursor:pointer;
   background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.18);
@@ -1191,10 +1193,28 @@ textarea.finput{resize:vertical;min-height:64px;}
     </div>
   </div>
   <!-- Sort bar -->
-  <div class="sort-bar" id="e-sort-bar" style="padding:4px 12px 0;">
-    <input type="text" id="e-search" placeholder="🔍 カード名・種族" oninput="eRenderGrid()">
+  <div class="sort-bar" id="e-sort-bar" style="padding:4px 12px 0;gap:4px;">
+    <input type="text" id="e-search" placeholder="🔍 名前" oninput="eRenderGrid()">
+    <select id="e-filter-type" onchange="eRenderGrid()"><option value="">種族：全て</option></select>
+    <select id="e-filter-cost" onchange="eRenderGrid()">
+      <option value="">コスト：全て</option>
+      <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+      <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      <option value="6">6</option><option value="7">7</option><option value="8+">8+</option>
+    </select>
+    <select id="e-filter-kw" onchange="eRenderGrid()">
+      <option value="">キーワード：全て</option>
+      <option value="rush">突進</option><option value="haste">疾走</option>
+      <option value="guard">守護</option><option value="deathtouch">必殺</option>
+      <option value="drain">吸収</option><option value="pierce">貫通</option>
+    </select>
+    <select id="e-filter-has-ability" onchange="eRenderGrid()">
+      <option value="">能力：全て</option>
+      <option value="yes">能力あり</option><option value="no">能力なし</option>
+    </select>
+    <span style="font-size:10px;color:rgba(201,168,76,0.4);white-space:nowrap;">並び:</span>
     <button class="sort-btn active" data-sort="cost" onclick="setESort('cost',this)">コスト</button>
-    <button class="sort-btn" data-sort="power" onclick="setESort('power',this)">攻撃力</button>
+    <button class="sort-btn" data-sort="power" onclick="setESort('power',this)">攻撃</button>
     <button class="sort-btn" data-sort="toughness" onclick="setESort('toughness',this)">体力</button>
     <button class="sort-btn" data-sort="name" onclick="setESort('name',this)">名前</button>
     <button class="sort-btn" data-sort="type" onclick="setESort('type',this)">種族</button>
@@ -1363,10 +1383,24 @@ textarea.finput{resize:vertical;min-height:64px;}
       <!-- Card pool -->
       <div class="deck-list-col">
         <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(201,168,76,0.45);margin-bottom:4px;">カードプール（クリックでデッキに追加）</div>
-        <div class="sort-bar" id="deck-sort-bar">
-          <input type="text" id="deck-search" placeholder="🔍 カード名・種族" oninput="deckRenderPool()">
+        <div class="sort-bar" id="deck-sort-bar" style="gap:4px;">
+          <input type="text" id="deck-search" placeholder="🔍 名前" oninput="deckRenderPool()">
+          <select id="deck-filter-type" onchange="deckRenderPool()"><option value="">種族：全て</option></select>
+          <select id="deck-filter-cost" onchange="deckRenderPool()">
+            <option value="">コスト：全て</option>
+            <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+            <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+            <option value="6">6</option><option value="7">7</option><option value="8+">8+</option>
+          </select>
+          <select id="deck-filter-kw" onchange="deckRenderPool()">
+            <option value="">キーワード：全て</option>
+            <option value="rush">突進</option><option value="haste">疾走</option>
+            <option value="guard">守護</option><option value="deathtouch">必殺</option>
+            <option value="drain">吸収</option><option value="pierce">貫通</option>
+          </select>
+          <span style="font-size:10px;color:rgba(201,168,76,0.4);white-space:nowrap;">並び:</span>
           <button class="sort-btn active" data-sort="cost" onclick="setDeckSort('cost',this)">コスト</button>
-          <button class="sort-btn" data-sort="power" onclick="setDeckSort('power',this)">攻撃力</button>
+          <button class="sort-btn" data-sort="power" onclick="setDeckSort('power',this)">攻撃</button>
           <button class="sort-btn" data-sort="toughness" onclick="setDeckSort('toughness',this)">体力</button>
           <button class="sort-btn" data-sort="name" onclick="setDeckSort('name',this)">名前</button>
           <button class="sort-btn" data-sort="type" onclick="setDeckSort('type',this)">種族</button>
@@ -2971,8 +3005,8 @@ function showScreen(id){
   const el=document.getElementById(id);
   el.classList.remove('hidden');
   el.style.display = (id==='screen-battle') ? 'grid' : 'flex';
-  if(id==='screen-editor'){eRenderTable();typeRenderSelect();}
-  if(id==='screen-deck') deckRenderAll();
+  if(id==='screen-editor'){eRenderTable();typeRenderSelect();_populateTypeSelectors();}
+  if(id==='screen-deck'){deckRenderAll();_populateTypeSelectors();}
   if(id==='screen-deckselect') dsRender();
 }
 
@@ -3161,10 +3195,55 @@ function _sortCards(cards, sortKey, asc){
     return asc?v:-v;
   });
 }
-function _filterCards(cards, query){
-  if(!query) return cards;
-  const q=query.toLowerCase();
-  return cards.filter(c=>c.name?.toLowerCase().includes(q)||c.type?.toLowerCase().includes(q));
+function _filterCards(cards, query, opts={}){
+  const {type='', cost='', kw='', hasAbility=''} = opts;
+  return cards.filter(c=>{
+    if(query){
+      const q=query.toLowerCase();
+      if(!c.name?.toLowerCase().includes(q)) return false;
+    }
+    if(type && c.type!==type) return false;
+    if(cost){
+      if(cost==='8+'){if((c.cost||0)<8) return false;}
+      else{if((c.cost||0)!==parseInt(cost)) return false;}
+    }
+    if(kw && !(c.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)) return false;
+    if(hasAbility==='yes' && !(c.abilities||[]).some(a=>a.type!=='keyword') && !c.ability) return false;
+    if(hasAbility==='no' && ((c.abilities||[]).some(a=>a.type!=='keyword') || c.ability)) return false;
+    return true;
+  });
+}
+
+function _getEFilterOpts(){
+  return {
+    type: document.getElementById('e-filter-type')?.value||'',
+    cost: document.getElementById('e-filter-cost')?.value||'',
+    kw:   document.getElementById('e-filter-kw')?.value||'',
+    hasAbility: document.getElementById('e-filter-has-ability')?.value||'',
+  };
+}
+function _getDeckFilterOpts(){
+  return {
+    type: document.getElementById('deck-filter-type')?.value||'',
+    cost: document.getElementById('deck-filter-cost')?.value||'',
+    kw:   document.getElementById('deck-filter-kw')?.value||'',
+  };
+}
+
+// 種族セレクターを _cardTypes から生成
+function _populateTypeSelectors(){
+  ['e-filter-type','deck-filter-type'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">種族：全て</option>';
+    _cardTypes.forEach(t=>{
+      if(t==='ニュートラル')return;
+      const o=document.createElement('option');o.value=t;o.textContent=t;
+      if(t===cur)o.selected=true;
+      sel.appendChild(o);
+    });
+  });
 }
 
 function eRenderTable(){eRenderGrid();}
@@ -3177,7 +3256,7 @@ function eRenderGrid(){
   if(!CARDS.length){empty.style.display='block';return;}
   empty.style.display='none';
   const query=document.getElementById('e-search')?.value||'';
-  const cards=_sortCards(_filterCards(CARDS,query),_eSort,_eSortAsc);
+  const cards=_sortCards(_filterCards(CARDS,query,_getEFilterOpts()),_eSort,_eSortAsc);
   cards.forEach(card=>{
     const div=document.createElement('div');
     div.className='pool-card';
@@ -3637,7 +3716,7 @@ function deckRenderPool(){
   const pool=document.getElementById('deck-pool');
   pool.innerHTML='';
   const query2=document.getElementById('deck-search')?.value||'';
-  const poolCards=_sortCards(_filterCards(CARDS.filter(c=>!c.isToken),query2),_deckSort,_deckSortAsc);
+  const poolCards=_sortCards(_filterCards(CARDS.filter(c=>!c.isToken),query2,_getDeckFilterOpts()),_deckSort,_deckSortAsc);
   poolCards.forEach(card=>{
     const inDeck=editingDeck.find(e=>e.id===card.id);
     const cnt=inDeck?inDeck.count:0;
