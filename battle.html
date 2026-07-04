@@ -298,6 +298,8 @@ textarea.finput{resize:vertical;min-height:64px;}
 .pool-card:hover{transform:translateY(-4px);}
 .pool-card.max-copies{opacity:0.45;cursor:not-allowed;}
 .pool-card.max-copies:hover{transform:none;}
+.pool-card.type-locked{opacity:0.25;filter:grayscale(0.8);cursor:not-allowed;}
+.pool-card.type-locked:hover{transform:none;}
 
 /* ═══════════════════════════════════
    DECK SELECT SCREEN
@@ -1615,19 +1617,19 @@ const _TGT_TXT={
   strongest:'最大攻撃力', weakest:'最小体力', lowest_hp:'最小体力', highest_atk:'最大攻撃力',
 };
 function _tgtSide(t){return t&&(t.startsWith('ally')||t==='self')?'味方':'相手';}
-function _tgtOne(t,defSide,n){ // 1体系の対象文（n体対応）
+function _tgtOne(t,defSide,n,excludeSelf){ // 1体系の対象文（n体対応）
   n=n||1;
   const cnt=n>1?n+'体':'1体';
-  if(!t) return defSide+cnt;
+  const exSuffix=excludeSelf?' (自身除く)':'';
+  if(!t) return defSide+cnt+exSuffix;
   if(_TGT_TXT[t]){
-    // "選択"等のサフィックスはそのまま、数字部分だけ差し替え
     if(n>1){
-      if(t.includes('random')) return `${_tgtSide(t)}ランダム${n}体`;
-      if(t.includes('choose')) return `${_tgtSide(t)}${n}体（選択）`;
+      if(t.includes('random')) return `${_tgtSide(t)}ランダム${n}体${exSuffix}`;
+      if(t.includes('choose')) return `${_tgtSide(t)}${n}体（選択）${exSuffix}`;
     }
-    return _TGT_TXT[t];
+    return _TGT_TXT[t]+exSuffix;
   }
-  return defSide+cnt;
+  return defSide+cnt+exSuffix;
 }
 
 function buildAbilityText(card){
@@ -1673,7 +1675,7 @@ function buildAbilityText(card){
       case 'dmg_enemy_all':   desc+=`相手ユニット全体に${p.dmg||1}ダメージ`; break;
       // ── 回復 ──
       case 'heal_leader':     desc+=`${_tgtSide(tgt||'self')}リーダーを${_vLabel('amount',p.amount||1)}回復`; break;
-      case 'heal_unit_one':   desc+=`${_tgtOne(tgt,'味方',_vLabel('n',p.n))}を${_vLabel('amount',p.amount||1)}回復`; break;
+      case 'heal_unit_one':   desc+=`${_tgtOne(tgt,'味方',_vLabel('n',p.n),p.exclude_self)}を${_vLabel('amount',p.amount||1)}回復`; break;
       case 'heal_unit_all':   desc+=`${_tgtSide(tgt||'ally')}ユニット全体を${p.amount||1}回復`; break;
       // ── 除去 ──
       case 'destroy_unit_one': desc+=`${_tgtOne(tgt,'相手',p.n)}を破壊`; break;
@@ -1690,7 +1692,7 @@ function buildAbilityText(card){
       case 'bind_unit':       desc+= isAll?`${_tgtSide(tgt)}ユニット全体を呪縛`:`${_tgtOne(tgt,'相手',p.n)}を呪縛`; break;
       case 'silence_unit':    desc+= isAll?`${_tgtSide(tgt)}ユニット全体を沈黙`:`${_tgtOne(tgt,'相手',p.n)}を沈黙`; break;
       // ── バフ・デバフ ──
-      case 'buff_unit_one':   desc+=`${_tgtOne(tgt,'味方',p.n)}を+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_unit_one':   desc+=`${_tgtOne(tgt,'味方',_vLabel('n',p.n),p.exclude_self)}を+${p.pow||0}/+${p.tuf||0}`; break;
       case 'buff_unit_all':   desc+=`${_tgtSide(tgt||'ally')}ユニット全体を+${p.pow||0}/+${p.tuf||0}`; break;
       case 'buff_ally_one':   desc+=`自分ユニット1体を+${p.pow||0}/+${p.tuf||0}`; break;
       case 'buff_ally_all':   desc+=`自分ユニット全体を+${p.pow||0}/+${p.tuf||0}`; break;
@@ -3401,6 +3403,26 @@ function eRenderTriggerList(){
           (pDef.opts||[]).forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=ARC_TARGET_LABELS[o]||o;if((ab.params||{})[pDef.key]===o)op.selected=true;sel.appendChild(op);});
           sel.onchange=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=e.target.value;eUpdateAbilPreview();}};
           prow.appendChild(sel);
+          // 自身を除く（味方対象の場合のみ表示）
+          const isAllyOpts=(pDef.opts||[]).some(o=>o.startsWith('ally'));
+          if(isAllyOpts){
+            const exWrap=document.createElement('label');
+            exWrap.style.cssText='display:flex;align-items:center;gap:3px;font-size:10px;color:rgba(240,230,204,0.5);cursor:pointer;white-space:nowrap;';
+            const exChk=document.createElement('input');exChk.type='checkbox';
+            exChk.style.cssText='accent-color:var(--gold);width:11px;height:11px;';
+            exChk.checked=!!(ab.params||{}).exclude_self;
+            exChk.onchange=e=>{
+              const idx=editAbilities.indexOf(ab);
+              if(idx<0)return;
+              if(!editAbilities[idx].params)editAbilities[idx].params={};
+              if(e.target.checked)editAbilities[idx].params.exclude_self=true;
+              else delete editAbilities[idx].params.exclude_self;
+              eUpdateAbilPreview();
+            };
+            exWrap.appendChild(exChk);
+            exWrap.appendChild(document.createTextNode('自身除く'));
+            prow.appendChild(exWrap);
+          }
         } else if(pDef.type==='card_list'){
           // card_list: editable list of {name, n} entries
           const clDiv=document.createElement('div');clDiv.style.cssText='display:flex;flex-direction:column;gap:4px;width:100%;';
@@ -3717,15 +3739,26 @@ function deckRenderPool(){
   pool.innerHTML='';
   const query2=document.getElementById('deck-search')?.value||'';
   const poolCards=_sortCards(_filterCards(CARDS.filter(c=>!c.isToken),query2,_getDeckFilterOpts()),_deckSort,_deckSortAsc);
+  // 現在のデッキの種族を取得（ニュートラル除く）
+  const deckTypes=getDeckTypes(editingDeck); // Set
+  const typeLocked=deckTypes.size>=2; // 2種族入ったらロック
   poolCards.forEach(card=>{
     const inDeck=editingDeck.find(e=>e.id===card.id);
     const cnt=inDeck?inDeck.count:0;
     const total=deckTotalCards(editingDeck);
     const maxed=cnt>=3||total>=30;
+    // 種族ロック判定: 2種族確定後、その2種族とニュートラル以外はグレーアウト
+    const cardType=card.type||'ニュートラル';
+    const isNeutral=cardType==='ニュートラル';
+    const typeBlocked=typeLocked&&!isNeutral&&!deckTypes.has(cardType);
+    const blocked=maxed||typeBlocked;
     const div=document.createElement('div');
-    div.className='pool-card'+(maxed?' max-copies':'');
-    div.innerHTML=buildPoolCard(card,cnt,maxed);
-    if(!maxed) div.addEventListener('click',()=>deckAddCard(card.id));
+    let cls='pool-card';
+    if(typeBlocked) cls+=' type-locked';
+    else if(maxed) cls+=' max-copies';
+    div.className=cls;
+    div.innerHTML=buildPoolCard(card,cnt,blocked);
+    if(!blocked) div.addEventListener('click',()=>deckAddCard(card.id));
     div.addEventListener('mouseenter',e=>showTip(card,card.cost,e));
     div.addEventListener('mouseleave',hideTip);
     div.addEventListener('mousemove',moveTip);
@@ -3803,9 +3836,10 @@ function deckRenderEntries(){
   });
   el.innerHTML=sortedEntries.map(entry=>{
     const card=CARDS.find(c=>c.id===entry.id);if(!card)return'';
+    const typeTxt=(card.type&&card.type!=='ニュートラル')?`<span style="font-size:9px;color:rgba(240,230,204,0.38);margin-left:3px;white-space:nowrap;">${esc(card.type)}</span>`:'';
     return`<div class="deck-entry">
       <div class="entry-cost">${card.cost}</div>
-      <span class="entry-name" title="${esc(card.name)}">${esc(card.name)}</span>
+      <span class="entry-name" title="${esc(card.name)}">${esc(card.name)}${typeTxt}</span>
       <div class="entry-btns">
         <div class="entry-btn" onclick="deckAddCard('${esc(entry.id)}')">＋</div>
         <span class="entry-count">×${entry.count}</span>
@@ -5404,16 +5438,18 @@ async function _execEffect(pid, fc, ab, isAI){
     return {side,how,pool,poolPid};
   }
   // n体まとめて対象を選ぶ汎用ヘルパー。selfは1体固定。choose時はn回連続選択。
-  async function _pickTargets(tgt, n, promptLabel){
+  // excludeSelf: 発動元カード自身を対象から除く
+  async function _pickTargets(tgt, n, promptLabel, excludeSelf=false){
     const {pool,poolPid,how}=_resolveTargets(tgt);
     if(how==='self'){
       return fc&&fc._uid>0 ? {targets:[fc],poolPid:pid} : {targets:[],poolPid:pid};
     }
-    if(!pool.length) return {targets:[],poolPid};
-    const count=Math.min(n||1,pool.length);
+    const filteredPool=excludeSelf&&fc?pool.filter(c=>c._uid!==fc._uid):pool;
+    if(!filteredPool.length) return {targets:[],poolPid};
+    const count=Math.min(n||1,filteredPool.length);
     let targets=[];
     if(how==='choose'&&!isAI){
-      let remaining=[...pool];
+      let remaining=[...filteredPool];
       for(let i=0;i<count;i++){
         if(!remaining.length)break;
         render();
@@ -5423,23 +5459,23 @@ async function _execEffect(pid, fc, ab, isAI){
         if(picked){targets.push(picked);remaining=remaining.filter(c=>c._uid!==picked._uid);}
       }
     } else if(how==='highest_atk'||how==='strongest'){
-      targets=[...pool].sort((a,b)=>b.power-a.power).slice(0,count);
+      targets=[...filteredPool].sort((a,b)=>b.power-a.power).slice(0,count);
     } else if(how==='lowest_atk'){
-      targets=[...pool].sort((a,b)=>a.power-b.power).slice(0,count);
+      targets=[...filteredPool].sort((a,b)=>a.power-b.power).slice(0,count);
     } else if(how==='highest_hp'){
-      targets=[...pool].sort((a,b)=>b._hp-a._hp).slice(0,count);
+      targets=[...filteredPool].sort((a,b)=>b._hp-a._hp).slice(0,count);
     } else if(how==='lowest_hp'||how==='weakest'){
-      targets=[...pool].sort((a,b)=>a._hp-b._hp).slice(0,count);
+      targets=[...filteredPool].sort((a,b)=>a._hp-b._hp).slice(0,count);
     } else {
       // random
-      const shuffled=[...pool].sort(()=>Math.random()-0.5);
+      const shuffled=[...filteredPool].sort(()=>Math.random()-0.5);
       targets=shuffled.slice(0,count);
     }
     return {targets,poolPid};
   }
   if(e==='dmg_unit_one'){
     const tgt=pr.target||'enemy_random';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'ダメージ対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'ダメージ対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
       if(tgt2){await dmgCard(poolPid,tgt2._uid,pr.dmg||1);log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に${pr.dmg||1}ダメージ`,'');}
@@ -5457,7 +5493,7 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='heal_unit_one'){
     const tgt=pr.target||'ally_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'回復対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'回復対象', pr.exclude_self);
     const hp=pr.amount||1;
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
@@ -5474,7 +5510,7 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='destroy_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'破壊対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'破壊対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
       if(tgt2){log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を破壊`,'');await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}
@@ -5489,7 +5525,7 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='exile_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'除外対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'除外対象', pr.exclude_self);
     for(const t of targets){
       G.p[poolPid].field=G.p[poolPid].field.filter(c=>c._uid!==t._uid);
       log(`${pCol(fc.name,pid)}→${pCol(t.name,poolPid)}を除外`,'');
@@ -5504,7 +5540,7 @@ async function _execEffect(pid, fc, ab, isAI){
   }
   if(e==='return_unit_one'){
     const tgt=pr.target||'enemy_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'手札に戻す対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'手札に戻す対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
       if(tgt2){removeCard(poolPid,tgt2._uid);const base=CARDS.find(c=>c.id===tgt2.id)||tgt2;G.p[poolPid].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を手札に戻す`,'');}
@@ -5540,7 +5576,7 @@ async function _execEffect(pid, fc, ab, isAI){
       pool.forEach(t=>{t._bound=true;});
       log(`${pCol(fc.name,pid)}→ 全体呪縛`,'');render();return;
     }
-    const {targets}=await _pickTargets(tgt,pr.n||1,'呪縛対象');
+    const {targets}=await _pickTargets(tgt,pr.n||1,'呪縛対象', pr.exclude_self);
     targets.forEach(t=>{t._bound=true;log(`${pCol(fc.name,pid)}→${pCol(t.name,pid)}を呪縛`,'');});
     render();return;
   }
@@ -5551,13 +5587,13 @@ async function _execEffect(pid, fc, ab, isAI){
       pool.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;});
       log(`${pCol(fc.name,pid)}→ 全体沈黙`,'');render();return;
     }
-    const {targets}=await _pickTargets(tgt,pr.n||1,'沈黙対象');
+    const {targets}=await _pickTargets(tgt,pr.n||1,'沈黙対象', pr.exclude_self);
     targets.forEach(t=>{t._silenced=true;t.abilities=[];t.ability=null;log(`${pCol(fc.name,pid)}→${pCol(t.name,pid)}を沈黙`,'');});
     render();return;
   }
   if(e==='buff_unit_one'){
     const tgt=pr.target||'ally_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'バフ対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'バフ対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
       if(tgt2){tgt2.power+=pr.pow||0;tgt2.toughness+=pr.tuf||0;tgt2._hp+=pr.tuf||0;log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}に+${pr.pow||0}/+${pr.tuf||0}`,'');}
@@ -5576,14 +5612,14 @@ async function _execEffect(pid, fc, ab, isAI){
     if(!kws.length){render();return;}
     let targets=[];
     if(tgt.endsWith('all')){const {pool}=_resolveTargets(tgt);targets=pool;}
-    else{const r=await _pickTargets(tgt,pr.n||1,'付与対象');targets=r.targets;}
+    else{const r=await _pickTargets(tgt,pr.n||1,'付与対象', pr.exclude_self);targets=r.targets;}
     targets.forEach(t=>{kws.forEach(kw=>{if(!(t.abilities||[]).some(a=>a.type==='keyword'&&a.id===kw)){if(!t.abilities)t.abilities=[];t.abilities.push({type:'keyword',id:kw});if(kw==='barrier')t._barrier=true;if(kw==='rush'&&t._sick){t._rushOnly=true;t._sick=false;}if(kw==='haste'){t._haste=true;t._sick=false;t._rushOnly=false;}}});});
     const kwTxt=kws.map(k=>KW_LABELS[k]||k).join('・');
     log(`${pCol(fc.name,pid)}→ ${kwTxt}付与`,'');render();return;
   }
   if(e==='set_stats'){
     const tgt=pr.target||'enemy_choose';
-    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'対象');
+    const {targets,poolPid}=await _pickTargets(tgt,pr.n||1,'対象', pr.exclude_self);
     for(const t of targets){
       const tgt2=G.p[poolPid].field.find(c=>c._uid===t._uid);
       if(tgt2){tgt2.power=pr.pow||1;tgt2.toughness=pr.tuf||1;tgt2._hp=Math.min(tgt2._hp,tgt2.toughness);if(tgt2._hp<=0){await animateDestroy(poolPid,tgt2._uid);removeCard(poolPid,tgt2._uid);}else{log(`${pCol(fc.name,pid)}→${pCol(tgt2.name,poolPid)}を${pr.pow}/${pr.tuf}に変更`,'');}}
@@ -5794,7 +5830,6 @@ async function doAttackUnit(targetPid,targetUid){
   // stealth check
   if(isStlth(dCard)&&!dCard._revealed){showMidNotif('潜伏中のユニットは攻撃できません','rgba(240,230,204,0.7)',1400);return;}
 
-  flashAtk();
   showMidNotif(`⚔ ${pCol(aCard.name,ap)} → ${pCol(dCard.name,targetPid)}`,'',2200);
   log(`${pCol(aCard.name,ap)}→${pCol(dCard.name,targetPid)}に攻撃`,'');
   const ap2=aCard.power, dp2=dCard.power;
@@ -5888,7 +5923,7 @@ async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQ
   lockAnim();
   render(); await new Promise(r=>requestAnimationFrame(r));
   await animateLunge(ap,auid);
-  flashAtk();
+  if(targetPid===1) flashAtk(); // 自分リーダーがダメージを受けるときのみ
   showMidNotif(`⚔ ${pCol(aCard.name,ap)} → ${pCol('P'+targetPid+'リーダー',targetPid)}`,'',1600);
   const dmg=aCard.power;
   G.p[targetPid].life=Math.max(0,G.p[targetPid].life-dmg);
@@ -6101,7 +6136,6 @@ async function aiTurn(){
       if(tgts.length>0&&canAtkUnit(atk)){
         await waitNotif();await wait(100);
         const t=aiPickTarget(atk,tgts);
-        flashAtk();
         showMidNotif(`⚔ ${pCol(atk.name,pid)} → ${pCol(t.name,opp)}`,'',1800);
         log(`${pCol(atk.name,pid)}→${pCol(t.name,opp)}に攻撃`,'');
         // lunge animation
@@ -7002,7 +7036,6 @@ async function _onlineProcessAction(action){
 
 // ── Replay attack unit (opponent's attack) ──
 async function _replayAttackUnit(pid,opp,atk,tgt){
-  flashAtk();
   showMidNotif(`⚔ ${pCol(atk.name,pid)} → ${pCol(tgt.name,opp)}`,'',1800);
   render();await new Promise(r=>requestAnimationFrame(r));
   await animateLunge(pid,atk._uid);
@@ -7038,7 +7071,7 @@ async function _replayAttackUnit(pid,opp,atk,tgt){
 }
 
 async function _replayAttackLeader(pid,opp,atk){
-  flashAtk();
+  if(opp===1) flashAtk(); // 自分(P1)リーダーがダメージを受けるときのみ
   showMidNotif(`⚔ ${pCol(atk.name,pid)} → ${pCol('リーダー',opp)}`,'',1000);
   render();await new Promise(r=>requestAnimationFrame(r));
   await animateLunge(pid,atk._uid);
