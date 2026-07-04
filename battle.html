@@ -3643,9 +3643,11 @@ function buildPoolCard(card,cnt,maxed){
   const tokenBadge=card.isToken?'<span style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:0.06em;background:rgba(167,139,250,0.2);border-radius:3px;padding:0 4px;margin:0 3px;">TOKEN</span>':''; 
   const _hasNKA=!!(card.ability||(card.abilities||[]).filter(a=>a.type!=='keyword').length);
   const guardIco=isGuard(card)?'<div class="c-guard"></div>':'';
+  const _silBadge=card._silenced?'<div style="position:absolute;top:2px;left:2px;font-size:9px;background:rgba(100,100,100,0.85);color:#ddd;border-radius:3px;padding:0 3px;z-index:6;">沈</div>':'';
+  const _bndBadge=card._bound?'<div style="position:absolute;bottom:18px;left:2px;font-size:9px;background:rgba(120,60,200,0.85);color:#e8d5ff;border-radius:3px;padding:0 3px;z-index:6;">縛</div>':'';
   const abilDot2=_hasNKA?'<div class="c-abil-dot"></div>':'';
   const abilDot=_hasNKA?'<div class="c-abil-dot"></div>':'';
-  return `<div class="c-cost">${card.cost}</div>${cntBadge}${guardIco}${abilDot2}
+  return `<div class="c-cost">${card.cost}</div>${cntBadge}${guardIco}${abilDot2}${_silBadge||''}${_bndBadge||''}
 <div class="c-img">${img}</div>
 <div class="c-name">${esc(card.name)}</div>
 <div class="c-stats"><span class="cpow">⚔${card.power}</span>${tokenBadge}<span class="ctuf">🛡${card.toughness}</span></div>`;
@@ -4203,7 +4205,7 @@ function mkCard(base){
     _sick:!rush&&!haste,_rushOnly:rush&&!haste,_haste:haste,_attacked:false,
     _barrier:isBarrier(base),_bound:false,_silenced:false,_revealed:!isStlth(base)};
 }
-function clearTurnFlags(c){c._sick=false;c._rushOnly=false;c._haste=false;c._attacked=false;}
+function clearTurnFlags(c){c._sick=false;c._rushOnly=false;c._haste=false;c._attacked=false;} // _bound/_silenced は永続（場を離れるまで続く）
 
 let _arcanaOverride=null;
 function startBattle(){
@@ -5658,14 +5660,15 @@ async function _legacyTrigger(pid,fc,isAI){
   }
 }
 
-function canAtkUnit(c){if(c._attacked)return false;if(c._sick&&!c._rushOnly&&!c._haste)return false;return true;}
-function canAtkLeader(c){if(c._attacked)return false;if(c._rushOnly)return false;if(c._sick&&!c._haste)return false;return true;}
+function canAtkUnit(c){if(c._attacked)return false;if(c._bound)return false;if(c._sick&&!c._rushOnly&&!c._haste)return false;return true;}
+function canAtkLeader(c){if(c._attacked)return false;if(c._bound)return false;if(c._rushOnly)return false;if(c._sick&&!c._haste)return false;return true;}
 
 function selectAtk(pid,cuid){
   if(G.over||G.cp!==pid||aiLock)return;
   const card=G.p[pid].field.find(c=>c._uid===cuid);if(!card)return;
   if(!canAtkUnit(card)){
-    if(card._attacked)showMidNotif('このターンすでに攻撃しました','rgba(240,230,204,0.7)',1400);
+    if(card._bound)showMidNotif('呪縛されているため攻撃できません','rgba(167,139,250,0.8)',1600);
+    else if(card._attacked)showMidNotif('このターンすでに攻撃しました','rgba(240,230,204,0.7)',1400);
     else showMidNotif('召喚酔い — 次のターンから攻撃可','rgba(240,230,204,0.7)',1400);
     return;
   }
@@ -6129,7 +6132,7 @@ async function startTurn(pid){
   });
   p.maxMana=Math.min(10,p.turnCount);
   p.mana=p.maxMana;
-  p.field.forEach(c=>{clearTurnFlags(c);c._bound=false;});
+  p.field.forEach(c=>{clearTurnFlags(c);});
   drawCard(pid);
   log(`── P${pid} のターン開始 (マナ ${p.mana}/${p.maxMana})`,'ll-sys');
   // fire on_turn_start triggers first
