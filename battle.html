@@ -376,8 +376,10 @@ textarea.finput{resize:vertical;min-height:64px;}
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 /* ホバー時はz-indexを上げてフィールド等に隠れないようにする */
-#p1hand:has(.hcard:hover){z-index:100;isolation:isolate;}
+#p1hand:has(.hcard:hover){z-index:100;}
 .hcard:hover:not(.no-hv){transform:translateY(-24px);z-index:200;position:relative;}
+/* アルカナのグローが下にはみ出ないようにクリップ */
+#p1-arcana-slot{overflow:clip;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
