@@ -4386,21 +4386,20 @@ async function _showCoinToss(firstPid){
   overlay.classList.add('show');
   await new Promise(r=>setTimeout(r,300));
 
-  // set coin face before spin
-  icon.textContent='';
-  icon.style.cssText='font-size:72px;position:relative;';
-  // Front = sun (P1先攻), Back = moon (AI先攻)
+  // 自分が先攻→表(☀️)、後攻→裏(🌙)
+  const _myFirst=_onlineRoom?(firstPid===_onlineRoom.myPid):firstPid===1;
   const face1='☀️', face2='🌙';
-  icon.textContent=face1; // starts showing front
+  const myFace=_myFirst?face1:face2;   // 自分の結果面
+  const startFace=face1;               // スピン開始は常に表
+  icon.textContent=startFace;
 
   // spin with face flip at midpoint
   icon.classList.add('spin');
   await new Promise(r=>setTimeout(r,600));
-  icon.textContent=firstPid===1?face1:face2; // flip to result face
+  icon.textContent=myFace; // 自分視点の結果を表示
   await new Promise(r=>setTimeout(r,600));
 
   // show result
-  const _myFirst=_onlineRoom?(firstPid===_onlineRoom.myPid):firstPid===1;
   result.textContent=_myFirst?'あなたが先攻！':'相手が先攻！';
   result.style.color=_myFirst?'#60a5fa':'#f87171';
   result.classList.add('show');
@@ -6342,8 +6341,7 @@ async function startTurn(pid){
   if(_onlineRoom){
     // オンライン: 自分の手番か相手の手番かで表示
     const myTurn=pid===_onlineRoom.myPid;
-    showMidNotif(myTurn?'YOUR TURN':'OPPONENT TURN',myTurn?'#60a5fa':'#f87171',2200);
-  } else if(pid===1){
+    showMidNotif(myTurn?'YOUR TURN':'OPPONENT TURN',myTurn?'#60a5fa':'#f87171',2200);  } else if(pid===1){
     showMidNotif('YOUR TURN','#60a5fa',2200);
   } else {
     showMidNotif('ENEMY TURN','#f87171',2200);
@@ -6365,23 +6363,28 @@ function render(){
     if(notifEl)notifEl.dataset.turnKey=_turnKey;
   }
 
+  const myPid=_onlineRoom?_onlineRoom.myPid:1;
+  const oppPid=myPid===1?2:1;
+
   [1,2].forEach(pid=>{
     const p=G.p[pid];
     document.getElementById(`p${pid}-life`).textContent=p.life;
     const mc=document.getElementById(`p${pid}-mana`);mc.innerHTML='';
+    const isMine=pid===myPid;
     for(let i=1;i<=p.maxMana;i++){
       const g=document.createElement('div');
-      g.className='mana-gem'+(i<=p.mana?(pid===1?' full-p1':' full-p2'):'');
+      g.className='mana-gem'+(i<=p.mana?(isMine?' full-p1':' full-p2'):'');
       mc.appendChild(g);
     }
     // 数字表示
     const numEl=document.getElementById(`p${pid}-mana-num`);
     if(numEl){
       numEl.textContent=`${p.mana}/${p.maxMana}`;
-      numEl.style.color=pid===1?'#60a5fa':'#ef4444';
+      numEl.style.color=isMine?'#60a5fa':'#ef4444';
     }
     renderField(pid);
   });
+  updatePerspective();
   renderHand1();renderHand2();updateLifeTargets();updateCounters();
 }
 
@@ -7010,6 +7013,32 @@ async function _onlineCleanupRoom(){
 }
 
 function _onlineIsMyTurn(){return G.cp===_onlineRoom?.myPid;}
+
+
+// ゲスト(myPid=2)は自分が「青・下段・YOU」になるよう表示を切り替える
+function updatePerspective(){
+  if(!_onlineRoom)return;
+  const isGuest=_onlineRoom.myPid===2;
+
+  // ライフ色
+  const myLifeEl=document.getElementById(isGuest?'p2-life':'p1-life');
+  const oppLifeEl=document.getElementById(isGuest?'p1-life':'p2-life');
+  if(myLifeEl)myLifeEl.className='life-val p1-col';   // 自分=青
+  if(oppLifeEl)oppLifeEl.className='life-val p2-col'; // 相手=赤
+
+  // ラベル（mid-p1=左=P1、mid-p2=右=P2）
+  const p1Label=document.querySelector('#mid-p1 .plabel');
+  const p2Label=document.querySelector('#mid-p2 .plabel');
+  if(p1Label)p1Label.textContent=isGuest?'OPPONENT (P1)':'YOU (P1)';
+  if(p2Label)p2Label.textContent=isGuest?'YOU (P2)':'OPPONENT (P2)';
+
+  // ライフ攻撃クリック：相手リーダーをクリックで攻撃
+  // lt1=P1側ライフ, lt2=P2側ライフ
+  const lt1=document.getElementById('lt1');
+  const lt2=document.getElementById('lt2');
+  if(lt1)lt1.onclick=isGuest?()=>attackLife(1):undefined; // ゲストはP1ライフを攻撃
+  if(lt2)lt2.onclick=isGuest?undefined:()=>attackLife(2); // ホストはP2ライフを攻撃
+}
 function _onlineLockControls(){
   aiLock=true;
   document.getElementById('end-btn').disabled=true;
