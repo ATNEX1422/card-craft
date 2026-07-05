@@ -1649,7 +1649,7 @@ function buildAbilityText(card){
       const vd=p[key+'_var'];
       if(!vd)return def;
       const sideL={self:'自分',enemy:'相手',both:'両者'}[vd.side]||vd.side;
-      const typeL={field_count:'場の枚数',hand_count:'手札枚数',grave_count:'墓地枚数',deck_count:'デッキ枚数'}[vd.type]||vd.type;
+      const typeL={field_count:'場の枚数',field_types:'場の種類数',hand_count:'手札枚数',hand_types:'手札の種類数',grave_count:'墓地枚数',grave_types:'墓地の種類数',deck_count:'デッキ枚数'}[vd.type]||vd.type;
       const filt=vd.filter?`(${vd.filter})`:'';
       return `[${sideL}${typeL}${filt}]`;
     };
@@ -3501,7 +3501,7 @@ function eRenderTriggerList(){
           const varBtn=document.createElement('button');varBtn.type='button';varBtn.textContent='≈';varBtn.title='変数で指定';
           varBtn.style.cssText='font-size:9px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid rgba(201,168,76,0.3);background:rgba(8,6,16,0.7);color:rgba(240,230,204,0.5);';
           const varArea=document.createElement('div');varArea.style.cssText='display:none;gap:3px;align-items:center;flex-wrap:wrap;margin-top:2px;width:100%;';
-          const _VT=[{v:'field_count',l:'場の枚数'},{v:'hand_count',l:'手札枚数'},{v:'grave_count',l:'墓地枚数'},{v:'deck_count',l:'デッキ枚数'}];
+          const _VT=[{v:'field_count',l:'場の枚数'},{v:'field_types',l:'場の種類数'},{v:'hand_count',l:'手札枚数'},{v:'hand_types',l:'手札の種類数'},{v:'grave_count',l:'墓地枚数'},{v:'grave_types',l:'墓地の種類数'},{v:'deck_count',l:'デッキ枚数'}];
           const _VS=[{v:'self',l:'自分'},{v:'enemy',l:'相手'},{v:'both',l:'両者'}];
           const vTypeSel=document.createElement('select');vTypeSel.style.cssText='padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);';
           _VT.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(varDef?.type===t.v)o.selected=true;vTypeSel.appendChild(o);});
@@ -4747,16 +4747,20 @@ async function triggerAbility(pid, fc, isAI, triggerType='on_enter'){
 
 // ── 能力発動条件チェック ──
 const COND_TYPES=[
-  {v:'hand_count',    l:'手札枚数'},
-  {v:'ap',           l:'AP'},
-  {v:'field_count',  l:'場のユニット数'},
-  {v:'enemy_field',  l:'相手の場のユニット数'},
-  {v:'self_power',   l:'自身の攻撃力'},
-  {v:'self_hp',      l:'自身の体力'},
-  {v:'leader_hp',    l:'自分リーダーのHP'},
-  {v:'enemy_hp',     l:'相手リーダーのHP'},
-  {v:'turn',         l:'ターン数'},
-  {v:'grave_count',  l:'墓地の枚数'},
+  {v:'hand_count',       l:'手札枚数'},
+  {v:'hand_types',       l:'手札の種類数'},
+  {v:'ap',               l:'AP'},
+  {v:'field_count',      l:'場のユニット数'},
+  {v:'field_types',      l:'場のユニット種類数'},
+  {v:'enemy_field',      l:'相手の場のユニット数'},
+  {v:'enemy_field_types',l:'相手の場のユニット種類数'},
+  {v:'self_power',       l:'自身の攻撃力'},
+  {v:'self_hp',          l:'自身の体力'},
+  {v:'leader_hp',        l:'自分リーダーのHP'},
+  {v:'enemy_hp',         l:'相手リーダーのHP'},
+  {v:'turn',             l:'ターン数'},
+  {v:'grave_count',      l:'墓地の枚数'},
+  {v:'grave_types',      l:'墓地の種類数'},
 ];
 const COND_OPS=[
   {v:'>=',l:'以上'},{v:'<=',l:'以下'},{v:'==',l:'ちょうど'},{v:'>',l:'より多い'},{v:'<',l:'より少ない'}
@@ -4766,16 +4770,20 @@ function _checkCondition(cond, pid, fc){
   const opp=pid===1?2:1;
   let val=0;
   switch(cond.type){
-    case 'hand_count':   val=G.p[pid].hand.length; break;
-    case 'ap':           val=G.p[pid].arcana?.gauge||0; break;
-    case 'field_count':  val=G.p[pid].field.length; break;
-    case 'enemy_field':  val=G.p[opp].field.length; break;
-    case 'self_power':   val=fc?.power||0; break;
-    case 'self_hp':      val=fc?._hp||0; break;
-    case 'leader_hp':    val=G.p[pid].life; break;
-    case 'enemy_hp':     val=G.p[opp].life; break;
-    case 'turn':         val=G.turn||0; break;
-    case 'grave_count':  val=G.p[pid].grave.reduce((s,g)=>s+(g.count||0),0); break;
+    case 'hand_count':        val=G.p[pid].hand.length; break;
+    case 'hand_types':        val=new Set(G.p[pid].hand.map(c=>c.id)).size; break;
+    case 'ap':                val=G.p[pid].arcana?.gauge||0; break;
+    case 'field_count':       val=G.p[pid].field.length; break;
+    case 'field_types':       val=new Set(G.p[pid].field.map(c=>c.id)).size; break;
+    case 'enemy_field':       val=G.p[opp].field.length; break;
+    case 'enemy_field_types': val=new Set(G.p[opp].field.map(c=>c.id)).size; break;
+    case 'self_power':        val=fc?.power||0; break;
+    case 'self_hp':           val=fc?._hp||0; break;
+    case 'leader_hp':         val=G.p[pid].life; break;
+    case 'enemy_hp':          val=G.p[opp].life; break;
+    case 'turn':              val=G.turn||0; break;
+    case 'grave_count':       val=G.p[pid].grave.reduce((s,g)=>s+(g.count||0),0); break;
+    case 'grave_types':       val=G.p[pid].grave.length; break;
     default: return true;
   }
   const threshold=cond.val??0;
@@ -4803,10 +4811,13 @@ function _resolveVarVal(varDef, pid){
     return true;
   };
   switch(varDef.type){
-    case 'field_count': return getPids().reduce((s,p)=>s+G.p[p].field.filter(matchCard).length,0);
-    case 'hand_count':  return getPids().reduce((s,p)=>s+G.p[p].hand.filter(matchCard).length,0);
-    case 'grave_count': return getPids().reduce((s,p)=>s+G.p[p].grave.reduce((a,g)=>a+(g.count||0),0),0);
-    case 'deck_count':  return getPids().reduce((s,p)=>s+G.p[p].deck.length,0);
+    case 'field_count':  return getPids().reduce((s,p)=>s+G.p[p].field.filter(matchCard).length,0);
+    case 'field_types':  return new Set(getPids().flatMap(p=>G.p[p].field.filter(matchCard).map(c=>c.id))).size;
+    case 'hand_count':   return getPids().reduce((s,p)=>s+G.p[p].hand.filter(matchCard).length,0);
+    case 'hand_types':   return new Set(getPids().flatMap(p=>G.p[p].hand.filter(matchCard).map(c=>c.id))).size;
+    case 'grave_count':  return getPids().reduce((s,p)=>s+G.p[p].grave.reduce((a,g)=>a+(g.count||0),0),0);
+    case 'grave_types':  return getPids().reduce((s,p)=>s+G.p[p].grave.length,0);
+    case 'deck_count':   return getPids().reduce((s,p)=>s+G.p[p].deck.length,0);
     default: return 0;
   }
 }
