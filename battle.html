@@ -372,6 +372,9 @@ textarea.finput{resize:vertical;min-height:64px;}
   overflow-x:auto;overflow-y:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
+/* ホバー時はz-indexを上げてカードが他要素に隠れないようにする */
+#p1hand:has(.hcard:hover),#p1hand:focus-within{z-index:10;}
+.hcard:hover:not(.no-hv){transform:translateY(-20px);z-index:20;position:relative;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
@@ -475,7 +478,6 @@ textarea.finput{resize:vertical;min-height:64px;}
   background:var(--ink-card);border:1px solid rgba(201,168,76,0.18);display:flex;flex-direction:column;}
 .card:hover:not(.no-hv){transform:translateY(-4px);}
 .hcard{width:89px;height:115px;}
-.hcard:hover:not(.no-hv){transform:translateY(-4px);}
 .hcard.unafford{opacity:0.35;cursor:not-allowed;}
 .hcard.unafford:hover{transform:none!important;}
 .fcard{width:89px;height:115px;}
@@ -1463,7 +1465,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       <div class="mini-counter" title="相手墓地を見る" onclick="openGrave(2)"><div class="mc-val" id="p2-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
     </div>
     <span class="hand-label" style="margin:0 4px;">HAND</span>
-    <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow:hidden;"></div>
+    <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow-x:auto;overflow-y:visible;"></div>
     <div class="arcana-slot" id="p2-arcana-slot">
       <div class="ap-fan" id="p2-ap-fan"></div>
       <div class="arcana-card" id="p2-arcana-card"></div>
@@ -1514,7 +1516,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       <div class="arcana-card" id="p1-arcana-card" onclick="onArcanaClick(1)"></div>
       <div class="arcana-gauge" id="p1-arcana-gauge"></div>
     </div>
-    <div id="p1-hand-inner" style="display:flex;gap:4px;align-items:center;justify-content:center;flex:1;overflow:hidden;"></div>
+    <div id="p1-hand-inner" style="display:flex;gap:4px;align-items:center;justify-content:center;flex:1;overflow-x:auto;overflow-y:visible;"></div>
     <div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:0 8px;flex-shrink:0;">
       <div class="mini-counter" title="デッキ残枚数"><div class="mc-val" id="p1-deck-count">0</div><div class="mc-lbl">DECK</div></div>
       <div class="mini-counter" title="墓地を見る" onclick="openGrave(1)"><div class="mc-val" id="p1-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
@@ -7059,6 +7061,15 @@ function _onlineApplyStateSnap(st){
 }
 
 // ── スナップショット構築 ──
+async function _onlineFetchAndApplyState(){
+  if(!_onlineRoom)return;
+  try{
+    const fb2=_fb();if(!fb2)return;
+    const st=await fb2.get(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`));
+    if(st.exists())_onlineApplyStateSnap(st.val());
+  }catch(e){console.warn('[online] fetchState failed',e);}
+}
+
 function _buildStateSnap(){
   const pickField=p=>p.field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,
     _hp:c._hp,_attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,
@@ -7140,16 +7151,6 @@ async function _onlineProcessAction(action){
   _onlineQueueRunning=false;
 }
 async function _execOnlineAction(action){
-  // 受信前に最新状態を取得して同期（summon/attackなど中ターンアクションの効果を反映）
-  if(action.type!=='end_turn'){
-    try{
-      const fb2=_fb();if(fb2&&_onlineRoom){
-        const st=await fb2.get(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`));
-        if(st.exists())_onlineApplyStateSnap(st.val());
-      }
-    }catch(e){}
-    render();
-  }
   try{
     switch(action.type){
       case 'summon':{
@@ -7178,6 +7179,7 @@ async function _execOnlineAction(action){
         const tgt=G.p[opp].field.find(c=>c._uid===action.tgtUid);
         if(!atk||!tgt){console.warn('[online] attack_unit: unit not found',action);break;}
         await _replayAttackUnit(pid,opp,atk,tgt);
+        await _onlineFetchAndApplyState();
         break;
       }
       case 'attack_leader':{
@@ -7185,6 +7187,7 @@ async function _execOnlineAction(action){
         const atk=G.p[pid].field.find(c=>c._uid===action.atkUid);
         if(!atk)break;
         await _replayAttackLeader(pid,opp,atk);
+        await _onlineFetchAndApplyState();
         break;
       }
       case 'end_turn':{
