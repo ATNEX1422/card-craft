@@ -1638,7 +1638,13 @@ function buildAbilityText(card){
     const trig=TRIG_LABELS[a.trigger]||a.trigger;
     const p=a.params||{};
     const tgt=p.target||'';
-    // 変数表示ヘルパー
+    // 発動条件の表示
+    let condTxt='';
+    if(p.condition_check){
+      const ct=COND_TYPES.find(t=>t.v===p.condition_check.type);
+      const co=COND_OPS.find(t=>t.v===p.condition_check.op);
+      condTxt=`(${ct?.l||p.condition_check.type}${co?.l||p.condition_check.op}${p.condition_check.val}のとき) `;
+    }    // 変数表示ヘルパー
     const _vLabel=(key,def)=>{
       const vd=p[key+'_var'];
       if(!vd)return def;
@@ -1649,7 +1655,7 @@ function buildAbilityText(card){
     };
     const isAll=tgt&&(tgt.endsWith('_all')||tgt==='both'||tgt==='self_all'||tgt==='enemy_all'||tgt==='ally_all');
     const kwTxt=()=>(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・')||'キーワード';
-    let desc=`【${trig}】`;
+    let desc=`【${trig}】${condTxt}`;
     switch(a.effect){
       // ── ドロー・手札 ──
       case 'draw':            desc+=`${_tgtSide(tgt)==='相手'&&tgt?'相手が':''}${p.n||1}枚引く`; break;
@@ -2974,6 +2980,7 @@ function typeManagerRenderList(){
         _cardTypes.splice(i,1);
         await _saveTypes(_cardTypes);
         typeManagerRenderList();
+        _populateTypeSelectors(); // ソートバーに即反映
       };
       row.appendChild(del);
     }
@@ -2989,6 +2996,7 @@ async function typeManagerAdd(){
   await _saveTypes(_cardTypes);
   inp.value='';
   typeManagerRenderList();
+  _populateTypeSelectors(); // ソートバーに即反映
 }
 
 function showScreen(id){
@@ -4296,7 +4304,13 @@ async function aiArcana(){
 function arcanaNotifyLifeLoss(pid){
   const state=G.p[pid]?.arcana;
   if(!state||!state.id)return;
+  // リーダーがダメージを受けるたびにAP+1
   const arc=getArcana(pid);
+  const maxG=arc?arcanaGaugeMax(arc):0;
+  if(maxG>0&&state.gauge<maxG){
+    state.gauge=Math.min(maxG,state.gauge+1);
+    log(`✦ ${pCol(arc.name,pid)} AP +1 → ${state.gauge}/${maxG}`,'ll-sys');
+  }
   // fire on_damage_taken passives only (no automatic gauge increase)
   if(arc){
     const ctx={event:'damage_taken',pid};
@@ -4729,6 +4743,50 @@ async function triggerAbility(pid, fc, isAI, triggerType='on_enter'){
     await _execEffect(pid, fc, {...ab, _triggerType: triggerType}, isAI);
   }
   }catch(e){console.error("triggerAbility error",e);}
+}
+
+// ── 能力発動条件チェック ──
+const COND_TYPES=[
+  {v:'hand_count',    l:'手札枚数'},
+  {v:'ap',           l:'AP'},
+  {v:'field_count',  l:'場のユニット数'},
+  {v:'enemy_field',  l:'相手の場のユニット数'},
+  {v:'self_power',   l:'自身の攻撃力'},
+  {v:'self_hp',      l:'自身の体力'},
+  {v:'leader_hp',    l:'自分リーダーのHP'},
+  {v:'enemy_hp',     l:'相手リーダーのHP'},
+  {v:'turn',         l:'ターン数'},
+  {v:'grave_count',  l:'墓地の枚数'},
+];
+const COND_OPS=[
+  {v:'>=',l:'以上'},{v:'<=',l:'以下'},{v:'==',l:'ちょうど'},{v:'>',l:'より多い'},{v:'<',l:'より少ない'}
+];
+function _checkCondition(cond, pid, fc){
+  if(!cond||!cond.type)return true;
+  const opp=pid===1?2:1;
+  let val=0;
+  switch(cond.type){
+    case 'hand_count':   val=G.p[pid].hand.length; break;
+    case 'ap':           val=G.p[pid].arcana?.gauge||0; break;
+    case 'field_count':  val=G.p[pid].field.length; break;
+    case 'enemy_field':  val=G.p[opp].field.length; break;
+    case 'self_power':   val=fc?.power||0; break;
+    case 'self_hp':      val=fc?._hp||0; break;
+    case 'leader_hp':    val=G.p[pid].life; break;
+    case 'enemy_hp':     val=G.p[opp].life; break;
+    case 'turn':         val=G.turn||0; break;
+    case 'grave_count':  val=G.p[pid].grave.reduce((s,g)=>s+(g.count||0),0); break;
+    default: return true;
+  }
+  const threshold=cond.val??0;
+  switch(cond.op||'>='){
+    case '>=': return val>=threshold;
+    case '<=': return val<=threshold;
+    case '==': return val===threshold;
+    case '>':  return val>threshold;
+    case '<':  return val<threshold;
+    default:   return true;
+  }
 }
 
 // 変数値を解決する（フィールド枚数・手札枚数など）
@@ -6293,8 +6351,8 @@ async function startTurn(pid){
   p.maxMana=Math.min(10,p.turnCount);
   p.mana=p.maxMana;
   p.field.forEach(c=>{clearTurnFlags(c);});
+  log(`── ${pid===1?'あなた':'相手'} のターン開始 (マナ ${p.mana}/${p.maxMana})`,'ll-sys');
   drawCard(pid);
-  log(`── P${pid} のターン開始 (マナ ${p.mana}/${p.maxMana})`,'ll-sys');
   // fire on_turn_start triggers first
   for(const fc of [...p.field]){
     const abs=(fc.abilities||[]).filter(a=>a.type==='trigger'&&a.trigger==='on_turn_start');
