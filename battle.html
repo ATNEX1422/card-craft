@@ -1309,11 +1309,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       </div>
       <div>
         <label class="flabel">コスト（マナ）</label>
-        <select id="e-cost" class="finput">
-          <option value="">— 選択 —</option>
-          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-          <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-        </select>
+        <input type="number" id="e-cost" class="finput" min="0" max="99" placeholder="0〜99">
       </div>
     </div>
     <div class="sep"><span>ステータス</span></div>
@@ -3021,11 +3017,11 @@ function showScreen(id){
   showScreen('screen-menu');
 })();
 
-function goMenu(){
+async function goMenu(){
   G.over=true;
   document.getElementById('gameover').classList.remove('open');
-  // Online: host cleans up room on menu exit
-  if(_onlineRoom&&_onlineRoom.role==='host') _onlineCleanupRoom();
+  // Online: 全員クリーンアップ（ホストはルーム削除も行う）
+  if(_onlineRoom) await _onlineCleanupRoom();
   showScreen('screen-menu');
 }
 
@@ -3037,7 +3033,7 @@ let eToastTmr=null;
 
 function eDzClick(){document.getElementById('e-img-file').click();}
 document.getElementById('e-img-file').addEventListener('change',e=>{if(e.target.files[0])eHandleFile(e.target.files[0]);});
-document.getElementById('e-cost').addEventListener('change',function(){
+document.getElementById('e-cost').addEventListener('input',function(){
   const c=parseInt(this.value);const h=document.getElementById('e-hint');
   if(!c){h.innerHTML='コスト選択で<br>基準表示';h.style.color='rgba(240,230,204,0.35)';return;}
   h.innerHTML=`<span style="font-family:'Bebas Neue',cursive;font-size:16px;color:var(--gold)">${c}マナ<br>${c}/${c}</span><br><span style="font-size:9px;opacity:0.55;">能力あり→下方調整</span>`;
@@ -3120,7 +3116,7 @@ function eRegister(){
   const id=document.getElementById('e-id').value.trim();
   const name=document.getElementById('e-name').value.trim();
   const image=document.getElementById('e-img-name').value.trim();
-  const cost=document.getElementById('e-cost').value;
+  const cost=parseInt(document.getElementById('e-cost').value)||0;
   const pow=document.getElementById('e-pow').value;
   const tuf=document.getElementById('e-tuf').value;
   const abil=document.getElementById('e-abil').value.trim();
@@ -3152,7 +3148,7 @@ function eDeleteCard(id){
 
 function eClear(){
   ['e-id','e-name','e-pow','e-tuf','e-abil'].forEach(i=>document.getElementById(i).value='');
-  document.getElementById('e-cost').value='';
+  document.getElementById('e-cost').value=0;
   document.getElementById('e-hint').innerHTML='コスト選択で<br>基準表示';
   document.getElementById('e-hint').style.color='rgba(240,230,204,0.35)';
   eDzClear({stopPropagation:()=>{}});
@@ -3673,7 +3669,7 @@ function eLoadCardToForm(card){
   document.getElementById('e-tuf').value=card.toughness;
   eInitAbilityUI(card.abilities||[]);
   document.getElementById('e-img-name').value=card.image||'';
-  document.getElementById('e-cost').dispatchEvent(new Event('change'));
+  document.getElementById('e-cost').dispatchEvent(new Event('input'));
   if(card.imageDataUrl){
     eCurImgData=card.imageDataUrl;
     const dz=document.getElementById('e-dz');dz.classList.add('hi');
@@ -4975,20 +4971,17 @@ async function _execEffect(pid, fc, ab, isAI){
   if(e==='summon_card'){
     const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
     const tgtPid=(pr.target==='enemy')?opp:pid;
-    const tgtField=G.p[tgtPid].field;
     const spawnedUids=[];
     for(const entry of entries){
       const base=CARDS.find(c=>c.name===entry.name);
       if(!base)continue;
       for(let i=0;i<(entry.n||1);i++){
-        if(tgtField.length<7){
-          const nfc=mkCard(base);tgtField.push(nfc);
+        if(G.p[tgtPid].field.length<7){ // stale参照を避けて毎回直接参照
+          const nfc=mkCard(base);G.p[tgtPid].field.push(nfc);
           spawnedUids.push(nfc._uid);
           log(`${pCol(fc.name,pid)}→${pCol(base.name,tgtPid)}を召喚`,'ll-s');
           render();await animateSummon(tgtPid,nfc._uid);
-          // 召喚されたユニット自身の on_enter 能力を発動
           await triggerAbility(tgtPid,nfc,tgtPid===2,'on_enter');
-          // 他のユニットの on_ally_enter を発動
           await _fireAllyEnter(tgtPid,nfc._uid,tgtPid===2);
           await _fireAllyEnterArcana(tgtPid,nfc._uid);
         }
@@ -5917,7 +5910,7 @@ async function doAttackUnit(targetPid,targetUid){
   deselectAtk();render();
   // Online: broadcast attack_unit
   if(_onlineRoom&&!_onlineProcessingAction){
-    _onlineSendAction({type:'attack_unit',atkUid:auid,tgtUid:targetUid});
+    _onlineSendAction({type:'attack_unit',pid:ap,atkUid:auid,tgtUid:targetUid});
   }
 }
 
@@ -6021,7 +6014,10 @@ async function endTurn(){
 
 function gameOver(winner){
   G.over=true;
-  document.getElementById('go-sub').textContent=`Player ${winner} ${winner===1?'(あなた)':'(AI)'} の勝利！`;
+  const _winLabel=_onlineRoom
+    ?(winner===_onlineRoom.myPid?'(あなた)':'(相手)')
+    :(winner===1?'(あなた)':'(AI)');
+  document.getElementById('go-sub').textContent=`Player ${winner} ${_winLabel} の勝利！`;
   document.getElementById('gameover').classList.add('open');
   log(`★ Player ${winner} 勝利！`,'ll-sys');
   // Online: host cleans up room on game over
@@ -6946,12 +6942,17 @@ async function _initOnlineBattle(p1deckCards,p2deckCards,firstPid,myPid){
 // Delete room from Firebase
 async function _onlineCleanupRoom(){
   if(!_onlineRoom)return;
-  const fb=_fb();if(!fb)return;
-  try{
-    await fb.remove(fb.ref(fb.db,`rooms/${_onlineRoom.roomId}`));
-  }catch(e){console.warn('room cleanup error',e);}
+  // Firebase listener を解除
+  if(_onlineActionUnsub){try{_onlineActionUnsub();}catch(e){}}_onlineActionUnsub=null;
+  const fb=_fb();
+  if(fb&&_onlineRoom.role==='host'){
+    try{await fb.remove(fb.ref(fb.db,`rooms/${_onlineRoom.roomId}`));}
+    catch(e){console.warn('room cleanup error',e);}
+  }
   _onlineRoom=null;
-  _onlineActionUnsub=null;
+  _onlineStartGameCalled=false;
+  window._onlineBattleStarted=false;
+  _onlineActionQueue.length=0;
 }
 
 function _onlineIsMyTurn(){return G.cp===_onlineRoom?.myPid;}
@@ -6992,19 +6993,29 @@ function _onlineListenActions(){
     if(key===_lastProcessedKey)return;
     _lastProcessedKey=key;
     // Skip our own actions (we already executed them locally)
-    if(action.pid===_onlineRoom.myPid)return;
+    if(action.pid!=null&&action.pid===_onlineRoom.myPid)return;
     // Queue and process
     await _onlineProcessAction(action);
   });
 }
 
 // ── Process incoming opponent action ──
+const _onlineActionQueue=[];
+let _onlineQueueRunning=false;
 async function _onlineProcessAction(action){
-  if(_onlineProcessingAction){
-    await new Promise(r=>setTimeout(r,100));
-    return _onlineProcessAction(action);
+  _onlineActionQueue.push(action);
+  if(_onlineQueueRunning)return;
+  _onlineQueueRunning=true;
+  while(_onlineActionQueue.length>0){
+    const act=_onlineActionQueue.shift();
+    _onlineProcessingAction=true;
+    try{ await _execOnlineAction(act); }
+    catch(e){console.error('onlineAction error',e);}
+    finally{_onlineProcessingAction=false;}
   }
-  _onlineProcessingAction=true;
+  _onlineQueueRunning=false;
+}
+async function _execOnlineAction(action){
   try{
     switch(action.type){
       case 'summon':{
@@ -7016,20 +7027,22 @@ async function _onlineProcessAction(action){
         const idx=p.hand.indexOf(card);
         p.mana-=cost;p.hand.splice(idx,1);
         const fc=mkCard(card);fc._uid=action.uid;
+        if(action.preTargets) fc._preTargets=action.preTargets; // 送信側の選択を再利用
         p.field.push(fc);
         log(`${pCol(fc.name,pid)}を召喚`,'ll-s');
         render();await animateSummon(pid,fc._uid);
-        await triggerAbility(pid,fc,pid===2,'on_enter');
-        await _fireAllyEnter(pid,fc._uid,pid===2);
+        await triggerAbility(pid,fc,true,'on_enter'); // 受信側はAI扱いで選択UIを出さない
+        delete fc._preTargets;
+        await _fireAllyEnter(pid,fc._uid,true);
         render();
         break;
       }
       case 'attack_unit':{
-        const pid=action.pid,opp=pid===1?2:1;
+        const pid=action.pid??(_onlineRoom.myPid===1?2:1); // pidがない場合は相手
+        const opp=pid===1?2:1;
         const atk=G.p[pid].field.find(c=>c._uid===action.atkUid);
         const tgt=G.p[opp].field.find(c=>c._uid===action.tgtUid);
-        if(!atk||!tgt)break;
-        // replay attack
+        if(!atk||!tgt){console.warn('[online] attack_unit: unit not found',action);break;}
         await _replayAttackUnit(pid,opp,atk,tgt);
         break;
       }
@@ -7059,8 +7072,7 @@ async function _onlineProcessAction(action){
       }
     }
     render();
-  }catch(e){console.error('onlineProcessAction error',e);}
-  finally{_onlineProcessingAction=false;}
+  }catch(e){console.error('execOnlineAction error',e);}
 }
 
 // ── Replay attack unit (opponent's attack) ──
