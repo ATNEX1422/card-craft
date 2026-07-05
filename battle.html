@@ -375,14 +375,14 @@ textarea.finput{resize:vertical;min-height:64px;}
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 /* ホバー時はz-indexを上げてフィールド等に隠れないようにする */
-#p1hand:has(.hcard:hover){z-index:100;}
-.hcard:hover:not(.no-hv){transform:translateY(-24px);z-index:200;position:relative;}
 /* アルカナのグローが下にはみ出ないように封じ込め */
 #p1-arcana-slot{overflow:clip;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
-  justify-content:center;overflow:visible;clip-path:inset(-120px 0 0 0);position:relative;}
+  justify-content:center;overflow:visible;position:relative;clip-path:inset(-200px -10px 0 -10px);}
+.hcard:hover:not(.no-hv){z-index:200;position:relative;}
+#p1hand:has(.hcard:hover){z-index:100;}
 .hand-label{display:none;}
 
 /* field zones */
@@ -2868,7 +2868,28 @@ function resetMenuArtSettings(){
   closeMenuArtSettings();
 }
 
-// ── 種族管理 ──
+// ── 手札ホバー: fixed位置のオーバーレイでクリッピングを回避 ──
+(function(){
+  let _hoverOverlay=null;
+  function _removeOverlay(){
+    if(_hoverOverlay){_hoverOverlay.remove();_hoverOverlay=null;}
+  }
+  document.addEventListener('mouseover',e=>{
+    const hcard=e.target.closest('.hcard');
+    if(!hcard||hcard.closest('.no-hv')){_removeOverlay();return;}
+    _removeOverlay();
+    const rect=hcard.getBoundingClientRect();
+    const ov=hcard.cloneNode(true);
+    ov.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top-30}px;width:${rect.width}px;height:${rect.height}px;z-index:2000;pointer-events:none;transform:scale(1.06);transform-origin:bottom center;filter:drop-shadow(0 4px 16px rgba(201,168,76,0.5));transition:none;`;
+    ov.classList.add('hcard-overlay');
+    document.body.appendChild(ov);
+    _hoverOverlay=ov;
+  });
+  document.addEventListener('mouseout',e=>{
+    const hcard=e.target.closest('.hcard');
+    if(hcard&&!hcard.contains(e.relatedTarget)){_removeOverlay();}
+  });
+})();
 const DEFAULT_TYPES=['ニュートラル','天使','悪魔','王国','死霊'];
 let _cardTypes=[...DEFAULT_TYPES];
 
