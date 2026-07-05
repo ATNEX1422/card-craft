@@ -4396,6 +4396,7 @@ async function _initBattle(p1deckEntries,p2deckEntries){
     }
   };
 
+  // 初期手札: 両プレイヤーが同じデッキ順でドロー（host設定済みのUID順）
   for(let i=0;i<3;i++){drawCard(1,true);drawCard(2,true);}
   document.getElementById('gameover').classList.remove('open');
   clearLog();
@@ -4408,7 +4409,9 @@ async function _initBattle(p1deckEntries,p2deckEntries){
   await _showCoinToss(firstPid);
 
   log('ゲーム開始！','ll-sys');
-  const firstLabel=firstPid===1?'Player 1 (あなた)':'AI (Player 2)';
+  const firstLabel=_onlineRoom
+    ?(firstPid===_onlineRoom.myPid?'あなた (P'+firstPid+')':'相手 (P'+firstPid+')')
+    :(firstPid===1?'Player 1 (あなた)':'AI (Player 2)');
   log(`${firstLabel} が先攻！`,'ll-sys');
   if(firstPid===1) showMidNotif('YOUR TURN','#60a5fa',2200);
   else showMidNotif('ENEMY TURN','#f87171',2200);
@@ -4450,11 +4453,12 @@ async function _showCoinToss(firstPid){
   await new Promise(r=>setTimeout(r,600));
 
   // show result
-  result.textContent=firstPid===1?'あなたが先攻！':'AIが先攻！';
-  result.style.color=firstPid===1?'#60a5fa':'#f87171';
+  const _myFirst=_onlineRoom?(firstPid===_onlineRoom.myPid):firstPid===1;
+  result.textContent=_myFirst?'あなたが先攻！':'相手が先攻！';
+  result.style.color=_myFirst?'#60a5fa':'#f87171';
   result.classList.add('show');
   await new Promise(r=>setTimeout(r,300));
-  sub.textContent=firstPid===1?'先にターンが来ます':'AIから始まります';
+  sub.textContent=_myFirst?'先にターンが来ます':'相手から始まります';
   sub.classList.add('show');
 
   await new Promise(r=>setTimeout(r,1600));
@@ -6058,6 +6062,26 @@ async function endTurn(){
   // ── オンラインモード ──
   if(_onlineRoom){
     // 自分がターン終了 → 相手に通知（ターン進行は両者とも end_turn 受信で行う）
+    // ターン終了時にG.pの全状態を送信（能力効果の同期のため）
+    const fb=_fb();const {roomId}=_onlineRoom;
+    try{
+      const stateSnap={
+        p1:{life:G.p[1].life,mana:G.p[1].mana,maxMana:G.p[1].maxMana,
+            hand:G.p[1].hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0})),
+            field:G.p[1].field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,_hp:c._hp,
+              _attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,_barrier:c._barrier,
+              abilities:c.abilities})),
+            grave:G.p[1].grave,turnCount:G.p[1].turnCount},
+        p2:{life:G.p[2].life,mana:G.p[2].mana,maxMana:G.p[2].maxMana,
+            hand:G.p[2].hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0})),
+            field:G.p[2].field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,_hp:c._hp,
+              _attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,_barrier:c._barrier,
+              abilities:c.abilities})),
+            grave:G.p[2].grave,turnCount:G.p[2].turnCount},
+        turn:G.turn,cp:G.cp,arcana1:G.p[1].arcana,arcana2:G.p[2].arcana
+      };
+      await fb.set(fb.ref(fb.db,`rooms/${roomId}/state`),stateSnap);
+    }catch(e){console.warn('[online] state sync failed',e);}
     _onlineSendAction({type:'end_turn'});
     // 自分側でもターンを進める（相手は end_turn 受信で進める）
     const next=G.cp===1?2:1;
@@ -6484,7 +6508,11 @@ function renderHand1(){
         resolveTarget(opt);
       });
     } else if(canPlay&&!targetMode){
-      div.addEventListener('click',()=>{if(isAnimating())return;summonCard(1,idx);});
+      div.addEventListener('click',()=>{
+        if(isAnimating())return;
+        const myPid=_onlineRoom?._onlineRoom?.myPid||1;
+        summonCard(_onlineRoom?_onlineRoom.myPid:1,idx);
+      });
     }
     div.addEventListener('mouseenter',e=>showTip(card,cost,e));
     div.addEventListener('mouseleave',hideTip);div.addEventListener('mousemove',moveTip);
@@ -6493,7 +6521,9 @@ function renderHand1(){
 }
 
 function renderHand2(){
-  const p=G.p[2];const el=document.getElementById('p2-hand-inner');el.innerHTML='';
+  // オンライン時: myPidが2なら相手(P1)の手札を裏で上段表示
+  const oppPid=(_onlineRoom&&_onlineRoom.myPid===2)?1:2;
+  const p=G.p[oppPid];const el=document.getElementById('p2-hand-inner');el.innerHTML='';
   p.hand.forEach(()=>{
     const d=document.createElement('div');d.className='back-card no-hv';d.textContent='🂠';el.appendChild(d);
   });
@@ -7123,16 +7153,41 @@ async function _execOnlineAction(action){
         break;
       }
       case 'end_turn':{
-        // 相手がターン終了 → 自分側でターンを進める
+        // 相手がターン終了 → 状態を同期してから自分のターンに進める
         const pid=action.pid;
-        if(pid===_onlineRoom.myPid)break; // 自分の送信は無視（既にローカルで処理済み）
+        if(pid===_onlineRoom.myPid)break; // 自分の送信は無視
+        // 相手が送信した最新状態を取得して上書き
+        try{
+          const fb2=_fb();const {roomId:rId}=_onlineRoom;
+          const stSnap=await fb2.get(fb2.ref(fb2.db,`rooms/${rId}/state`));
+          if(stSnap.exists()){
+            const st=stSnap.val();
+            // フィールドユニットを復元
+            const restoreField=(pField,snap)=>snap.map(s=>{
+              const base=CARDS.find(c=>c.id===s.id)||{};
+              const mc={...base,...s};
+              mc._hp=s._hp??s.toughness??base.toughness;
+              return mc;
+            });
+            const restoreHand=(pHand,snap)=>snap.map(s=>{
+              const base=CARDS.find(c=>c.id===s.id)||{};
+              return {...base,_uid:s._uid,_handCostMod:s._handCostMod||0,
+                abilities:JSON.parse(JSON.stringify(base.abilities||[]))};
+            });
+            G.p[1].life=st.p1.life;G.p[1].mana=st.p1.mana;G.p[1].maxMana=st.p1.maxMana;
+            G.p[1].field=restoreField(G.p[1].field,st.p1.field||[]);
+            G.p[1].hand=restoreHand(G.p[1].hand,st.p1.hand||[]);
+            G.p[1].grave=st.p1.grave||[];G.p[1].turnCount=st.p1.turnCount||0;
+            if(st.arcana1)G.p[1].arcana=st.arcana1;
+            G.p[2].life=st.p2.life;G.p[2].mana=st.p2.mana;G.p[2].maxMana=st.p2.maxMana;
+            G.p[2].field=restoreField(G.p[2].field,st.p2.field||[]);
+            G.p[2].hand=restoreHand(G.p[2].hand,st.p2.hand||[]);
+            G.p[2].grave=st.p2.grave||[];G.p[2].turnCount=st.p2.turnCount||0;
+            if(st.arcana2)G.p[2].arcana=st.arcana2;
+            console.log('[online] state synced from opponent turn-end');
+          }
+        }catch(e){console.warn('[online] state restore failed',e);}
         const next=pid===1?2:1;
-        // fire turn_end for the player who ended
-        for(const fc of [...G.p[pid].field]){
-          const abs=(fc.abilities||[]).filter(a=>a.type==='trigger'&&a.trigger==='on_turn_end');
-          for(const ab of abs) await _execEffect(pid,fc,{...ab,_triggerType:'on_turn_end'},false);
-        }
-        await arcanaOnTurnEnd(pid);
         G.cp=next;
         await startTurn(next);
         _onlineUpdateControls();
