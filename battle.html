@@ -365,24 +365,21 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 /* hand rows */
 #p2hand,#p1hand{
-  position:relative;z-index:2;
+  position:relative;z-index:1;
   display:flex;align-items:center;gap:5px;
   padding:6px 8px;overflow:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 #p1-hand-inner,#p2-hand-inner{
-  overflow:visible;
+  overflow-x:clip;overflow-y:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 /* ホバー時はz-indexを上げてフィールド等に隠れないようにする */
-/* アルカナのグローが下にはみ出ないように封じ込め */
-#p1-arcana-slot{overflow:clip;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
-  justify-content:center;overflow:visible;position:relative;clip-path:inset(-200px -10px 0 -10px);}
-.hcard:hover:not(.no-hv){z-index:200;position:relative;}
-#p1hand:has(.hcard:hover){z-index:100;}
+  justify-content:center;overflow:visible;clip-path:none;position:relative;}
+.hcard:hover:not(.no-hv){transform:translateY(-4px);}
 .hand-label{display:none;}
 
 /* field zones */
@@ -1469,7 +1466,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       <div class="mini-counter" title="相手墓地を見る" onclick="openGrave(2)"><div class="mc-val" id="p2-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
     </div>
     <span class="hand-label" style="margin:0 4px;">HAND</span>
-    <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;overflow-x:auto;overflow-y:visible;"></div>
+    <div id="p2-hand-inner" style="display:flex;gap:4px;align-items:center;flex-direction:row-reverse;justify-content:center;flex:1;"></div>
     <div class="arcana-slot" id="p2-arcana-slot">
       <div class="ap-fan" id="p2-ap-fan"></div>
       <div class="arcana-card" id="p2-arcana-card"></div>
@@ -1520,7 +1517,7 @@ textarea.finput{resize:vertical;min-height:64px;}
       <div class="arcana-card" id="p1-arcana-card" onclick="onArcanaClick(1)"></div>
       <div class="arcana-gauge" id="p1-arcana-gauge"></div>
     </div>
-    <div id="p1-hand-inner" style="display:flex;gap:4px;align-items:center;justify-content:center;flex:1;overflow-x:auto;overflow-y:visible;"></div>
+    <div id="p1-hand-inner" style="display:flex;gap:4px;align-items:center;justify-content:center;flex:1;"></div>
     <div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;padding:0 8px;flex-shrink:0;">
       <div class="mini-counter" title="デッキ残枚数"><div class="mc-val" id="p1-deck-count">0</div><div class="mc-lbl">DECK</div></div>
       <div class="mini-counter" title="墓地を見る" onclick="openGrave(1)"><div class="mc-val" id="p1-grave-count">0</div><div class="mc-lbl">GRAVE</div></div>
