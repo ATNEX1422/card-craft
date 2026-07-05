@@ -4630,7 +4630,8 @@ async function summonCard(pid,idx){
       const q=summonQueue[_qIdx];
       if(!q)return; // already processed
       const fc=G.p[pid].field.find(c=>c.id===base.id&&!summonQueue.some(sq=>sq.base.id===c.id));
-      if(fc){clearInterval(_waitUid);_onlineSendAction({type:'summon',cardId:base.id,uid:fc._uid,preTargets});}
+      if(fc){clearInterval(_waitUid);
+        (async()=>{await _onlinePushState();_onlineSendAction({type:'summon',cardId:base.id,uid:fc._uid,preTargets});})();}
     },50);
   }
   _processSummonQueue(); // starts only if not already running
@@ -5929,7 +5930,8 @@ async function doAttackUnit(targetPid,targetUid){
   deselectAtk();render();
   // Online: broadcast attack_unit
   if(_onlineRoom&&!_onlineProcessingAction){
-    _onlineSendAction({type:'attack_unit',pid:ap,atkUid:auid,tgtUid:targetUid});
+    await _onlinePushState();
+  _onlineSendAction({type:'attack_unit',pid:ap,atkUid:auid,tgtUid:targetUid});
   }
 }
 
@@ -5965,7 +5967,8 @@ async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQ
   log(`${pCol(aCard.name,ap)}→ ${pCol('P'+targetPid+'リーダー',targetPid)}に${dmg}ダメ (残${G.p[targetPid].life})`,'');
   // Online: broadcast leader attack (only if locally initiated)
   if(_onlineRoom&&!_onlineProcessingAction){
-    _onlineSendAction({type:'attack_leader',pid:ap,atkUid:auid});
+    await _onlinePushState();
+  _onlineSendAction({type:'attack_leader',pid:ap,atkUid:auid});
   }
   if(G.p[targetPid].life<=0){deselectAtk();unlockAnim();render();setTimeout(()=>gameOver(ap),300);return;}
   deselectAtk();unlockAnim();render();
@@ -6005,26 +6008,7 @@ async function endTurn(){
   // ── オンラインモード ──
   if(_onlineRoom){
     // 自分がターン終了 → 相手に通知（ターン進行は両者とも end_turn 受信で行う）
-    // ターン終了時にG.pの全状態を送信（能力効果の同期のため）
-    const fb=_fb();const {roomId}=_onlineRoom;
-    try{
-      const stateSnap={
-        p1:{life:G.p[1].life,mana:G.p[1].mana,maxMana:G.p[1].maxMana,
-            hand:G.p[1].hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0})),
-            field:G.p[1].field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,_hp:c._hp,
-              _attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,_barrier:c._barrier,
-              abilities:c.abilities})),
-            grave:G.p[1].grave,turnCount:G.p[1].turnCount},
-        p2:{life:G.p[2].life,mana:G.p[2].mana,maxMana:G.p[2].maxMana,
-            hand:G.p[2].hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0})),
-            field:G.p[2].field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,_hp:c._hp,
-              _attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,_barrier:c._barrier,
-              abilities:c.abilities})),
-            grave:G.p[2].grave,turnCount:G.p[2].turnCount},
-        turn:G.turn,cp:G.cp,arcana1:G.p[1].arcana,arcana2:G.p[2].arcana
-      };
-      await fb.set(fb.ref(fb.db,`rooms/${roomId}/state`),stateSnap);
-    }catch(e){console.warn('[online] state sync failed',e);}
+    await _onlinePushState(); // ターン終了時に全状態を同期
     _onlineSendAction({type:'end_turn'});
     // 自分側でもターンを進める（相手は end_turn 受信で進める）
     const next=G.cp===1?2:1;
@@ -7036,6 +7020,61 @@ async function _onlineCleanupRoom(){
 
 function _onlineIsMyTurn(){return G.cp===_onlineRoom?.myPid;}
 
+// ── 状態スナップショットを Firebase に書き込む ──
+async function _onlinePushState(){
+  if(!_onlineRoom||_onlineProcessingAction)return;
+  const fb=_fb();if(!fb)return;
+  try{
+    const snap=_buildStateSnap();
+    await fb.set(fb.ref(fb.db,`rooms/${_onlineRoom.roomId}/state`),snap);
+  }catch(e){console.warn('[online] pushState failed',e);}
+}
+
+// ── 状態スナップショットを G.p に復元 ──
+function _onlineApplyStateSnap(st){
+  if(!st)return;
+  const restore=(snap)=>snap.map(s=>{
+    const base=CARDS.find(c=>c.id===s.id)||{};
+    const mc={...base,...s};mc._hp=s._hp??s.toughness??base.toughness??1;
+    if(s.abilities)mc.abilities=s.abilities;
+    return mc;
+  });
+  const restoreHand=(snap)=>snap.map(s=>{
+    const base=CARDS.find(c=>c.id===s.id)||{};
+    return {...base,_uid:s._uid,_handCostMod:s._handCostMod||0,
+      abilities:JSON.parse(JSON.stringify(base.abilities||[]))};
+  });
+  [1,2].forEach(pid=>{
+    const key=`p${pid}`;const d=st[key];if(!d)return;
+    G.p[pid].life=d.life;
+    G.p[pid].mana=d.mana;G.p[pid].maxMana=d.maxMana;
+    G.p[pid].hand=restoreHand(d.hand||[]);
+    G.p[pid].field=restore(d.field||[]);
+    G.p[pid].grave=d.grave||[];
+    G.p[pid].turnCount=d.turnCount||0;
+    if(d.arcana)G.p[pid].arcana=d.arcana;
+  });
+  if(st.turn!=null)G.turn=st.turn;
+  if(st.cp!=null)G.cp=st.cp;
+}
+
+// ── スナップショット構築 ──
+function _buildStateSnap(){
+  const pickField=p=>p.field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,
+    _hp:c._hp,_attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,
+    _barrier:c._barrier,abilities:c.abilities,ability:c.ability}));
+  const pickHand=p=>p.hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0}));
+  return {
+    p1:{life:G.p[1].life,mana:G.p[1].mana,maxMana:G.p[1].maxMana,
+        hand:pickHand(G.p[1]),field:pickField(G.p[1]),grave:G.p[1].grave,
+        turnCount:G.p[1].turnCount,arcana:G.p[1].arcana},
+    p2:{life:G.p[2].life,mana:G.p[2].mana,maxMana:G.p[2].maxMana,
+        hand:pickHand(G.p[2]),field:pickField(G.p[2]),grave:G.p[2].grave,
+        turnCount:G.p[2].turnCount,arcana:G.p[2].arcana},
+    turn:G.turn,cp:G.cp
+  };
+}
+
 
 // updatePerspective: render()内で処理済みのため最小化
 function updatePerspective(){}
@@ -7101,6 +7140,16 @@ async function _onlineProcessAction(action){
   _onlineQueueRunning=false;
 }
 async function _execOnlineAction(action){
+  // 受信前に最新状態を取得して同期（summon/attackなど中ターンアクションの効果を反映）
+  if(action.type!=='end_turn'){
+    try{
+      const fb2=_fb();if(fb2&&_onlineRoom){
+        const st=await fb2.get(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`));
+        if(st.exists())_onlineApplyStateSnap(st.val());
+      }
+    }catch(e){}
+    render();
+  }
   try{
     switch(action.type){
       case 'summon':{
@@ -7142,35 +7191,11 @@ async function _execOnlineAction(action){
         // 相手がターン終了 → 状態を同期してから自分のターンに進める
         const pid=action.pid;
         if(pid===_onlineRoom.myPid)break; // 自分の送信は無視
-        // 相手が送信した最新状態を取得して上書き
+        // 最新状態をfetchして復元
         try{
-          const fb2=_fb();const {roomId:rId}=_onlineRoom;
-          const stSnap=await fb2.get(fb2.ref(fb2.db,`rooms/${rId}/state`));
-          if(stSnap.exists()){
-            const st=stSnap.val();
-            // フィールドユニットを復元
-            const restoreField=(pField,snap)=>snap.map(s=>{
-              const base=CARDS.find(c=>c.id===s.id)||{};
-              const mc={...base,...s};
-              mc._hp=s._hp??s.toughness??base.toughness;
-              return mc;
-            });
-            const restoreHand=(pHand,snap)=>snap.map(s=>{
-              const base=CARDS.find(c=>c.id===s.id)||{};
-              return {...base,_uid:s._uid,_handCostMod:s._handCostMod||0,
-                abilities:JSON.parse(JSON.stringify(base.abilities||[]))};
-            });
-            G.p[1].life=st.p1.life;G.p[1].mana=st.p1.mana;G.p[1].maxMana=st.p1.maxMana;
-            G.p[1].field=restoreField(G.p[1].field,st.p1.field||[]);
-            G.p[1].hand=restoreHand(G.p[1].hand,st.p1.hand||[]);
-            G.p[1].grave=st.p1.grave||[];G.p[1].turnCount=st.p1.turnCount||0;
-            if(st.arcana1)G.p[1].arcana=st.arcana1;
-            G.p[2].life=st.p2.life;G.p[2].mana=st.p2.mana;G.p[2].maxMana=st.p2.maxMana;
-            G.p[2].field=restoreField(G.p[2].field,st.p2.field||[]);
-            G.p[2].hand=restoreHand(G.p[2].hand,st.p2.hand||[]);
-            G.p[2].grave=st.p2.grave||[];G.p[2].turnCount=st.p2.turnCount||0;
-            if(st.arcana2)G.p[2].arcana=st.arcana2;
-          }
+          const fb2=_fb();
+          const st=await fb2.get(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`));
+          if(st.exists())_onlineApplyStateSnap(st.val());
         }catch(e){console.warn('[online] state restore failed',e);}
         const next=pid===1?2:1;
         G.cp=next;
