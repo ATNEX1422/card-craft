@@ -415,7 +415,6 @@ textarea.finput{resize:vertical;min-height:64px;}
 #mid-p2{flex-direction:row-reverse;}/* P2: life right, mana left */
 #mid-centre{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 8px;}
 
-
 .life-target{border-radius:5px;border:1px solid transparent;padding:8px 16px;transition:all 0.18s;cursor:default;display:inline-flex;flex-shrink:0;position:relative;z-index:30;}
 .life-target.tappable{cursor:pointer;}
 
@@ -1161,12 +1160,13 @@ textarea.finput{resize:vertical;min-height:64px;}
     <div id="online-create-panel" style="display:none;flex-direction:column;align-items:center;gap:8px;">
       <div style="font-size:11px;color:rgba(240,230,204,0.5);">ルームID</div>
       <div class="room-id-display" id="online-room-id-display">------</div>
+      <button class="gbtn sec" onclick="copyRoomId()" style="font-size:12px;padding:5px 16px;" id="copy-room-btn">📋 コピー</button>
       <div style="font-size:10px;color:rgba(240,230,204,0.4);">友人にこのIDを伝えてください</div>
       <div class="online-status" id="online-host-status"></div>
     </div>
     <!-- 参加パネル -->
     <div id="online-join-panel" style="display:none;flex-direction:column;align-items:center;gap:8px;">
-      <input class="room-input" id="online-join-input" maxlength="6" placeholder="XXXXXX">
+      <input class="room-input" id="online-join-input" maxlength="6" placeholder="000000" inputmode="numeric" pattern="[0-9]*">
       <button class="gbtn" onclick="onlineJoinRoom()">参加する</button>
       <div class="online-status" id="online-join-status"></div>
     </div>
@@ -1787,18 +1787,7 @@ function buildAbilityText(card){
 // ═══════════════════════════════════════════════════════════
 // ARCANA SYSTEM
 // ═══════════════════════════════════════════════════════════
-let ARCANAS = [
-  {
-    id:'arc_fool', name:'愚者', number:0, image:null,
-    upright:[
-      {condition:'my_turn_start', effect:'draw', val:1, desc:'自ターン開始時1ドロー'}
-    ],
-    revImmediate:[
-      {effect:'discard_hand_draw', val:0, desc:'手札を全て捨てて同枚数ドロー'}
-    ],
-    revPassive:[]
-  }
-]; // アルカナカードデータ
+let ARCANAS = []; // Firebaseから読み込む // アルカナカードデータ
 
 // ── Arcana gauge constants ──
 // Gauge max = arcana number. 0 = always ready (no gauge needed)
@@ -2552,40 +2541,10 @@ function deckRenderArcana(){
 // ═══════════════════════════════════════════════════════════
 // CARD DATABASE  (persisted to localStorage)
 // ═══════════════════════════════════════════════════════════
-const DEFAULT_CARDS = [
-  {id:"001",type:"ニュートラル",name:"ランサー",image:"mon_011.gif",cost:1,power:1,toughness:1,abilities:[]},
-  {id:"002",type:"王国",name:"アーチャー",image:"mon_042.gif",cost:2,power:2,toughness:2,abilities:[]},
-  {id:"003",type:"天使",name:"パラディン",image:null,cost:3,power:2,toughness:2,abilities:[
-    {type:'keyword',id:'guard'},
-    {type:'trigger',trigger:'on_enter',effect:'summon_free',params:{cost_max:2,filter:'no_ability'}}
-  ]},
-  {id:"004",type:"死霊",name:"ウィザード",image:null,cost:5,power:2,toughness:2,abilities:[
-    {type:'trigger',trigger:'on_enter',effect:'dmg_enemy_one',params:{dmg:3,target:'choose'}},
-    {type:'passive',id:'cost_reduce_self',params:{per:'ally_no_ability',amount:1}}
-  ]},
-  {id:"005",type:"王国",name:"ウォリアー",image:"mon_033.gif",cost:3,power:3,toughness:2,abilities:[
-    {type:'keyword',id:'rush'}
-  ]},
-  {id:"006",type:"死霊",name:"シャーマン",image:null,cost:6,power:2,toughness:2,abilities:[
-    {type:'trigger',trigger:'on_enter',effect:'summon_card',params:{cards:[{name:'ウォリアー',n:2}]}}
-  ]},
-  {id:"007",type:"ニュートラル",name:"ハカモリ",image:"mon_034.gif",cost:2,power:1,toughness:1,abilities:[
-    {type:'trigger',trigger:'on_enter',effect:'draw',params:{n:1}}
-  ]},
-  {id:"008",type:"死霊",name:"ミノタウロス",image:"mon_014.gif",cost:5,power:4,toughness:4,abilities:[
-    {type:'trigger',trigger:'on_enter',effect:'destroy_one',params:{target:'choose'}}
-  ]},
-  {id:"009",type:"天使",name:"フェザー",image:null,cost:4,power:3,toughness:3,abilities:[
-    {type:'keyword',id:'haste'}
-  ]},
-  {id:"010",type:"ニュートラル",name:"ドラゴン",image:"mon_013.gif",cost:7,power:5,toughness:5,abilities:[
-    {type:'trigger',trigger:'on_enter',effect:'dmg_enemy_all',params:{dmg:3}}
-  ]},
-];
 
 // ── cards.json を起動時に自動読み込み ──
 // Firebase移行時: この関数をFirestore読み込みに差し替えるだけでOK
-let CARDS = JSON.parse(JSON.stringify(DEFAULT_CARDS));
+let CARDS = []; // Firebaseから読み込む
 let DECKS = [];
 
 async function initData(){
@@ -2607,10 +2566,8 @@ async function initData(){
         const arr=Array.isArray(data)?data:Object.values(data);
         if(arr.length){
           CARDS=arr.map(c=>({...c,abilities:JSON.parse(JSON.stringify(c.abilities||[])),imageDataUrl:null}));
-          console.log(`Firebase cards: ${CARDS.length}件`);
         }
       } else {
-        console.log('Firebase cards なし → デフォルト使用');
       }
     }
   }catch(e){
@@ -2625,7 +2582,6 @@ async function initData(){
       if(snap.exists()){
         const data=snap.val();
         defaultDecks=Array.isArray(data)?data:Object.values(data);
-        console.log(`Firebase defaultDecks: ${defaultDecks.length}件`);
       }
     }
     const s=localStorage.getItem('cg_decks');
@@ -2634,7 +2590,6 @@ async function initData(){
     myDecks.forEach(d=>{
       if(!DECKS.find(x=>x.name===d.name)) DECKS.push(d);
     });
-    console.log(`デッキ合計: ${DECKS.length}件`);
   }catch(e){
     const s=localStorage.getItem('cg_decks');if(s)DECKS=JSON.parse(s);
     console.log('デッキ読み込み失敗 → localStorage使用', e.message);
@@ -3281,7 +3236,6 @@ function eDownloadJSON(){
   if(!CARDS.length){eToast('⚠ カードがありません',true);return;}
   saveCards();
 }
-
 
 // ── Ability Builder ──────────────────────────────────
 const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce'];
@@ -3981,20 +3935,13 @@ function showDeckSelect(){
   if(!DECKS.length){
     // no decks — auto-build default deck from CARDS and go
     if(!CARDS.length){eToast('⚠ カードがありません',true);return;}
-    const auto=buildAutoDefaultDeck();
+    const auto=CARDS.slice(0,10).map(c=>({id:c.id,count:3})).slice(0,30);
     dsSelected[1]=auto;dsSelected[2]=auto;
     dsSelectedDeck[1]={name:'auto',cards:auto,arcanaId:'arc_fool'};
     dsSelectedDeck[2]={name:'auto',cards:auto,arcanaId:'arc_fool'};
     startBattle();return;
   }
   showScreen('screen-deckselect');
-}
-
-function buildAutoDefaultDeck(){
-  // default: 3 copies of each card up to 30
-  const entries=[];let total=0;
-  for(const c of CARDS){if(total>=30)break;const add=Math.min(3,30-total);entries.push({id:c.id,count:add});total+=add;}
-  return entries;
 }
 
 function dsRender(){
@@ -4359,8 +4306,8 @@ function clearTurnFlags(c){c._sick=false;c._rushOnly=false;c._haste=false;c._att
 
 let _arcanaOverride=null;
 function startBattle(){
-  const p1deck=dsSelected[1]||buildAutoDefaultDeck();
-  const p2deck=dsSelected[2]||buildAutoDefaultDeck();
+  const p1deck=dsSelected[1]||CARDS.slice(0,10).map(c=>({id:c.id,count:3}));
+  const p2deck=dsSelected[2]||CARDS.slice(0,10).map(c=>({id:c.id,count:3}));
   battleDeckDef={1:p1deck,2:p2deck};
   _arcanaOverride={
     1:dsSelectedDeck[1]?.arcanaId||null,
@@ -6029,9 +5976,6 @@ let endTurnPending=false;
 let _p1TurnStarted=false;
 let summonQueue=[];   // queued summons: {pid, base, cost, preTargets}
 
-
-
-
 async function endTurn(){
   if(G.over||aiLock||targetMode||isAnimating())return;
   if(endTurnPending)return; // prevent double trigger
@@ -6135,7 +6079,6 @@ function waitNotif(){
     setTimeout(()=>{clearInterval(check);resolve();},3000);
   });
 }
-
 
 async function aiTurn(){
   if(_onlineRoom){console.warn('[online] aiTurn blocked');return;} // オンライン中はAI起動しない
@@ -6296,7 +6239,6 @@ async function aiAbility(pid,fc){
   await triggerAbility(pid,fc,true,'on_enter');
 }
 
-
 async function dmgCard(pid,cuid,dmg){
   const c=G.p[pid].field.find(x=>x._uid===cuid);if(!c)return;
   if(c._barrier){
@@ -6314,7 +6256,6 @@ async function dmgCard(pid,cuid,dmg){
     await removeCard(pid,cuid);
   }
 }
-
 
 async function removeCard(pid,cuid){
   const dying=G.p[pid].field.find(c=>c._uid===cuid);
@@ -6802,7 +6743,23 @@ function onlineToggleJoin(){
 }
 
 // Generate 6-char room ID
-function _genRoomId(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+function copyRoomId(){
+  const id=document.getElementById('online-room-id-display').textContent;
+  if(!id||id==='------')return;
+  navigator.clipboard.writeText(id).then(()=>{
+    const btn=document.getElementById('copy-room-btn');
+    btn.textContent='✅ コピー済み';
+    setTimeout(()=>btn.textContent='📋 コピー',2000);
+  }).catch(()=>{
+    // フォールバック
+    const ta=document.createElement('textarea');ta.value=id;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    const btn=document.getElementById('copy-room-btn');
+    btn.textContent='✅ コピー済み';
+    setTimeout(()=>btn.textContent='📋 コピー',2000);
+  });
+}
+function _genRoomId(){return String(Math.floor(100000+Math.random()*900000));}
 
 // ── Create Room ──
 async function onlineCreateRoom(){
@@ -6841,7 +6798,7 @@ async function onlineCreateRoom(){
 async function onlineJoinRoom(){
   const fb=_fb();if(!fb){alert('Firebase未接続');return;}
   const roomId=document.getElementById('online-join-input').value.toUpperCase().trim();
-  if(roomId.length!==6){document.getElementById('online-join-status').textContent='6文字のIDを入力してください';return;}
+  if(!/^[0-9]{6}$/.test(roomId)){document.getElementById('online-join-status').textContent='6桁の数字を入力してください';return;}
   const db=fb.db;
   const snap=await fb.get(fb.ref(db,`rooms/${roomId}`));
   if(!snap.exists()){document.getElementById('online-join-status').textContent='ルームが見つかりません';return;}
@@ -6894,7 +6851,6 @@ async function onlineSelectDeck(deck){
   const roleKey=role==='host'?'host':'guest';
   // Serialize deck entries
   const deckData=deck.cards.map(e=>({id:e.id,count:e.count}));
-  console.log('[online] selectDeck',roleKey,deck.name,deckData.length,'cards');
   await fb.update(fb.ref(db,`rooms/${roomId}/${roleKey}`),{deck:deckData,deckName:deck.name,arcanaId:deck.arcanaId||null,status:'deck_ready'});
   document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
   // Watch the whole room; fire when both are deck_ready
@@ -6944,7 +6900,6 @@ async function _onlineStartGame(roomData,key){
       console.log('[online] host writing initState',initState);
       await fb.set(fb.ref(db,`rooms/${roomId}/initState`),initState);
       await fb.set(fb.ref(db,`rooms/${roomId}/turn`),firstPid);
-      console.log('[online] host initState written OK');
     }catch(e){console.error('[online] host init error',e);}
   }
 
@@ -7184,7 +7139,6 @@ async function _execOnlineAction(action){
             G.p[2].hand=restoreHand(G.p[2].hand,st.p2.hand||[]);
             G.p[2].grave=st.p2.grave||[];G.p[2].turnCount=st.p2.turnCount||0;
             if(st.arcana2)G.p[2].arcana=st.arcana2;
-            console.log('[online] state synced from opponent turn-end');
           }
         }catch(e){console.warn('[online] state restore failed',e);}
         const next=pid===1?2:1;
@@ -7256,7 +7210,6 @@ async function endTurnSequence(){
 }
 
 // ═══════════════════════════════════════════════════════
-
 
 // LOG / TOAST / FX
 function log(text,cls){
