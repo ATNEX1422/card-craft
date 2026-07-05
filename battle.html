@@ -26,6 +26,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* ── SCREENS ── */
 .screen{position:fixed;inset:0;z-index:1;overflow:hidden;}
+/* バトル画面の手札ホバーが上にはみ出てもクリップしない */
+#screen-battle{overflow:visible;}
 .screen.hidden{display:none!important;visibility:hidden;pointer-events:none;}
 
 /* ═══════════════════════════════════
@@ -363,7 +365,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 /* hand rows */
 #p2hand,#p1hand{
-  position:relative;z-index:1;
+  position:relative;z-index:2;
   display:flex;align-items:center;gap:5px;
   padding:6px 8px;overflow:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
@@ -372,9 +374,9 @@ textarea.finput{resize:vertical;min-height:64px;}
   overflow-x:auto;overflow-y:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
-/* ホバー時はz-indexを上げてカードが他要素に隠れないようにする */
-#p1hand:has(.hcard:hover),#p1hand:focus-within{z-index:10;}
-.hcard:hover:not(.no-hv){transform:translateY(-20px);z-index:20;position:relative;}
+/* ホバー時はz-indexを上げてフィールド等に隠れないようにする */
+#p1hand:has(.hcard:hover){z-index:100;isolation:isolate;}
+.hcard:hover:not(.no-hv){transform:translateY(-24px);z-index:200;position:relative;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
 #p1hand{grid-area:p1hand;background:rgba(59,130,246,0.03);border-top:1px solid rgba(201,168,76,0.08);
