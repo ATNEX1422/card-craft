@@ -371,14 +371,15 @@ textarea.finput{resize:vertical;min-height:64px;}
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 #p1-hand-inner,#p2-hand-inner{
-  overflow-x:clip;
-  overflow-y:visible;
+  overflow:visible;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;
 }
 /* ホバー時はz-indexを上げてフィールド等に隠れないようにする */
 #p1hand:has(.hcard:hover){z-index:100;}
 .hcard:hover:not(.no-hv){transform:translateY(-24px);z-index:200;position:relative;}
-/* アルカナのグローが下にはみ出ないようにクリップ */
+/* 上方向は開放（カードがはみ出せる）、下方向はクリップ（アルカナグローが漏れない） */
+#p1hand{clip-path:inset(-120px 0 0 0);}
+/* アルカナのグローが下にはみ出ないように封じ込め */
 #p1-arcana-slot{overflow:clip;}
 #p2hand{grid-area:p2hand;background:rgba(239,68,68,0.03);border-bottom:1px solid rgba(201,168,76,0.08);
   justify-content:center;overflow:visible;clip-path:none;}
