@@ -6351,11 +6351,14 @@ async function startTurn(pid){
   if(_onlineRoom)_onlineUpdateControls();
 }
 
+// 視点PID解決: 常に「自分が下(bottom)、相手が上(top)」
+function getBottomPid(){return _onlineRoom?_onlineRoom.myPid:1;}
+function getTopPid(){const b=getBottomPid();return b===1?2:1;}
+
 function render(){
   if(document.getElementById('screen-battle').classList.contains('hidden'))return;
   renderArcana();
   const cp=G.cp;
-  // static fallback: TURN N — force update if turn/cp changed
   const notifEl=document.getElementById('mid-notif-text');
   const _turnKey=`${G.turn}_${G.cp}`;
   if(!notifEl||!notifEl.style.animation||notifEl.style.animation==='none'||notifEl.dataset.turnKey!==_turnKey){
@@ -6363,48 +6366,65 @@ function render(){
     if(notifEl)notifEl.dataset.turnKey=_turnKey;
   }
 
-  const myPid=_onlineRoom?_onlineRoom.myPid:1;
-  const oppPid=myPid===1?2:1;
+  const botPid=getBottomPid(); // 自分（下）
+  const topPid=getTopPid();    // 相手（上）
 
-  [1,2].forEach(pid=>{
-    const p=G.p[pid];
-    document.getElementById(`p${pid}-life`).textContent=p.life;
-    const mc=document.getElementById(`p${pid}-mana`);mc.innerHTML='';
-    const isMine=pid===myPid;
+  // ── ライフ・マナを視点に応じて描画 ──
+  // mid-p1(左)=自分(bot), mid-p2(右)=相手(top)
+  const renderStats=(domPid, dataPid)=>{
+    const p=G.p[dataPid];
+    const isMine=dataPid===botPid;
+    // ライフ
+    document.getElementById(`p${domPid}-life`).textContent=p.life;
+    document.getElementById(`p${domPid}-life`).className='life-val '+(isMine?'p1-col':'p2-col');
+    // マナ gems
+    const mc=document.getElementById(`p${domPid}-mana`);mc.innerHTML='';
     for(let i=1;i<=p.maxMana;i++){
       const g=document.createElement('div');
       g.className='mana-gem'+(i<=p.mana?(isMine?' full-p1':' full-p2'):'');
       mc.appendChild(g);
     }
-    // 数字表示
-    const numEl=document.getElementById(`p${pid}-mana-num`);
-    if(numEl){
-      numEl.textContent=`${p.mana}/${p.maxMana}`;
-      numEl.style.color=isMine?'#60a5fa':'#ef4444';
-    }
-    renderField(pid);
-  });
-  updatePerspective();
+    const numEl=document.getElementById(`p${domPid}-mana-num`);
+    if(numEl){numEl.textContent=`${p.mana}/${p.maxMana}`;numEl.style.color=isMine?'#60a5fa':'#ef4444';}
+    // ラベル
+    const lbl=document.querySelector(`#mid-p${domPid} .plabel`);
+    if(lbl)lbl.textContent=isMine?`YOU (P${dataPid})`:`OPPONENT (P${dataPid})`;
+  };
+  renderStats(1, botPid); // 左側=自分
+  renderStats(2, topPid); // 右側=相手
+
+  // ── フィールドを視点に応じて描画 ──
+  // p1-field DOM(下)=自分(bot), p2-field DOM(上)=相手(top)
+  renderFieldToPid(1, botPid); // 下=自分
+  renderFieldToPid(2, topPid); // 上=相手
+
+  // ライフクリック（相手リーダー攻撃）→ 右側(dom=2)が相手なのでそのまま
+  const lt2=document.getElementById('lt2');
+  if(lt2)lt2.onclick=()=>attackLife(topPid);
+  const lt1=document.getElementById('lt1');
+  if(lt1)lt1.onclick=undefined; // 自分リーダーは攻撃不可
+
   renderHand1();renderHand2();updateLifeTargets();updateCounters();
 }
 
-function renderField(pid){
-  const p=G.p[pid];const el=document.getElementById(`p${pid}-field`);el.innerHTML='';
+// domPid: どのDOM要素に描画するか(1=下, 2=上)
+// dataPid: どのプレイヤーのデータを使うか
+function renderFieldToPid(domPid, dataPid){
+  const p=G.p[dataPid];const el=document.getElementById(`p${domPid}-field`);el.innerHTML='';
   if(!p.field.length){el.innerHTML='<span class="field-hint">— Empty —</span>';return;}
-  const isActive=G.cp===pid&&!aiLock;
+  const isActive=G.cp===dataPid&&!aiLock;
   p.field.forEach(card=>{
     const isSel=selAtk&&selAtk.uid===card._uid;
     const canAtk=isActive&&canAtkUnit(card);
-    const oppGuards=selAtk&&selAtk.pid!==pid?G.p[selAtk.pid===1?2:1].field.filter(isGuard):[];
-    const cardStealthy=isStlth(card)&&!card._revealed;
-    const cardIntimidate=isIntimidate(card);
-    const isAtkTgt=selAtk&&selAtk.pid!==pid&&!targetMode&&!cardStealthy&&!cardIntimidate&&(oppGuards.length===0||isGuard(card));
-    // target mode: check if this card is a valid target
-    // isTgtOption: uid match AND (no pid specified OR pid matches current field)
-    const cardAura=isAura(card)&&pid!==G.cp; // opp aura card
-    const isTgtOption=!cardStealthy&&!cardAura&&targetMode&&targetMode.options.some(o=>o.card&&o.card._uid===card._uid&&(o.pid===undefined||o.pid===pid));
+    const botPid=getBottomPid(),topPid=getTopPid();
+    // 攻撃対象チェック: selAtk側とは逆のpid
+    const isAtkTgt=selAtk&&selAtk.pid!==dataPid&&!targetMode&&
+      (()=>{const oppGuards=G.p[dataPid].field.filter(isGuard);
+            return !isStlth(card)||card._revealed?
+              (oppGuards.length===0||isGuard(card))&&!isIntimidate(card):false;})();
+    const isTgtOption=!isStlth(card)&&!isIntimidate(card)&&targetMode&&
+      targetMode.options.some(o=>o.card&&o.card._uid===card._uid&&(o.pid===undefined||o.pid===dataPid));
     let cls='card fcard';
-    // stealth visual removed (system still functional)
     if(isTgtOption)cls+=' sel-tgt';
     else if(isSel)cls+=' sel';
     else if(card._attacked)cls+=' exhausted';
@@ -6413,50 +6433,47 @@ function renderField(pid){
     if(isAtkTgt)cls+=' atk-tgt';
     const div=document.createElement('div');
     div.className=cls+(card._summoning?' card-pre-summon':'');
-    div.dataset.uid=card._uid;
+    div.dataset.uid=card._uid;div.dataset.pid=dataPid;
     div.innerHTML=buildCardInner(card,card.cost,true);
     const tf=div.querySelector('.ctuf');
     if(tf){tf.textContent='🛡'+card._hp;if(card._hp<card.toughness)tf.classList.add('dmgd');}
     if(isTgtOption){
-      div.addEventListener('click',e=>{
-        e.stopPropagation();
-        const opt=targetMode.options.find(o=>o.card&&o.card._uid===card._uid&&(o.pid===undefined||o.pid===pid));
-        resolveTarget(opt);
-      });
+      div.addEventListener('click',e=>{e.stopPropagation();
+        const opt=targetMode.options.find(o=>o.card&&o.card._uid===card._uid&&(o.pid===undefined||o.pid===dataPid));
+        resolveTarget(opt);});
     } else if(isActive&&canAtk&&!targetMode){
-      div.addEventListener('click',e=>{e.stopPropagation();if(isAnimating())return;selectAtk(pid,card._uid);});
+      div.addEventListener('click',e=>{e.stopPropagation();if(isAnimating())return;selectAtk(dataPid,card._uid);});
     } else if(isAtkTgt){
-      div.addEventListener('click',e=>{e.stopPropagation();if(isAnimating())return;doAttackUnit(pid,card._uid);});
+      div.addEventListener('click',e=>{e.stopPropagation();if(isAnimating())return;doAttackUnit(dataPid,card._uid);});
     }
-    div.addEventListener('mouseenter',e=>showTip(card,calcCost(pid,card),e));
+    div.addEventListener('mouseenter',e=>showTip(card,calcCost(dataPid,card),e));
     div.addEventListener('mouseleave',hideTip);div.addEventListener('mousemove',moveTip);
     el.appendChild(div);
   });
 }
 
+function renderField(pid){renderFieldToPid(pid,pid);}
+
+
 function renderHand1(){
-  const p=G.p[1];const el=document.getElementById('p1-hand-inner');el.innerHTML='';
-  const isActive=G.cp===1&&!aiLock;
+  // 下段=自分(botPid)の手札、表向き・クリック可
+  const botPid=getBottomPid();
+  const p=G.p[botPid];const el=document.getElementById('p1-hand-inner');el.innerHTML='';
+  const isActive=G.cp===botPid&&!aiLock;
   p.hand.forEach((card,idx)=>{
-    const cost=calcCost(1,card);const canPlay=isActive&&p.mana>=cost;
-    const isTgtOption=targetMode&&targetMode.options.some(o=>o.card&&o.card.id===card.id&&(o.pid===undefined||o.pid===1));
+    const cost=calcCost(botPid,card);const canPlay=isActive&&p.mana>=cost&&p.field.length<7;
+    const isTgtOption=targetMode&&targetMode.options.some(o=>o.card&&o.card.id===card.id&&(o.pid===undefined||o.pid===botPid));
     let cls='card hcard';
     if(isTgtOption)cls+=' sel-tgt';
     else if(!canPlay)cls+=' unafford';
     const div=document.createElement('div');div.className=cls;
     div.innerHTML=buildCardInner(card,cost,false);
     if(isTgtOption){
-      div.addEventListener('click',e=>{
-        e.stopPropagation();
-        const opt=targetMode.options.find(o=>o.card&&o.card.id===card.id&&!o.pid);
-        resolveTarget(opt);
-      });
+      div.addEventListener('click',e=>{e.stopPropagation();
+        const opt=targetMode.options.find(o=>o.card&&o.card.id===card.id&&(o.pid===undefined||o.pid===botPid));
+        resolveTarget(opt);});
     } else if(canPlay&&!targetMode){
-      div.addEventListener('click',()=>{
-        if(isAnimating())return;
-        const myPid=_onlineRoom?._onlineRoom?.myPid||1;
-        summonCard(_onlineRoom?_onlineRoom.myPid:1,idx);
-      });
+      div.addEventListener('click',()=>{if(isAnimating())return;summonCard(botPid,idx);});
     }
     div.addEventListener('mouseenter',e=>showTip(card,cost,e));
     div.addEventListener('mouseleave',hideTip);div.addEventListener('mousemove',moveTip);
@@ -6465,19 +6482,23 @@ function renderHand1(){
 }
 
 function renderHand2(){
-  // オンライン時: myPidが2なら相手(P1)の手札を裏で上段表示
-  const oppPid=(_onlineRoom&&_onlineRoom.myPid===2)?1:2;
-  const p=G.p[oppPid];const el=document.getElementById('p2-hand-inner');el.innerHTML='';
+  // 上段=相手(topPid)の手札、裏向き
+  const topPid=getTopPid();
+  const p=G.p[topPid];const el=document.getElementById('p2-hand-inner');el.innerHTML='';
   p.hand.forEach(()=>{
     const d=document.createElement('div');d.className='back-card no-hv';d.textContent='🂠';el.appendChild(d);
   });
 }
 
 function updateLifeTargets(){
-  [1,2].forEach(pid=>{
-    const lt=document.getElementById(`lt${pid}`);
+  // lt1=DOM下ライフ(自分), lt2=DOM上ライフ(相手)
+  // 視点対応: lt1のdata-pidはbotPid, lt2のdata-pidはtopPid
+  const botPid=getBottomPid(),topPid=getTopPid();
+  const ltMap={1:{domId:'lt1',dataPid:botPid},2:{domId:'lt2',dataPid:topPid}};
+  Object.values(ltMap).forEach(({domId,dataPid})=>{
+    const pid=dataPid;
+    const lt=document.getElementById(domId);
     const opp=pid===1?2:1;
-    // 攻撃者が選択中かつリーダー攻撃可能な場合のみ表示
     let shouldTap=false;
     if(selAtk&&selAtk.pid===opp){
       const aCard=G.p[opp].field.find(c=>c._uid===selAtk.uid);
@@ -6624,11 +6645,12 @@ function hideTip(){document.getElementById('tooltip').classList.remove('vis');}
 function updateCounters(){
   if(!G||!G.p)return;
   const el=id=>document.getElementById(id);
-  ['1','2'].forEach(pid=>{
-    const p=G.p[parseInt(pid)];
-    const dc=el(`p${pid}-deck-count`); if(dc)dc.textContent=p.deck.length;
-    const gc=el(`p${pid}-grave-count`); if(gc)gc.textContent=p.grave.reduce((s,g)=>s+g.count,0);
-  });
+  // DOM p1=下=自分(bot), p2=上=相手(top)
+  const botPid=getBottomPid(),topPid=getTopPid();
+  const dc1=el('p1-deck-count');if(dc1)dc1.textContent=G.p[botPid].deck.length;
+  const gc1=el('p1-grave-count');if(gc1)gc1.textContent=G.p[botPid].grave.reduce((s,g)=>s+g.count,0);
+  const dc2=el('p2-deck-count');if(dc2)dc2.textContent=G.p[topPid].deck.length;
+  const gc2=el('p2-grave-count');if(gc2)gc2.textContent=G.p[topPid].grave.reduce((s,g)=>s+g.count,0);
 }
 
 function openGrave(pid){
@@ -6637,7 +6659,7 @@ function openGrave(pid){
   const modal=document.getElementById('grave-modal');
   const title=document.getElementById('grave-title');
   const list=document.getElementById('grave-list');
-  title.textContent=(pid===1?'あなた':'AI')+'の墓地';
+  const botPid2=getBottomPid();title.textContent=(pid===botPid2?'あなた':'相手')+'の墓地';
   list.innerHTML='';
   if(!gr.length){
     const empty=document.createElement('div');
@@ -7015,30 +7037,10 @@ async function _onlineCleanupRoom(){
 function _onlineIsMyTurn(){return G.cp===_onlineRoom?.myPid;}
 
 
-// ゲスト(myPid=2)は自分が「青・下段・YOU」になるよう表示を切り替える
-function updatePerspective(){
-  if(!_onlineRoom)return;
-  const isGuest=_onlineRoom.myPid===2;
+// updatePerspective: render()内で処理済みのため最小化
+function updatePerspective(){}
 
-  // ライフ色
-  const myLifeEl=document.getElementById(isGuest?'p2-life':'p1-life');
-  const oppLifeEl=document.getElementById(isGuest?'p1-life':'p2-life');
-  if(myLifeEl)myLifeEl.className='life-val p1-col';   // 自分=青
-  if(oppLifeEl)oppLifeEl.className='life-val p2-col'; // 相手=赤
 
-  // ラベル（mid-p1=左=P1、mid-p2=右=P2）
-  const p1Label=document.querySelector('#mid-p1 .plabel');
-  const p2Label=document.querySelector('#mid-p2 .plabel');
-  if(p1Label)p1Label.textContent=isGuest?'OPPONENT (P1)':'YOU (P1)';
-  if(p2Label)p2Label.textContent=isGuest?'YOU (P2)':'OPPONENT (P2)';
-
-  // ライフ攻撃クリック：相手リーダーをクリックで攻撃
-  // lt1=P1側ライフ, lt2=P2側ライフ
-  const lt1=document.getElementById('lt1');
-  const lt2=document.getElementById('lt2');
-  if(lt1)lt1.onclick=isGuest?()=>attackLife(1):undefined; // ゲストはP1ライフを攻撃
-  if(lt2)lt2.onclick=isGuest?undefined:()=>attackLife(2); // ホストはP2ライフを攻撃
-}
 function _onlineLockControls(){
   aiLock=true;
   document.getElementById('end-btn').disabled=true;
