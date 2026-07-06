@@ -6822,11 +6822,8 @@ function showTip(card,cost,e){
         const entries=p.cards&&p.cards.length?p.cards:(p.name?[{name:p.name}]:[]);
         entries.forEach(e=>{const c=CARDS.find(x=>x.name===e.name);if(c&&!subCards.find(s=>s.id===c.id))subCards.push(c);});
       } else if(ab.effect==='summon_free'){
-        // show eligible hand hint
-        const label=document.createElement('div');
-        label.style.cssText='font-size:9px;color:rgba(240,230,204,0.45);';
-        label.textContent=`手札からコスト${p.cost_max}以下を無料召喚`;
-        sumEl.appendChild(label);return;
+        // summon_free はメインのabilテキストに表示済みなのでスキップ
+        return;
       }
       subCards.forEach(sc=>{
         const row=document.createElement('div');row.className='tt-sub-card';
