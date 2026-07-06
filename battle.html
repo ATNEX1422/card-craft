@@ -6814,7 +6814,6 @@ function showTip(card,cost,e){
   sumEl.innerHTML='';sumEl.style.display='none';
   const summons=(card.abilities||[]).filter(a=>a.type==='trigger'&&(a.effect==='summon_card'||a.effect==='summon_free'));
   if(summons.length){
-    sumEl.style.display='flex';
     summons.forEach(ab=>{
       const p=ab.params||{};
       const subCards=[];
@@ -6840,6 +6839,8 @@ function showTip(card,cost,e){
         sumEl.appendChild(row);
       });
     });
+    // コンテンツがある場合のみ表示
+    if(sumEl.children.length>0) sumEl.style.display='flex';
   }
   document.getElementById('tooltip').classList.add('vis');moveTip(e);
 }
