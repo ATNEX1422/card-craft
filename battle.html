@@ -6490,11 +6490,12 @@ async function removeCard(pid,cuid){
   const dying=G.p[pid].field.find(c=>c._uid===cuid);
   G.p[pid].field=G.p[pid].field.filter(c=>c._uid!==cuid);
   if(dying){
-    // add to graveyard
+    // add to graveyard — ベースカードデータを保存（付与効果は引き継がない）
     const gr=G.p[pid].grave;
+    const baseCard=CARDS.find(c=>c.id===dying.id)||dying;
     const existing=gr.find(g=>g.id===dying.id);
     if(existing) existing.count++;
-    else gr.push({id:dying.id,name:dying.name,count:1,card:dying});
+    else gr.push({id:dying.id,name:dying.name,count:1,card:baseCard});
   }
   // fire on_death trigger
   if(dying && !G.over){
