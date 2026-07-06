@@ -1664,6 +1664,266 @@ function buildAbilityText(card){
   const abs=card.abilities||[];
   if(!abs.length) return card.ability||null;
   const parts=[];
+
+  // ── キーワード ──
+  const kws=abs.filter(a=>a.type==='keyword');
+  if(kws.length){
+    parts.push(kws.map(a=>{
+      if(a.id==='multi_attack') return `連続攻撃${a.n||2}回`;
+      return KW_LABELS[a.id]||a.id;
+    }).join('・'));
+  }
+
+  // ── トリガー能力 ──
+  abs.filter(a=>a.type==='trigger').forEach(a=>{
+    const trig=TRIG_LABELS[a.trigger]||a.trigger;
+    const p=a.params||{};
+    const tgt=p.target||'';
+
+    // 変数値を読みやすいラベルに変換
+    const vLabel=(key,def)=>{
+      const vd=p[key+'_var'];
+      if(!vd)return typeof def==='number'?String(def):def;
+      const sL={self:'自分',enemy:'相手',both:'両者'}[vd.side]||vd.side;
+      const tL={field_count:'場の枚数',field_types:'場の種類数',
+                hand_count:'手札枚数',hand_types:'手札種類数',
+                grave_count:'墓地枚数',grave_types:'墓地種類数',
+                deck_count:'デッキ枚数'}[vd.type]||vd.type;
+      const filt=vd.filter?`(${vd.filter.replace('type:','').replace('kw:','')})`:'';
+      return `【${sL}${tL}${filt}】`;
+    };
+
+    // 発動条件
+    let condTxt='';
+    if(p.condition_check){
+      const cc=p.condition_check;
+      const ct=COND_TYPES.find(t=>t.v===cc.type);
+      const co=COND_OPS.find(t=>t.v===cc.op);
+      condTxt=`（${ct?.l||cc.type}が${cc.val}${co?.l||cc.op}のとき）`;
+    }
+
+    // 繰り返し
+    let repeatTxt='';
+    if(p.repeat_var){
+      const vd=p.repeat_var;
+      const sL={self:'自分',enemy:'相手',both:'両者'}[vd.side]||vd.side;
+      const tL={field_count:'場の枚数',field_types:'場の種類数',hand_count:'手札枚数',hand_types:'手札種類数',grave_count:'墓地枚数',grave_types:'墓地種類数',deck_count:'デッキ枚数'}[vd.type]||vd.type;
+      const filt=vd.filter?`(${vd.filter.replace('type:','').replace('kw:','')})`:'';
+      repeatTxt=`【${sL}${tL}${filt}】回 `;
+    } else if(p.repeat&&p.repeat>1){
+      repeatTxt=`${p.repeat}回 `;
+    }
+
+    // 対象テキスト生成
+    const nVal=vLabel('n', p.n||1);
+    const isAll=tgt.endsWith('_all')||tgt==='both';
+    const side=t=>{
+      if(!t||t==='self'||t==='ally_self') return '自分';
+      if(t.startsWith('ally')) return '味方';
+      if(t.startsWith('enemy')||t==='opp') return '相手';
+      if(t==='both') return '全体';
+      return t;
+    };
+    const how=t=>{
+      if(t.includes('random')) return 'ランダム';
+      if(t.includes('choose')) return '（選択）';
+      if(t.includes('self')) return '';
+      if(t.includes('entering')) return '（登場したユニット）';
+      if(t.includes('highest_atk')) return '（最大攻撃力）';
+      if(t.includes('lowest_hp')) return '（最少体力）';
+      return '';
+    };
+    const tgtTxt=(t,defSide,n)=>{
+      if(!t) return `${defSide}${n}体`;
+      if(t==='ally_entering') return '登場したユニット';
+      if(t==='ally_self'||t==='self') return '自身';
+      if(isAll) return `${side(t)}ユニット全体`;
+      const h=how(t);
+      const nStr=n&&n!=='1'?`${n}体`:(h?'1体':'1体');
+      return `${side(t)}${h}${nStr}`;
+    };
+    const kwTxt=(()=>{
+      const kws2=(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k);
+      return kws2.join('・')||'キーワード';
+    })();
+    const excludeTxt=p.exclude_self?' (自身除く)':'';
+
+    let desc=`【${trig}】${condTxt}${repeatTxt}`;
+    switch(a.effect){
+      // ドロー・手札
+      case 'draw':
+        desc+=tgt.startsWith('enemy')?`相手が${nVal}枚ドローする`:`${nVal}枚ドロー`; break;
+      case 'discard':
+        desc+=isAll?`${side(tgt||'enemy')}の手札を全て捨てさせる`:`${side(tgt||'enemy')}の手札をランダムに${nVal}枚捨てさせる`; break;
+      case 'discard_hand_draw':
+        desc+=`${side(tgt||'self')}の手札を全て捨て、同じ枚数ドローする`; break;
+      case 'add_to_hand':{
+        const cards=(p.cards||[]);
+        const cardsTxt=cards.length?cards.map(x=>`「${x.name}」×${x.n||1}`).join('・'):'カード';
+        desc+=`${cardsTxt}を${side(tgt||'self')}の手札に加える`; break;
+      }
+      // ダメージ
+      case 'dmg_unit_one':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_unit_n':
+        desc+=`${side(tgt||'enemy')}${how(tgt||'enemy_random')}${nVal}体に各${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_unit_all':
+        desc+=tgt==='both'?`全ユニットに${vLabel('dmg',p.dmg||1)}ダメージ`:`${side(tgt||'enemy')}ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_leader':
+        desc+=`${side(tgt||'enemy')}リーダーに${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_any':
+        desc+=`任意の対象に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_enemy_one':
+        desc+=`相手${how(tgt||'enemy_random')}1体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      case 'dmg_enemy_all':
+        desc+=`相手ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+      // 回復
+      case 'heal_leader':
+        desc+=`${side(tgt||'self')}リーダーを${vLabel('amount',p.amount||1)}回復`; break;
+      case 'heal_unit_one':
+        desc+=`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}を${vLabel('amount',p.amount||1)}回復`; break;
+      case 'heal_unit_all':
+        desc+=`${side(tgt||'ally')}ユニット全体を${vLabel('amount',p.amount||1)}回復`; break;
+      // 除去
+      case 'destroy_unit_one':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}を破壊`; break;
+      case 'destroy_unit_all':
+        desc+=`${side(tgt||'enemy')}ユニット全体を破壊`; break;
+      case 'destroy_one':
+        desc+=`相手${how(tgt||'enemy_random')}1体を破壊`; break;
+      case 'exile_unit_one':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}を除外`; break;
+      case 'exile_unit_all':
+        desc+=`${side(tgt||'enemy')}ユニット全体を除外`; break;
+      case 'return_unit_one':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}を手札に戻す`; break;
+      case 'return_unit_all':
+        desc+=`${side(tgt||'enemy')}ユニット全体を手札に戻す`; break;
+      case 'return_one':
+        desc+=`相手${how(tgt||'enemy_random')}1体を手札に戻す`; break;
+      case 'return_all':
+        desc+=`相手ユニット全体を手札に戻す`; break;
+      case 'steal_unit_one':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}を強奪（自分の場に加える）`; break;
+      case 'steal_one':
+        desc+=`相手${how(tgt||'enemy_random')}1体を強奪`; break;
+      // 状態異常
+      case 'bind_unit':
+        desc+=isAll?`${side(tgt)}ユニット全体を呪縛（攻撃不可）`:`${tgtTxt(tgt,'相手',nVal)}を呪縛（攻撃不可）`; break;
+      case 'silence_unit':
+        desc+=isAll?`${side(tgt)}ユニット全体を沈黙（能力無効）`:`${tgtTxt(tgt,'相手',nVal)}を沈黙（能力無効）`; break;
+      // バフ・デバフ
+      case 'buff_unit_one':
+        desc+=`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_unit_all':
+        desc+=`${side(tgt||'ally')}ユニット全体の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_ally_one':
+        desc+=`味方ユニット1体（選択）の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'buff_ally_all':
+        desc+=`自分ユニット全体の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+      case 'debuff_enemy_one':
+        desc+=`相手ユニット1体の攻撃力/体力-${p.pow||0}/-${p.tuf||0}`; break;
+      case 'reduce_atk_all':
+        desc+=`相手ユニット全体の攻撃力-${vLabel('amount',p.amount||1)}`; break;
+      case 'set_stats':
+        desc+=`${tgtTxt(tgt,'相手',nVal)}のステータスを${p.pow||1}/${p.tuf||1}に変更`; break;
+      case 'set_leader_life':
+        desc+=`${side(tgt||'enemy')}リーダーのHPを${vLabel('amount',p.amount||10)}にする`; break;
+      // キーワード付与
+      case 'grant_kw_unit':
+        desc+=tgt==='ally_entering'?`登場したユニットに${kwTxt}を付与`
+          :isAll?`${side(tgt)}ユニット全体に${kwTxt}を付与`
+          :`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}に${kwTxt}を付与`; break;
+      case 'grant_kw_all':    desc+=`自分ユニット全体に${kwTxt}を付与`; break;
+      case 'grant_kw_one':    desc+=`自分ユニット1体（選択）に${kwTxt}を付与`; break;
+      case 'grant_kw_summoned':desc+=`この能力で召喚したユニットに${kwTxt}を付与`; break;
+      // リソース
+      case 'change_mana':{
+        const t2=p.target||'self_restore';const amt=vLabel('amount',p.amount||1);
+        const m={self_restore:`自分のマナ+${amt}`,self_add_max:`自分の最大マナ+${amt}`,
+          self_sub_current:`自分のマナ-${amt}`,self_sub_max:`自分の最大マナ-${amt}`,
+          enemy_restore:`相手のマナ+${amt}`,enemy_add_max:`相手の最大マナ+${amt}`,
+          enemy_sub_current:`相手のマナ-${amt}`,enemy_sub_max:`相手の最大マナ-${amt}`};
+        desc+=m[t2]||`マナ変更${amt}`; break;
+      }
+      case 'change_ap':{
+        const t2=p.target||'self_add';const amt=vLabel('amount',p.amount||1);
+        const m={self_add:`自分のAP+${amt}`,self_subtract:`自分のAP-${amt}`,
+          enemy_add:`相手のAP+${amt}`,enemy_subtract:`相手のAP-${amt}`};
+        desc+=m[t2]||`AP変更${amt}`; break;
+      }
+      // 召喚・蘇生・サーチ
+      case 'summon_free':{
+        const costCond=p.cost_max?`コスト${p.cost_max}以下の`:'';
+        const abilCond=p.filter==='no_ability'?'能力なしの':'';
+        desc+=`手札から${costCond}${abilCond}ユニットをコストなしで召喚`; break;
+      }
+      case 'summon_card':{
+        const toSide=tgt==='enemy'?'相手の場に':'';
+        if(p.cards&&p.cards.length) desc+=`${toSide}`+(p.cards.map(e=>`「${e.name}」×${e.n||1}`).join('と'))+`を召喚`;
+        else if(p.name) desc+=`${toSide}「${p.name}」を${nVal}体召喚`;
+        else desc+=`${toSide}ユニットを召喚`;
+        break;
+      }
+      case 'revive':{
+        const fromWho=tgt==='enemy_random'?'相手の墓地':'自分の墓地';
+        let rcond='';
+        if(p.name) rcond=`「${p.name}」`;
+        else{
+          if(p.cost_max>0) rcond+=`コスト${p.cost_max}以下の`;
+          if(p.type) rcond+=`${p.type}の`;
+          rcond+='ユニット';
+        }
+        const hw=tgt?.includes('random')?'をランダムに':tgt?.includes('choose')?'を（選択して）':'を';
+        desc+=`${fromWho}から${rcond}${hw}蘇生`; break;
+      }
+      case 'fetch_to_hand':{
+        const fromZ={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札',hand_any:'相手の手札'}[p.from]||p.from||'デッキ';
+        const filters=[p.name?`「${p.name}」`:null,p.cost_max>0?`コスト${p.cost_max}以下`:null,p.type||null].filter(Boolean);
+        const filterTxt=filters.length?filters.join('・')+'の':'';
+        const hw2=p.target==='choose'?'（選択）':'（ランダム）';
+        desc+=`${fromZ}から${filterTxt}カードを手札に加える${hw2}`; break;
+      }
+      case 'fetch_to_field':{
+        const fromZ2={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札'}[p.from]||p.from||'デッキ';
+        const filters2=[p.name?`「${p.name}」`:null,p.cost_max>0?`コスト${p.cost_max}以下`:null,p.type||null].filter(Boolean);
+        const filterTxt2=filters2.length?filters2.join('・')+'の':'';
+        const hw3=p.target==='choose'?'（選択）':'（ランダム）';
+        desc+=`${fromZ2}から${filterTxt2}カードをコストなしで場に出す${hw3}`; break;
+      }
+      default: desc+=EFF_LABELS?.[a.effect]||a.effect||'（不明な効果）';
+    }
+    parts.push(desc);
+  });
+
+  // ── パッシブ（コスト軽減）──
+  abs.filter(a=>a.type==='passive').forEach(a=>{
+    if(a.id==='cost_reduce_self'){
+      const p=a.params||{};const amt=p.amount||1;
+      const filt=p.filter?`（${p.filter.replace('type:','').replace('kw:','')}）`:'';
+      switch(p.per){
+        case 'ally_no_ability':   parts.push(`場に能力を持たない味方がいる間、このカードのコスト-${amt}`); break;
+        case 'ally_any':          parts.push(`場の味方${filt}1体につきコスト-${amt}`); break;
+        case 'enemy_any':         parts.push(`場の相手${filt}1体につきコスト-${amt}`); break;
+        case 'hand_count':        parts.push(`手札1枚につきコスト-${amt}`); break;
+        case 'enemy_hand_count':  parts.push(`相手の手札1枚につきコスト-${amt}`); break;
+        case 'grave_count':       parts.push(`自分の墓地${filt}1枚につきコスト-${amt}`); break;
+        case 'deck_count':        parts.push(`自分のデッキ1枚につきコスト-${amt}`); break;
+        case 'turn_start':        parts.push(`手札にある間、ターン開始ごとにコスト-${amt}（累積）`); break;
+        case 'always':            parts.push(`常にコスト-${amt}`); break;
+        case 'no_hand':           parts.push(`手札が0枚のときコスト-${amt}`); break;
+        case 'no_ally':           parts.push(`自分の場にユニットがいないときコスト-${amt}`); break;
+        case 'enemy_no_unit':     parts.push(`相手の場にユニットがいないときコスト-${amt}`); break;
+        case 'leader_hp_below':   parts.push(`自分リーダーのHPが10以下のときコスト-${amt}`); break;
+        case 'leader_hp_above':   parts.push(`相手リーダーのHPが10以上のときコスト-${amt}`); break;
+        default: parts.push(`コスト-${amt}（${p.per||'条件なし'}）`);
+      }
+    }
+  });
+  return parts.join('\n')||null;
+}
+
+  const parts=[];
   const kws=abs.filter(a=>a.type==='keyword');
   if(kws.length) parts.push(kws.map(a=>KW_LABELS[a.id]||a.id).join('・'));
   abs.filter(a=>a.type==='trigger').forEach(a=>{
@@ -1822,9 +2082,6 @@ function buildAbilityText(card){
       }
     }
   });
-  return parts.join('\n')||null;
-}
-
 // ═══════════════════════════════════════════════════════════
 // ARCANA SYSTEM
 // ═══════════════════════════════════════════════════════════
