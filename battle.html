@@ -3273,10 +3273,13 @@ function showScreen(id){
 
 // 起動時にデータ読み込み後メニューを表示
 (async()=>{
-  await initData();
-  // 種族セレクターを読み込んだデータで初期化
-  typeRenderSelect();
-  _populateTypeSelectors();
+  try{
+    await initData();
+  }catch(e){console.error('initData failed',e);}
+  try{
+    typeRenderSelect();
+    _populateTypeSelectors();
+  }catch(e){console.warn('selector init failed',e);}
   _loadMenuArtSettings();
   _initMenuArtTrigger();
   showScreen('screen-menu');
