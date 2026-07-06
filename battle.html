@@ -1677,7 +1677,15 @@ function buildAbilityText(card){
       const co=COND_OPS.find(t=>t.v===p.condition_check.op);
       condTxt=`(${ct?.l||p.condition_check.type}${co?.l||p.condition_check.op}${p.condition_check.val}のとき) `;
     }    // 変数表示ヘルパー
-    const _repeatTxt=p.repeat&&p.repeat>1?`×${p.repeat} `:'';
+    const _repeatTxt=(()=>{
+      if(p.repeat_var){
+        const vd=p.repeat_var;
+        const sL={self:'自分',enemy:'相手',both:'両者'}[vd.side]||vd.side;
+        const tL={field_count:'場の枚数',field_types:'場の種類数',hand_count:'手札枚数',hand_types:'手札種類数',grave_count:'墓地枚数',grave_types:'墓地種類数',deck_count:'デッキ枚数'}[vd.type]||vd.type;
+        return `×[${sL}${tL}${vd.filter?`(${vd.filter})`:``}] `;
+      }
+      return p.repeat&&p.repeat>1?`×${p.repeat} `:'';
+    })();
     const _vLabel=(key,def)=>{
       const vd=p[key+'_var'];
       if(!vd)return def;
@@ -3007,6 +3015,9 @@ function showScreen(id){
 // 起動時にデータ読み込み後メニューを表示
 (async()=>{
   await initData();
+  // 種族セレクターを読み込んだデータで初期化
+  typeRenderSelect();
+  _populateTypeSelectors();
   _loadMenuArtSettings();
   _initMenuArtTrigger();
   showScreen('screen-menu');
@@ -3537,7 +3548,7 @@ function eRenderTriggerList(){
     const footerRow=document.createElement('div');
     footerRow.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;';
 
-    // 繰り返し入力
+    // 繰り返し入力（変数対応）
     const repeatWrap=document.createElement('label');
     repeatWrap.style.cssText='display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(240,230,204,0.45);white-space:nowrap;';
     repeatWrap.textContent='繰り返し:';
@@ -3548,8 +3559,28 @@ function eRenderTriggerList(){
     repeatInp.oninput=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};const v=parseInt(e.target.value)||1;if(v<=1)delete editAbilities[idx].params.repeat;else editAbilities[idx].params.repeat=v;eUpdateAbilPreview();}};
     const repeatLbl=document.createElement('span');
     repeatLbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.3);';repeatLbl.textContent='回';
-    repeatWrap.appendChild(repeatInp);repeatWrap.appendChild(repeatLbl);
-    footerRow.appendChild(repeatWrap);
+    // 繰り返し変数トグル
+    const rvKey='repeat_var';
+    const rvDef=(ab.params||{})[rvKey];
+    const rvBtn=document.createElement('button');rvBtn.type='button';rvBtn.textContent='≈';rvBtn.title='変数で指定';
+    rvBtn.style.cssText='font-size:9px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid rgba(201,168,76,0.3);background:rgba(8,6,16,0.7);color:rgba(240,230,204,0.5);';
+    const rvArea=document.createElement('div');rvArea.style.cssText=`display:${rvDef?'flex':'none'};gap:3px;align-items:center;`;
+    const _RVT=[{v:'field_count',l:'場の枚数'},{v:'field_types',l:'場の種類数'},{v:'hand_count',l:'手札枚数'},{v:'hand_types',l:'手札種類数'},{v:'grave_count',l:'墓地枚数'},{v:'grave_types',l:'墓地種類数'},{v:'deck_count',l:'デッキ枚数'}];
+    const _RVS=[{v:'self',l:'自分'},{v:'enemy',l:'相手'},{v:'both',l:'両者'}];
+    const rvTypeSel=document.createElement('select');rvTypeSel.style.cssText='padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);';
+    _RVT.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(rvDef?.type===t.v)o.selected=true;rvTypeSel.appendChild(o);});
+    const rvSideSel=document.createElement('select');rvSideSel.style.cssText=rvTypeSel.style.cssText;
+    _RVS.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(rvDef?.side===t.v)o.selected=true;rvSideSel.appendChild(o);});
+    const rvFilter=document.createElement('input');rvFilter.type='text';rvFilter.placeholder='type:天使 kw:guard';rvFilter.value=rvDef?.filter||'';
+    rvFilter.style.cssText='width:90px;padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--parchment);';
+    const saveRv=()=>{const idx=editAbilities.indexOf(ab);if(idx<0)return;if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[rvKey]={type:rvTypeSel.value,side:rvSideSel.value,filter:rvFilter.value.trim()};repeatInp.style.opacity='0.3';repeatInp.disabled=true;rvBtn.style.background='rgba(201,168,76,0.2)';rvBtn.style.color='var(--gold)';eUpdateAbilPreview();};
+    const clearRv=()=>{const idx=editAbilities.indexOf(ab);if(idx>=0&&editAbilities[idx].params)delete editAbilities[idx].params[rvKey];repeatInp.style.opacity='';repeatInp.disabled=false;rvBtn.style.background='rgba(8,6,16,0.7)';rvBtn.style.color='rgba(240,230,204,0.5)';rvArea.style.display='none';eUpdateAbilPreview();};
+    [rvTypeSel,rvSideSel,rvFilter].forEach(el2=>el2.addEventListener('input',saveRv));
+    rvBtn.onclick=()=>{const show=rvArea.style.display==='none';rvArea.style.display=show?'flex':'none';if(!show)clearRv();else saveRv();};
+    if(rvDef){repeatInp.style.opacity='0.3';repeatInp.disabled=true;rvBtn.style.background='rgba(201,168,76,0.2)';rvBtn.style.color='var(--gold)';}
+    rvArea.appendChild(rvTypeSel);rvArea.appendChild(rvSideSel);rvArea.appendChild(rvFilter);
+    repeatWrap.appendChild(repeatInp);repeatWrap.appendChild(rvBtn);repeatWrap.appendChild(repeatLbl);
+    footerRow.appendChild(repeatWrap);footerRow.appendChild(rvArea);
 
     // 発動条件チェックボックス
     const condChk=document.createElement('input');condChk.type='checkbox';
