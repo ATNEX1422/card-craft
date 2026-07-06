@@ -307,6 +307,19 @@ textarea.finput{resize:vertical;min-height:64px;}
    DECK SELECT SCREEN
 ═══════════════════════════════════ */
 #screen-deckselect{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow-y:auto;}
+/* 新レイアウト */
+.ds-new-layout{display:flex;width:100%;max-width:900px;gap:24px;height:70vh;margin-top:8px;}
+.ds-sidebar{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;}
+.ds-main-panel{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;}
+.ds-deck-preview{flex:1;border:1px solid rgba(201,168,76,0.15);border-radius:10px;background:rgba(8,6,16,0.5);padding:14px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.12) transparent;}
+.ds-deck-preview-empty{display:flex;align-items:center;justify-content:center;height:100%;color:rgba(240,230,204,0.25);font-size:13px;letter-spacing:0.08em;}
+.ds-select-btn{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;padding:8px 0;width:100%;border-radius:7px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.35);color:var(--gold);cursor:pointer;transition:all 0.15s;}
+.ds-select-btn:hover{background:rgba(201,168,76,0.25);}
+.ds-select-btn.selected{background:rgba(201,168,76,0.35);border-color:var(--gold);}
+.ds-ready-btn{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:0.12em;padding:10px 0;width:100%;border-radius:8px;background:linear-gradient(135deg,var(--gold-d),var(--gold));color:var(--ink);border:none;cursor:pointer;transition:all 0.15s;opacity:0.35;pointer-events:none;}
+.ds-ready-btn.active{opacity:1;pointer-events:all;}
+.ds-ready-btn.active:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(201,168,76,0.4);}
+.ds-ready-btn.ready-done{background:linear-gradient(135deg,#166534,#16a34a);color:#fff;}
 #screen-deckselect .ds-title{font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:0.12em;color:var(--gold);margin-bottom:8px;}
 .ds-layout{display:flex;gap:32px;align-items:flex-start;}
 .ds-player{display:flex;flex-direction:column;align-items:center;gap:10px;}
@@ -1179,10 +1192,20 @@ textarea.finput{resize:vertical;min-height:64px;}
 <!-- ═══ ONLINE DECK SELECT ═══ -->
 <div id="screen-deckselect-online" class="screen hidden panel-screen">
   <div class="panel-topbar" style="justify-content:space-between;">
-    <span style="font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;color:var(--gold);">デッキを選択してバトル開始</span>
+    <span style="font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;color:var(--gold);">デッキ選択</span>
     <div class="online-status" id="online-ds-status">デッキを選択してください</div>
   </div>
-  <div id="online-ds-list" style="display:flex;flex-direction:column;gap:8px;padding:12px;overflow-y:auto;flex:1;"></div>
+  <div style="display:flex;flex:1;gap:0;min-height:0;">
+    <!-- 左: デッキリスト -->
+    <div id="online-ds-list" style="width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;padding:12px;overflow-y:auto;border-right:1px solid rgba(201,168,76,0.1);"></div>
+    <!-- 右: プレビュー + Readyボタン -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:16px;min-width:0;">
+      <div class="ds-deck-preview" id="online-ds-preview">
+        <div class="ds-deck-preview-empty">← デッキを選択</div>
+      </div>
+      <button class="ds-ready-btn" id="online-ds-ready" onclick="onlineDsReady()">✓ READY</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ CARD EDITOR SCREEN ═══ -->
@@ -1441,20 +1464,26 @@ textarea.finput{resize:vertical;min-height:64px;}
 <!-- ═══ DECK SELECT SCREEN ═══ -->
 <div id="screen-deckselect" class="screen hidden">
   <div class="ds-title">デッキ選択</div>
-  <div style="font-size:11px;color:rgba(240,230,204,0.35);margin-bottom:20px;">各プレイヤーのデッキを選んでください</div>
-  <div class="ds-layout">
-    <div class="ds-player">
-      <div class="ds-player-label">PLAYER 1 (YOU)</div>
-      <div class="ds-deck-list" id="ds-p1-list"></div>
+  <div class="ds-new-layout">
+    <!-- 左: P1 デッキリスト -->
+    <div style="display:flex;flex-direction:column;gap:8px;width:220px;flex-shrink:0;">
+      <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(201,168,76,0.5);">PLAYER 1 (YOU)</div>
+      <div class="ds-sidebar" id="ds-p1-list"></div>
     </div>
-    <div class="ds-vs">VS</div>
-    <div class="ds-player">
-      <div class="ds-player-label">PLAYER 2 (AI)</div>
-      <div class="ds-deck-list" id="ds-p2-list"></div>
+    <!-- 中: デッキ詳細プレビュー -->
+    <div class="ds-main-panel">
+      <div class="ds-deck-preview" id="ds-preview">
+        <div class="ds-deck-preview-empty">← デッキを選択</div>
+      </div>
+      <button class="ds-start-btn" id="ds-start" onclick="startBattle()" disabled>▶ バトル開始</button>
+      <button class="menu-btn secondary" onclick="showScreen('screen-menu')" style="width:100%;font-size:13px;padding:7px 0;">← メニューに戻る</button>
+    </div>
+    <!-- 右: P2 デッキリスト -->
+    <div style="display:flex;flex-direction:column;gap:8px;width:220px;flex-shrink:0;">
+      <div style="font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:0.1em;color:rgba(240,80,80,0.5);">PLAYER 2 (AI)</div>
+      <div class="ds-sidebar" id="ds-p2-list"></div>
     </div>
   </div>
-  <button class="ds-start-btn" id="ds-start" onclick="startBattle()" disabled>▶ バトル開始</button>
-  <button class="menu-btn secondary" onclick="showScreen('screen-menu')" style="margin-top:8px;width:180px;font-size:14px;padding:8px 0;">← メニューに戻る</button>
 </div>
 
 <!-- ═══ BATTLE SCREEN ═══ -->
@@ -1579,7 +1608,7 @@ const CARD_TYPES=['天使','悪魔','王国','死霊','ニュートラル'];
 const KW_LABELS={
   rush:'突進',haste:'疾走',guard:'守護',deathtouch:'必殺',
   drain:'吸収',pierce:'貫通',
-  stealth:'潜伏',barrier:'障壁',intimidate:'威圧',aura:'覇気' // hidden from UI
+  stealth:'潜伏',barrier:'障壁',intimidate:'威圧',aura:'覇気',multi_attack:'連続攻撃' // hidden from UI
 };
 const EFF_LABELS={
   draw:'カードをX枚引く',
@@ -1648,6 +1677,7 @@ function buildAbilityText(card){
       const co=COND_OPS.find(t=>t.v===p.condition_check.op);
       condTxt=`(${ct?.l||p.condition_check.type}${co?.l||p.condition_check.op}${p.condition_check.val}のとき) `;
     }    // 変数表示ヘルパー
+    const _repeatTxt=p.repeat&&p.repeat>1?`×${p.repeat} `:'';
     const _vLabel=(key,def)=>{
       const vd=p[key+'_var'];
       if(!vd)return def;
@@ -1658,7 +1688,7 @@ function buildAbilityText(card){
     };
     const isAll=tgt&&(tgt.endsWith('_all')||tgt==='both'||tgt==='self_all'||tgt==='enemy_all'||tgt==='ally_all');
     const kwTxt=()=>(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k).join('・')||'キーワード';
-    let desc=`【${trig}】${condTxt}`;
+    let desc=`【${trig}】${condTxt}${_repeatTxt}`;
     switch(a.effect){
       // ── ドロー・手札 ──
       case 'draw':            desc+=`${_tgtSide(tgt)==='相手'&&tgt?'相手が':''}${p.n||1}枚引く`; break;
@@ -3438,7 +3468,21 @@ function eRenderTriggerList(){
               eUpdateAbilPreview();
               eRenderTriggerList();
             };
-            kwDiv.appendChild(chip);
+            if(kw==='multi_attack'&&active){
+        const nInp=document.createElement('input');nInp.type='number';nInp.min=2;nInp.max=9;
+        nInp.value=activeObj?.n||2;nInp.style.cssText='width:38px;font-size:11px;padding:2px 4px;background:rgba(8,6,16,0.8);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);margin-left:-4px;';
+        nInp.title='攻撃回数';
+        nInp.onclick=e=>e.stopPropagation();
+        nInp.oninput=e=>{
+          const abIdx=editAbilities.findIndex(a=>a.id===card.id||(a.type==='unit'&&a===card));
+          // idxを探す別の方法
+          const rootAb=editAbilities.find(a=>a.type==='unit'||(a.abilities&&a.abilities.some(x=>x.type==='keyword'&&x.id==='multi_attack')));
+          if(rootAb){const ma=rootAb.abilities.find(x=>x.type==='keyword'&&x.id==='multi_attack');if(ma){ma.n=parseInt(e.target.value)||2;eUpdateAbilPreview();}}
+        };
+        kwDiv.appendChild(chip);kwDiv.appendChild(nInp);
+      } else {
+        kwDiv.appendChild(chip);
+      }
           });
           prow.style.flexWrap='wrap';
           prow.appendChild(kwDiv);
@@ -3489,6 +3533,47 @@ function eRenderTriggerList(){
       });
       row.appendChild(prow);
     }
+    // ── 繰り返し + 発動条件エリア（行の下段）──
+    const footerRow=document.createElement('div');
+    footerRow.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;';
+
+    // 繰り返し入力
+    const repeatWrap=document.createElement('label');
+    repeatWrap.style.cssText='display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(240,230,204,0.45);white-space:nowrap;';
+    repeatWrap.textContent='繰り返し:';
+    const repeatInp=document.createElement('input');
+    repeatInp.type='number';repeatInp.min=1;repeatInp.max=20;
+    repeatInp.value=(ab.params||{}).repeat||1;
+    repeatInp.style.cssText='width:44px;padding:2px 4px;font-size:11px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.25);border-radius:4px;color:var(--parchment);';
+    repeatInp.oninput=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};const v=parseInt(e.target.value)||1;if(v<=1)delete editAbilities[idx].params.repeat;else editAbilities[idx].params.repeat=v;eUpdateAbilPreview();}};
+    const repeatLbl=document.createElement('span');
+    repeatLbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.3);';repeatLbl.textContent='回';
+    repeatWrap.appendChild(repeatInp);repeatWrap.appendChild(repeatLbl);
+    footerRow.appendChild(repeatWrap);
+
+    // 発動条件チェックボックス
+    const condChk=document.createElement('input');condChk.type='checkbox';
+    condChk.style.cssText='accent-color:var(--gold);width:11px;height:11px;cursor:pointer;';
+    const existCond=(ab.params||{}).condition_check;condChk.checked=!!existCond;
+    const condLbl2=document.createElement('span');
+    condLbl2.style.cssText='font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;white-space:nowrap;';
+    condLbl2.textContent='発動条件:';condLbl2.onclick=()=>condChk.click();
+    const condSettings=document.createElement('div');
+    condSettings.style.cssText=`display:${existCond?'flex':'none'};gap:3px;align-items:center;flex-wrap:wrap;`;
+    const condTypeSel=document.createElement('select');condTypeSel.style.cssText='padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);';
+    COND_TYPES.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(existCond?.type===t.v)o.selected=true;condTypeSel.appendChild(o);});
+    const condOpSel=document.createElement('select');condOpSel.style.cssText=condTypeSel.style.cssText;
+    COND_OPS.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(existCond?.op===t.v)o.selected=true;condOpSel.appendChild(o);});
+    const condVal=document.createElement('input');condVal.type='number';condVal.min=0;condVal.max=99;
+    condVal.value=existCond?.val??1;condVal.style.cssText='width:44px;padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--parchment);';
+    const saveCond=()=>{const idx=editAbilities.indexOf(ab);if(idx<0)return;if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params.condition_check={type:condTypeSel.value,op:condOpSel.value,val:parseInt(condVal.value)||0};eUpdateAbilPreview();};
+    const clearCond=()=>{const idx=editAbilities.indexOf(ab);if(idx>=0&&editAbilities[idx].params)delete editAbilities[idx].params.condition_check;eUpdateAbilPreview();};
+    [condTypeSel,condOpSel,condVal].forEach(el2=>el2.addEventListener('input',saveCond));
+    condChk.onchange=()=>{condSettings.style.display=condChk.checked?'flex':'none';if(condChk.checked)saveCond();else clearCond();};
+    condSettings.appendChild(condTypeSel);condSettings.appendChild(condOpSel);condSettings.appendChild(condVal);
+    footerRow.appendChild(condChk);footerRow.appendChild(condLbl2);footerRow.appendChild(condSettings);
+
+    row.appendChild(footerRow);
     el.appendChild(row);
   });
 }
@@ -3948,56 +4033,57 @@ function showDeckSelect(){
 
 function dsRender(){
   dsSelected={1:null,2:null};
+  const dsBuildPreview=(d,previewEl)=>{
+    previewEl.innerHTML='';
+    const title=document.createElement('div');
+    title.style.cssText='font-family:"Bebas Neue",cursive;font-size:16px;color:var(--gold);margin-bottom:8px;';
+    title.textContent=d.name;
+    previewEl.appendChild(title);
+    const sorted=[...d.cards].sort((a,b)=>{const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);return(ca?.cost||0)-(cb?.cost||0);});
+    sorted.forEach(e=>{
+      const card=CARDS.find(c=>c.id===e.id);if(!card)return;
+      const row=document.createElement('div');
+      row.className='ds-deck-card-row';
+      row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
+      previewEl.appendChild(row);
+    });
+    if(d.arcanaId){
+      const arc=ARCANAS.find(a=>a.id===d.arcanaId);
+      if(arc){
+        const arcRow=document.createElement('div');
+        arcRow.className='ds-deck-arcana-row';
+        arcRow.style.marginTop='8px';
+        arcRow.innerHTML=`<span>✦</span><span>${esc(arc.name)}${arc.number!=null?' (No.'+arc.number+')':''}</span>`;
+        previewEl.appendChild(arcRow);
+      }
+    }
+  };
   [1,2].forEach(pid=>{
     const el=document.getElementById(`ds-p${pid}-list`);
     el.innerHTML='';
-    if(!DECKS.length){el.innerHTML='<div class="ds-no-deck">デッキがありません<br>デッキ編成で作成してください</div>';return;}
+    if(!DECKS.length){el.innerHTML='<div class="ds-no-deck">デッキがありません</div>';return;}
     DECKS.forEach((d,i)=>{
-      const opt=document.createElement('div');
-      opt.className='ds-deck-opt';
-      // Header
-      const header=document.createElement('div');
-      header.className='ds-deck-opt-header';
-      header.innerHTML=`<span>${esc(d.name)}</span><span class="ds-deck-count">${deckTotalCards(d.cards)}枚</span>`;
-      opt.appendChild(header);
-      // Card list
-      const cardList=document.createElement('div');
-      cardList.className='ds-deck-cards';
-      // Sort by cost
-      const sorted=[...d.cards].sort((a,b)=>{
-        const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);
-        return (ca?.cost||0)-(cb?.cost||0);
-      });
-      sorted.forEach(e=>{
-        const card=CARDS.find(c=>c.id===e.id);if(!card)return;
-        const row=document.createElement('div');
-        row.className='ds-deck-card-row';
-        row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
-        cardList.appendChild(row);
-      });
-      // Arcana row
-      if(d.arcanaId){
-        const arc=ARCANAS.find(a=>a.id===d.arcanaId);
-        if(arc){
-          const arcRow=document.createElement('div');
-          arcRow.className='ds-deck-arcana-row';
-          arcRow.innerHTML=`<span>✦</span><span>${esc(arc.name)}${arc.number!=null?' (No.'+arc.number+')':''}</span>`;
-          cardList.appendChild(arcRow);
-        }
-      }
-      opt.appendChild(cardList);
-      opt.addEventListener('click',()=>{
+      const btn=document.createElement('button');
+      btn.className='ds-select-btn';
+      btn.textContent=`${esc(d.name)}  ${deckTotalCards(d.cards)}枚`;
+      btn.addEventListener('click',()=>{
         dsSelected[pid]=d.cards;
         dsSelectedDeck[pid]=d;
-        el.querySelectorAll('.ds-deck-opt').forEach(o=>o.classList.remove('selected'));
-        opt.classList.add('selected');
+        el.querySelectorAll('.ds-select-btn').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
         document.getElementById('ds-start').disabled=!(dsSelected[1]&&dsSelected[2]);
+        // プレビュー更新
+        const pre=document.getElementById('ds-preview');
+        if(pre)dsBuildPreview(d,pre);
       });
-      el.appendChild(opt);
+      el.appendChild(btn);
     });
   });
   document.getElementById('ds-start').disabled=true;
+  const pre=document.getElementById('ds-preview');
+  if(pre)pre.innerHTML='<div class="ds-deck-preview-empty">← デッキを選択</div>';
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // BATTLE ENGINE
@@ -4301,10 +4387,10 @@ function mkCard(base){
     // deep-copy abilities so runtime mutations don't affect base card data
     abilities:JSON.parse(JSON.stringify(base.abilities||[])),
     _uid:uid(),_hp:base.toughness,
-    _sick:!rush&&!haste,_rushOnly:rush&&!haste,_haste:haste,_attacked:false,
+    _sick:!rush&&!haste,_rushOnly:rush&&!haste,_haste:haste,_attacked:false,_atkCount:0,
     _barrier:isBarrier(base),_bound:false,_silenced:false,_revealed:!isStlth(base)};
 }
-function clearTurnFlags(c){c._sick=false;c._rushOnly=false;c._haste=false;c._attacked=false;} // _bound/_silenced は永続（場を離れるまで続く）
+function clearTurnFlags(c){c._sick=false;c._rushOnly=false;c._haste=false;c._attacked=false;c._atkCount=0;} // _bound/_silenced は永続（場を離れるまで続く）
 
 let _arcanaOverride=null;
 function startBattle(){
@@ -5830,6 +5916,12 @@ async function _legacyTrigger(pid,fc,isAI){
   }
 }
 
+// カードの最大攻撃回数を返す（multi_attackキーワードで設定）
+function getMaxAttacks(c){
+  const ma=(c.abilities||[]).find(a=>a.type==='keyword'&&a.id==='multi_attack');
+  return ma?(ma.n||2):1;
+}
+
 function canAtkUnit(c){if(c._attacked)return false;if(c._bound)return false;if(c._sick&&!c._rushOnly&&!c._haste)return false;return true;}
 function canAtkLeader(c){if(c._attacked)return false;if(c._bound)return false;if(c._rushOnly)return false;if(c._sick&&!c._haste)return false;return true;}
 
@@ -5889,7 +5981,7 @@ async function doAttackUnit(targetPid,targetUid){
   if(!aStillAlive||!dStillAlive){aCard._attacked=true;deselectAtk();render();return;}
 
   // apply damage
-  aCard._hp-=dp2; dCard._hp-=ap2; aCard._attacked=true; dCard._revealed=true;
+  aCard._hp-=dp2; dCard._hp-=ap2; aCard._atkCount=(aCard._atkCount||0)+1; aCard._attacked=(aCard._atkCount>=getMaxAttacks(aCard)); dCard._revealed=true;
   aCard._revealed=true; // stealth lost on attack
 
   // keyword effects
@@ -5958,7 +6050,7 @@ async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQ
   const dmg=aCard.power;
   G.p[targetPid].life=Math.max(0,G.p[targetPid].life-dmg);
   arcanaNotifyLifeLoss(targetPid);
-  aCard._attacked=true; aCard._revealed=true;
+  aCard._atkCount=(aCard._atkCount||0)+1; aCard._attacked=(aCard._atkCount>=getMaxAttacks(aCard)); aCard._revealed=true;
   // on_attack trigger (leader target - no unit target)
   await triggerAbility(ap,aCard,false,'on_attack');
   if(isDrain(aCard)){
@@ -6155,7 +6247,7 @@ async function aiTurn(){
         render();await new Promise(r=>requestAnimationFrame(r));
         await animateLunge(pid,atk._uid);
         const dmg=atk.power;
-        op.life=Math.max(0,op.life-dmg);arcanaNotifyLifeLoss(opp);atk._attacked=true;atk._revealed=true;
+        op.life=Math.max(0,op.life-dmg);arcanaNotifyLifeLoss(opp);atk._atkCount=(atk._atkCount||0)+1;atk._attacked=(atk._atkCount>=getMaxAttacks(atk));atk._revealed=true;
         const _alpos=getLifeCenter(opp);if(_alpos)showDmgFloat(_alpos.x,_alpos.y,dmg);
         await triggerAbility(pid,atk,true,'on_attack');
         log(`${pCol(atk.name,pid)}→ ${pCol('P1リーダー',opp)}に${dmg}ダメ (残${op.life})`,'');
@@ -6518,6 +6610,7 @@ function imgPath(card){
 const KW_MARK={};
 
 // keyword icon badges: 必殺・吸収・貫通 (top-right column)
+// multi_attack は n を持つ特殊キーワード
 const KW_ICONS={
   deathtouch:{cls:'kwi-deathtouch',mark:'✕'},
   drain:     {cls:'kwi-drain',     mark:'♥'},
@@ -6822,38 +6915,58 @@ async function onlineJoinRoom(){
 }
 
 // ── Deck Select for online ──
+let _onlineSelectedDeck=null;
+
 function showOnlineDeckSelect(){
   window._onlineBattleStarted=false;
   _onlineStartGameCalled=false;
+  _onlineSelectedDeck=null;
   showScreen('screen-deckselect-online');
   const list=document.getElementById('online-ds-list');
+  const preview=document.getElementById('online-ds-preview');
+  const readyBtn=document.getElementById('online-ds-ready');
   list.innerHTML='';
+  readyBtn.classList.remove('active','ready-done');
+  if(preview)preview.innerHTML='<div class="ds-deck-preview-empty">← デッキを選択</div>';
   if(!DECKS.length){list.innerHTML='<div style="color:rgba(240,230,204,0.3);text-align:center;padding:20px;">デッキがありません</div>';return;}
-  DECKS.forEach((d,i)=>{
-    const opt=document.createElement('div');
-    opt.className='ds-deck-opt';opt.style.cssText='cursor:pointer;margin-bottom:4px;';
-    const header=document.createElement('div');
-    header.className='ds-deck-opt-header';
-    header.innerHTML=`<span>${esc(d.name)}</span><span class="ds-deck-count">${deckTotalCards(d.cards)}枚</span>`;
-    opt.appendChild(header);
-    const cardList=document.createElement('div');
-    cardList.className='ds-deck-cards';
-    const sorted=[...d.cards].sort((a,b)=>{const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);return (ca?.cost||0)-(cb?.cost||0);});
-    sorted.forEach(e=>{
-      const card=CARDS.find(c=>c.id===e.id);if(!card)return;
-      const row=document.createElement('div');row.className='ds-deck-card-row';
-      row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
-      cardList.appendChild(row);
+  DECKS.forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className='ds-select-btn';
+    btn.textContent=`${esc(d.name)}  ${deckTotalCards(d.cards)}枚`;
+    btn.addEventListener('click',()=>{
+      list.querySelectorAll('.ds-select-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      _onlineSelectedDeck=d;
+      readyBtn.classList.add('active');
+      // プレビュー表示
+      if(preview){
+        preview.innerHTML='';
+        const title=document.createElement('div');
+        title.style.cssText='font-family:"Bebas Neue",cursive;font-size:16px;color:var(--gold);margin-bottom:8px;';
+        title.textContent=d.name;
+        preview.appendChild(title);
+        const sorted=[...d.cards].sort((a,b)=>{const ca=CARDS.find(c=>c.id===a.id),cb=CARDS.find(c=>c.id===b.id);return(ca?.cost||0)-(cb?.cost||0);});
+        sorted.forEach(e=>{
+          const card=CARDS.find(c=>c.id===e.id);if(!card)return;
+          const row=document.createElement('div');row.className='ds-deck-card-row';
+          row.innerHTML=`<div class="ds-deck-card-cost">${card.cost}</div><span style="flex:1;">${esc(card.name)}</span><span style="opacity:0.5;">×${e.count}</span>`;
+          preview.appendChild(row);
+        });
+        if(d.arcanaId){const arc=ARCANAS.find(a=>a.id===d.arcanaId);if(arc){const r=document.createElement('div');r.className='ds-deck-arcana-row';r.style.marginTop='8px';r.innerHTML=`<span>✦</span><span>${esc(arc.name)}</span>`;preview.appendChild(r);}}
+      }
     });
-    if(d.arcanaId){const arc=ARCANAS.find(a=>a.id===d.arcanaId);if(arc){const r=document.createElement('div');r.className='ds-deck-arcana-row';r.innerHTML=`<span>✦</span><span>${esc(arc.name)}</span>`;cardList.appendChild(r);}}
-    opt.appendChild(cardList);
-    opt.addEventListener('click',()=>{
-      list.querySelectorAll('.ds-deck-opt').forEach(o=>o.classList.remove('selected'));
-      opt.classList.add('selected');
-      onlineSelectDeck(d);
-    });
-    list.appendChild(opt);
+    list.appendChild(btn);
   });
+}
+
+async function onlineDsReady(){
+  if(!_onlineSelectedDeck)return;
+  const btn=document.getElementById('online-ds-ready');
+  btn.classList.remove('active');
+  btn.classList.add('ready-done');
+  btn.textContent='✓ READY!';
+  document.getElementById('online-ds-status').textContent='相手のデッキ選択を待っています…';
+  await onlineSelectDeck(_onlineSelectedDeck);
 }
 
 async function onlineSelectDeck(deck){
