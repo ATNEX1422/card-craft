@@ -1856,7 +1856,8 @@ function buildAbilityText(card){
       case 'summon_free':{
         const costCond=p.cost_max?`コスト${p.cost_max}以下の`:'';
         const abilCond=p.filter==='no_ability'?'能力なしの':'';
-        desc+=`手札から${costCond}${abilCond}ユニットをコストなしで召喚`; break;
+        const typeCond=p.type?`${p.type}の`:'';
+        desc+=`手札から${costCond}${typeCond}${abilCond}ユニットをコストなしで召喚`; break;
       }
       case 'summon_card':{
         const toSide=tgt==='enemy'?'相手の場に':'';
@@ -3578,10 +3579,10 @@ const ALL_EFFECTS=[
   {id:'change_mana',       label:'マナを変更',                params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_restore','self_add_max','self_sub_current','self_sub_max','enemy_restore','enemy_add_max','enemy_sub_current','enemy_sub_max'],def:'self_restore'}]},
   // ── 召喚・蘇生 ──
   {id:'summon_card',       label:'指定カードを召喚',          params:[{key:'cards',label:'召喚リスト',type:'card_list',def:[]},{key:'target',label:'召喚先',type:'select',opts:['self','enemy'],def:'self'}]},
-  {id:'summon_free',       label:'手札から無料召喚',          params:[{key:'cost_max',label:'コスト以下',def:2},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
-  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'n',label:'体数',def:1},{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
+  {id:'summon_free',       label:'手札から無料召喚',          params:[{key:'cost_max',label:'コスト以下',def:2},{key:'type',label:'種族(空=すべて)',type:'type_select',def:''},{key:'filter',label:'条件',type:'select',opts:['none','no_ability'],def:'none'}]},
+  {id:'revive',            label:'墓地からユニットを蘇生',    params:[{key:'n',label:'体数',def:1},{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'種族(空=すべて)',type:'type_select',def:''},{key:'target',label:'対象',type:'select',opts:['self_choose','self_random','enemy_random'],def:'self_choose'}]},
   // ── ゾーン指定移動 ──
-  {id:'fetch_to_hand',     label:'指定カードを手札に（ゾーン指定）', params:[{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'タイプ(空=すべて)',type:'text',def:''},{key:'from',label:'取得元',type:'select',opts:['deck','grave','enemy_grave','hand_any'],def:'deck'},{key:'target',label:'選択方法',type:'select',opts:['choose','random'],def:'choose'}]},
+  {id:'fetch_to_hand',     label:'指定カードを手札に（ゾーン指定）', params:[{key:'name',label:'カード名(空=条件一致)',type:'text',def:''},{key:'cost_max',label:'コスト上限(0=なし)',def:0},{key:'type',label:'種族(空=すべて)',type:'type_select',def:''},{key:'from',label:'取得元',type:'select',opts:['deck','grave','enemy_grave','hand_any'],def:'deck'},{key:'target',label:'選択方法',type:'select',opts:['choose','random'],def:'choose'}]},
   // ── AP ──
   {id:'change_ap',         label:'APを変更',                  params:[{key:'amount',label:'増減量',def:1},{key:'target',label:'対象',type:'select',opts:['self_add','self_subtract','enemy_add','enemy_subtract'],def:'self_add'}]},
 ];
@@ -3755,6 +3756,19 @@ function eRenderTriggerList(){
           });
           prow.style.flexWrap='wrap';
           prow.appendChild(kwDiv);
+        } else if(pDef.type==='type_select'){
+          // 種族セレクター（_cardTypes から動的生成）
+          const sel=document.createElement('select');
+          sel.style.cssText='padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
+          const curVal=(ab.params||{})[pDef.key]||'';
+          const emptyOpt=document.createElement('option');emptyOpt.value='';emptyOpt.textContent='種族: すべて';sel.appendChild(emptyOpt);
+          (_cardTypes||[]).forEach(t=>{
+            const o=document.createElement('option');o.value=t;o.textContent=t;
+            if(t===curVal)o.selected=true;
+            sel.appendChild(o);
+          });
+          sel.onchange=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=e.target.value;eUpdateAbilPreview();}};
+          prow.appendChild(sel);
         } else if(pDef.type==='text'){
           const inp=document.createElement('input');inp.type='text';inp.value=(ab.params||{})[pDef.key]||pDef.def||'';inp.placeholder=pDef.label;inp.style.cssText='width:100px !important;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
           inp.oninput=e=>{const idx=editAbilities.indexOf(ab);if(idx>=0){if(!editAbilities[idx].params)editAbilities[idx].params={};editAbilities[idx].params[pDef.key]=e.target.value;eUpdateAbilPreview();}};
