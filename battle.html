@@ -1854,7 +1854,7 @@ function buildAbilityText(card){
       }
       // 召喚・蘇生・サーチ
       case 'summon_free':{
-        const costCond=p.cost_max?`コスト${p.cost_max}以下の`:'';
+        const costCond=p.cost_max||p.cost_max_var?`コスト${vLabel('cost_max',p.cost_max)}以下の`:'';
         const abilCond=p.filter==='no_ability'?'能力なしの':'';
         const typeCond=p.type?`${p.type}の`:'';
         desc+=`手札から${costCond}${typeCond}${abilCond}ユニットをコストなしで召喚`; break;
@@ -1871,23 +1871,22 @@ function buildAbilityText(card){
         let rcond='';
         if(p.name) rcond=`「${p.name}」`;
         else{
-          if(p.cost_max>0) rcond+=`コスト${p.cost_max}以下の`;
-          if(p.type) rcond+=`${p.type}の`;
-          rcond+='ユニット';
+          const costCond2=p.cost_max||p.cost_max_var?`コスト${vLabel('cost_max',p.cost_max)}以下の`:'';
+          rcond+=costCond2+(p.type?`${p.type}の`:'')+'ユニット';
         }
         const hw=tgt?.includes('random')?'をランダムに':tgt?.includes('choose')?'を（選択して）':'を';
         desc+=`${fromWho}から${rcond}${hw}蘇生`; break;
       }
       case 'fetch_to_hand':{
         const fromZ={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札',hand_any:'相手の手札'}[p.from]||p.from||'デッキ';
-        const filters=[p.name?`「${p.name}」`:null,p.cost_max>0?`コスト${p.cost_max}以下`:null,p.type||null].filter(Boolean);
+        const filters=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
         const filterTxt=filters.length?filters.join('・')+'の':'';
         const hw2=p.target==='choose'?'（選択）':'（ランダム）';
         desc+=`${fromZ}から${filterTxt}カードを手札に加える${hw2}`; break;
       }
       case 'fetch_to_field':{
         const fromZ2={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札'}[p.from]||p.from||'デッキ';
-        const filters2=[p.name?`「${p.name}」`:null,p.cost_max>0?`コスト${p.cost_max}以下`:null,p.type||null].filter(Boolean);
+        const filters2=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
         const filterTxt2=filters2.length?filters2.join('・')+'の':'';
         const hw3=p.target==='choose'?'（選択）':'（ランダム）';
         desc+=`${fromZ2}から${filterTxt2}カードをコストなしで場に出す${hw3}`; break;
@@ -5948,7 +5947,7 @@ async function _execEffect(pid, fc, ab, isAI){
     let eligible=pool.filter(c=>{
       if(!c)return false;
       if(cardName&&c.name!==cardName)return false;
-      if(costMax>0&&(c.cost||0)>costMax)return false;
+      const _cm=_getVal(pr,'cost_max',0);if(_cm>0&&(c.cost||0)>_cm)return false;
       if(cardType&&c.type!==cardType)return false;
       return true;
     });
