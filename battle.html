@@ -2589,13 +2589,14 @@ let CARDS = []; // Firebaseから読み込む
 let DECKS = [];
 
 async function initData(){
-  await _loadTypes();
   // Wait for Firebase to be ready (max 3s)
   await new Promise(resolve=>{
     if(window._FB) return resolve();
     window.addEventListener('fb-ready', resolve, {once:true});
     setTimeout(resolve, 3000);
   });
+  // Firebase準備完了後に種族をロード
+  await _loadTypes();
   const fb=window._FB;
 
   // ── 1. Load cards from Firebase ──
