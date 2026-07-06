@@ -6085,18 +6085,22 @@ function selectAtk(pid,cuid){
   render();
 }
 
+let _attackPending=false;
+
 async function doAttackUnit(targetPid,targetUid){
-  if(!selAtk||G.over||aiLock||targetMode)return;
+  if(!selAtk||G.over||aiLock||targetMode||_attackPending)return;
+  _attackPending=true;
+  try{
   const ap=selAtk.pid,auid=selAtk.uid;
   const aCard=G.p[ap].field.find(c=>c._uid===auid);
   const dCard=G.p[targetPid].field.find(c=>c._uid===targetUid);
-  if(!aCard||!dCard){deselectAtk();render();return;}
-  if(ap===targetPid){showMidNotif('味方には攻撃できません','#f87171',1400);return;}
-  if(isIntimidate(dCard)){showMidNotif('威圧 — このユニットは攻撃できません','rgba(240,230,204,0.7)',1400);return;}
+  if(!aCard||!dCard){deselectAtk();render();_attackPending=false;return;}
+  if(ap===targetPid){showMidNotif('味方には攻撃できません','#f87171',1400);_attackPending=false;return;}
+  if(isIntimidate(dCard)){showMidNotif('威圧 — このユニットは攻撃できません','rgba(240,230,204,0.7)',1400);_attackPending=false;return;}
   const guards=G.p[targetPid].field.filter(isGuard);
-  if(guards.length>0&&!isGuard(dCard)){showMidNotif('守護ユニットを先に倒してください','#f87171',1400);return;}
+  if(guards.length>0&&!isGuard(dCard)){showMidNotif('守護ユニットを先に倒してください','#f87171',1400);_attackPending=false;return;}
   // stealth check
-  if(isStlth(dCard)&&!dCard._revealed){showMidNotif('潜伏中のユニットは攻撃できません','rgba(240,230,204,0.7)',1400);return;}
+  if(isStlth(dCard)&&!dCard._revealed){showMidNotif('潜伏中のユニットは攻撃できません','rgba(240,230,204,0.7)',1400);_attackPending=false;return;}
 
   showMidNotif(`⚔ ${pCol(aCard.name,ap)} → ${pCol(dCard.name,targetPid)}`,'',2200);
   log(`${pCol(aCard.name,ap)}→${pCol(dCard.name,targetPid)}に攻撃`,'');
@@ -6174,6 +6178,7 @@ async function doAttackUnit(targetPid,targetUid){
     await _onlinePushState();
   _onlineSendAction({type:'attack_unit',pid:ap,atkUid:auid,tgtUid:targetUid});
   }
+  }finally{_attackPending=false;}
 }
 
 async function attackLife(targetPid){if(isAnimating()||summonProcessing||summonQueue.length>0)return;
