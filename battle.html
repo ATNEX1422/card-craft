@@ -1844,7 +1844,8 @@ function buildAbilityText(card){
       return `${side(t)}${h}${nStr}`;
     };
     const kwTxt=(()=>{
-      const kws2=(p.kws||[p.kw]).filter(Boolean).map(k=>KW_LABELS[k]||k);
+      const _rawKws=p.kws?(Array.isArray(p.kws)?p.kws:Object.values(p.kws)):(p.kw?[p.kw]:[]);
+      const kws2=_rawKws.filter(Boolean).map(k=>KW_LABELS[k]||k);
       return kws2.join('・')||'キーワード';
     })();
     const excludeTxt=p.exclude_self?' (自身除く)':'';
@@ -5344,7 +5345,8 @@ async function _execEffect(pid, fc, ab, isAI){
     render(); return;
   }
   if(e==='summon_card'){
-    const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
+    const _rawCards=pr.cards?(Array.isArray(pr.cards)?pr.cards:Object.values(pr.cards)):[];
+    const entries=_rawCards.length?_rawCards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
     const tgtPid=(pr.target==='enemy')?opp:pid;
     const spawnedUids=[];
     for(const entry of entries){
@@ -5474,7 +5476,8 @@ async function _execEffect(pid, fc, ab, isAI){
     render(); return;
   }
   if(e==='add_to_hand'){
-    const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
+    const _rawCards=pr.cards?(Array.isArray(pr.cards)?pr.cards:Object.values(pr.cards)):[];
+    const entries=_rawCards.length?_rawCards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
     for(const entry of entries){
       const base=CARDS.find(c=>c.name===entry.name);
       if(!base)continue;
@@ -5657,7 +5660,8 @@ async function _execEffect(pid, fc, ab, isAI){
     await drawCardAnim(opp,n); return;
   }
   if(e==='add_to_hand_enemy'){
-    const entries=pr.cards&&pr.cards.length?pr.cards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
+    const _rawCards=pr.cards?(Array.isArray(pr.cards)?pr.cards:Object.values(pr.cards)):[];
+    const entries=_rawCards.length?_rawCards:(pr.name?[{name:pr.name,n:pr.n||1}]:[]);
     for(const entry of entries){
       const base=CARDS.find(c=>c.name===entry.name);if(!base)continue;
       for(let i=0;i<(entry.n||1);i++) G.p[opp].hand.push({...base,abilities:JSON.parse(JSON.stringify(base.abilities||[]))});
@@ -6945,7 +6949,8 @@ function showTip(card,cost,e){
       const p=ab.params||{};
       const subCards=[];
       if(ab.effect==='summon_card'){
-        const entries=p.cards&&p.cards.length?p.cards:(p.name?[{name:p.name}]:[]);
+        const _rc=p.cards?(Array.isArray(p.cards)?p.cards:Object.values(p.cards)):[];
+        const entries=_rc.length?_rc:(p.name?[{name:p.name}]:[]);
         entries.forEach(e=>{const c=CARDS.find(x=>x.name===e.name);if(c&&!subCards.find(s=>s.id===c.id))subCards.push(c);});
       } else if(ab.effect==='summon_free'){
         // summon_free はメインのabilテキストに表示済みなのでスキップ
