@@ -7832,12 +7832,14 @@ function animateDestroy(pid, cardUid){
 }
 
 function findCardEl(pid, cardUid){
-  const field=document.getElementById(`p${pid}-field`);
-  if(!field)return null;
-  return [...field.querySelectorAll('.fcard')].find(el=>{
-    // match by rendered card order — find by data attribute set during render
-    return el.dataset.uid===String(cardUid);
-  });
+  // 視点対応: dataPid と domPid が一致しない場合があるため全フィールドを検索
+  const fields=[document.getElementById('p1-field'),document.getElementById('p2-field')];
+  for(const field of fields){
+    if(!field)continue;
+    const el=[...field.querySelectorAll('.fcard')].find(e=>e.dataset.uid===String(cardUid)&&e.dataset.pid===String(pid));
+    if(el)return el;
+  }
+  return null;
 }
 
 // UTILS
