@@ -5568,17 +5568,16 @@ async function _execEffect(pid, fc, ab, isAI){
     if(entry&&p.field.length<7){
       const base=CARDS.find(c=>c.name===entry.name)||entry.card;
       const nfc=mkCard(base);nfc._sick=true;
-      // mark as revived so target selection cannot be cancelled
       nfc._revived=true;
+      nfc._entryOrder=++_fieldEntryCounter;
       p.field.push(nfc);
       entry.count--;
       if(entry.count<=0) p.grave=p.grave.filter(g=>g.name!==entry.name);
       log(`${pCol(fc.name,pid)}→${pCol(base.name,pid)}を蘇生！`,'ll-s');
       render();await animateSummon(pid,nfc._uid);
-      // fire on_ally_enter for existing allies first (unit just entered)
-      await _fireAllyEnter(pid,nfc._uid,isAI);
-      // then fire on_enter for the revived unit itself
       try{await triggerAbility(pid,nfc,isAI,'on_enter');}catch(err){console.warn('revive on_enter',err);}
+      await _fireAllyEnter(pid,nfc._uid,isAI);
+      await _fireAllyEnterArcana(pid,nfc._uid);
       delete nfc._revived;
     }
     render();return;
