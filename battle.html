@@ -6410,9 +6410,12 @@ async function endTurn(){
     // stateを先に書き込み、完了してからend_turnを送信
     try{
       const fb2=_fb();if(fb2){
-        await fb2.set(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`),_buildStateSnap());
+        const snap=_buildStateSnap();
+        console.log('[online] writing state, field sizes:', snap.p1.field.length, snap.p2.field.length);
+        await fb2.set(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`),snap);
+        console.log('[online] state written OK');
       }
-    }catch(e){console.warn('[online] state push failed',e);}
+    }catch(e){console.error('[online] state push FAILED:',e);}
     await _onlineSendAction({type:'end_turn'});
     const next=G.cp===1?2:1;
     G.cp=next;
@@ -7499,17 +7502,41 @@ async function _onlineFetchAndApplyState(){
 }
 
 function _buildStateSnap(){
-  const pickField=p=>p.field.map(c=>({id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,
-    _hp:c._hp,_attacked:c._attacked,_sick:c._sick,_bound:c._bound,_silenced:c._silenced,
-    _barrier:c._barrier,abilities:c.abilities,ability:c.ability}));
-  const pickHand=p=>p.hand.map(c=>({id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0}));
+  const clean=obj=>{
+    // Firebase は undefined を拒否するため除去
+    const r={};
+    for(const [k,v] of Object.entries(obj)){
+      if(v!==undefined)r[k]=v;
+    }
+    return r;
+  };
+  const pickField=p=>p.field.map(c=>clean({
+    id:c.id,_uid:c._uid,power:c.power,toughness:c.toughness,
+    _hp:c._hp,_attacked:c._attacked||false,_sick:c._sick||false,
+    _bound:c._bound||false,_silenced:c._silenced||false,
+    _barrier:c._barrier||false,
+    abilities:c.abilities||[],
+    ...(c.ability?{ability:c.ability}:{})
+  }));
+  const pickHand=p=>p.hand.map(c=>clean({
+    id:c.id,_uid:c._uid,_handCostMod:c._handCostMod||0
+  }));
+  const pickGrave=p=>p.grave.map(g=>clean({
+    id:g.id,name:g.name,count:g.count
+  }));
+  const pickPlayer=p=>clean({
+    life:p.life,mana:p.mana,maxMana:p.maxMana,
+    hand:pickHand(p),field:pickField(p),grave:pickGrave(p),
+    turnCount:p.turnCount||0,
+    ...(p.arcana?{arcana:clean({
+      id:p.arcana.id,gauge:p.arcana.gauge||0,
+      reversed:p.arcana.reversed||false,
+      usedThisTurn:p.arcana.usedThisTurn||false
+    })}:{})
+  });
   return {
-    p1:{life:G.p[1].life,mana:G.p[1].mana,maxMana:G.p[1].maxMana,
-        hand:pickHand(G.p[1]),field:pickField(G.p[1]),grave:G.p[1].grave,
-        turnCount:G.p[1].turnCount,arcana:G.p[1].arcana},
-    p2:{life:G.p[2].life,mana:G.p[2].mana,maxMana:G.p[2].maxMana,
-        hand:pickHand(G.p[2]),field:pickField(G.p[2]),grave:G.p[2].grave,
-        turnCount:G.p[2].turnCount,arcana:G.p[2].arcana},
+    p1:pickPlayer(G.p[1]),
+    p2:pickPlayer(G.p[2]),
     turn:G.turn,cp:G.cp
   };
 }
