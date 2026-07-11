@@ -161,7 +161,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 #cdm-edit{
   position:fixed;inset:0;z-index:760;
   background:rgba(5,4,12,0.88);backdrop-filter:blur(5px);
-  display:flex;align-items:center;justify-content:center;padding:16px;
+  display:flex;align-items:center;justify-content:center;padding:16px;gap:16px;
   opacity:0;pointer-events:none;transition:opacity 0.18s;
 }
 #cdm-edit.open{opacity:1;pointer-events:all;}
@@ -326,6 +326,26 @@ textarea.finput{resize:vertical;min-height:64px;}
 .ds-player-label{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.1em;color:rgba(240,230,204,0.5);}
 .ds-deck-list{display:flex;flex-direction:column;gap:6px;width:220px;max-height:60vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;}
 /* sort bar */
+/* cost guide panel */
+#cost-guide{
+  width:260px;flex-shrink:0;max-height:85vh;overflow-y:auto;
+  background:linear-gradient(135deg,#1a1020,#0e0c1e);
+  border:1px solid rgba(201,168,76,0.35);border-radius:12px;
+  padding:14px 16px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+  display:none;
+  align-self:center;
+  scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;
+}
+#cost-guide h3{font-family:"Bebas Neue",cursive;font-size:16px;letter-spacing:0.12em;color:var(--gold);margin:0 0 10px;border-bottom:1px solid rgba(201,168,76,0.2);padding-bottom:6px;}
+#cost-guide h4{font-family:"Bebas Neue",cursive;font-size:12px;letter-spacing:0.1em;color:rgba(201,168,76,0.7);margin:10px 0 4px;}
+#cost-guide table{width:100%;border-collapse:collapse;font-size:11px;}
+#cost-guide td{padding:2px 4px;color:rgba(240,230,204,0.75);vertical-align:top;}
+#cost-guide td:first-child{color:rgba(240,230,204,0.5);width:60%;}
+#cost-guide td:last-child{color:var(--gold);text-align:right;white-space:nowrap;}
+#cost-guide tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+.cost-guide-close{position:absolute;top:10px;right:12px;cursor:pointer;color:rgba(240,230,204,0.4);font-size:14px;}
+.cost-guide-close:hover{color:var(--gold);}
 .sort-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
 .sort-btn{font-family:"Bebas Neue",cursive;font-size:11px;letter-spacing:0.08em;padding:3px 9px;border-radius:5px;cursor:pointer;border:1px solid rgba(201,168,76,0.2);background:rgba(8,6,16,0.6);color:rgba(240,230,204,0.5);transition:all 0.12s;}
 .sort-btn.active{background:rgba(201,168,76,0.18);border-color:rgba(201,168,76,0.6);color:var(--gold);}
@@ -1284,10 +1304,89 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 <!-- ── Edit popup ── -->
 <div id="cdm-edit" onclick="if(event.target===this)cdmEditClose()">
+  <div id="cost-guide">
+  <span class="cost-guide-close" onclick="toggleCostGuide()">✕</span>
+  <h3>📋 能力コスト早見表</h3>
+
+  <h4>キーワード能力</h4>
+  <table>
+    <tr><td>突進</td><td>1pt</td></tr>
+    <tr><td>疾走</td><td>攻撃力×1pt</td></tr>
+    <tr><td>守護</td><td>1pt</td></tr>
+    <tr><td>必殺</td><td>2pt</td></tr>
+    <tr><td>吸収</td><td>1pt</td></tr>
+    <tr><td>貫通</td><td>1pt</td></tr>
+    <tr><td>連続攻撃+1回</td><td>1pt</td></tr>
+    <tr><td>連続攻撃+1回（突進あり）</td><td>2pt</td></tr>
+    <tr><td>連続攻撃+1回（疾走あり）</td><td>3pt</td></tr>
+    <tr><td>（必殺/吸収/貫通）+（突進/疾走）</td><td>+2pt</td></tr>
+  </table>
+
+  <h4>タイミング補正</h4>
+  <table>
+    <tr><td>登場時</td><td>基準</td></tr>
+    <tr><td>ターン開始/終了時</td><td>等倍</td></tr>
+    <tr><td>攻撃時・交戦時</td><td>等倍</td></tr>
+    <tr><td>破壊時</td><td>-1pt</td></tr>
+    <tr><td>味方登場/破壊時</td><td>等倍</td></tr>
+    <tr><td>相手ユニット登場/破壊時</td><td>等倍</td></tr>
+    <tr><td>アルカナ逆転時（自分）</td><td>-1pt</td></tr>
+    <tr><td>アルカナ逆転時（相手）</td><td>等倍</td></tr>
+  </table>
+
+  <h4>対象補正</h4>
+  <table>
+    <tr><td>ランダム</td><td>基準</td></tr>
+    <tr><td>選択</td><td>+1pt</td></tr>
+    <tr><td>全体</td><td>ランダム×3pt</td></tr>
+    <tr><td>攻撃時ダメージ（攻撃対象）</td><td>選択扱い</td></tr>
+  </table>
+
+  <h4>効果コスト（登場時基準）</h4>
+  <table>
+    <tr><td>ドロー</td><td>1枚につき2pt</td></tr>
+    <tr><td>相手リーダーダメージ</td><td>x+1pt</td></tr>
+    <tr><td>自分リーダー回復</td><td>1pt/回復</td></tr>
+    <tr><td>ユニットダメージ（ランダム）</td><td>xpt</td></tr>
+    <tr><td>ユニット破壊（ランダム）</td><td>5pt</td></tr>
+    <tr><td>ユニット全体破壊</td><td>15pt</td></tr>
+    <tr><td>バフ 攻撃力+1</td><td>2pt</td></tr>
+    <tr><td>バフ 体力+1</td><td>1pt</td></tr>
+    <tr><td>バウンス（ランダム）</td><td>4pt</td></tr>
+    <tr><td>全体バウンス</td><td>12pt</td></tr>
+    <tr><td>沈黙（ランダム）</td><td>3pt</td></tr>
+    <tr><td>呪縛（ランダム）</td><td>4pt</td></tr>
+    <tr><td>マナ増加+1（自分）</td><td>5pt</td></tr>
+    <tr><td>サーチ/墓地から手札</td><td>1枚につき2pt</td></tr>
+    <tr><td>召喚（ゲーム外）</td><td>コスト×2pt</td></tr>
+    <tr><td>召喚（墓地/デッキから）</td><td>コスト×2pt-1</td></tr>
+    <tr><td>召喚（手札から）</td><td>コスト×2pt-2</td></tr>
+    <tr><td>召喚（条件あり）</td><td>さらに-1pt</td></tr>
+    <tr><td>蘇生（墓地→場）</td><td>コスト×2pt-1</td></tr>
+    <tr><td>手札から無料召喚</td><td>コスト×2pt-2</td></tr>
+    <tr><td>相手手札破壊（ランダム）</td><td>1枚につき5pt</td></tr>
+    <tr><td>強奪（ランダム）</td><td>7pt</td></tr>
+    <tr><td>キーワード付与（疾走）</td><td>3pt</td></tr>
+    <tr><td>キーワード付与（疾走以外）</td><td>コストそのまま</td></tr>
+  </table>
+
+  <h4>その他補正</h4>
+  <table>
+    <tr><td>繰り返しn回</td><td>×n</td></tr>
+    <tr><td>発動条件あり</td><td>-1pt</td></tr>
+    <tr><td>変数（場の枚数）</td><td>4枚想定</td></tr>
+    <tr><td>変数（手札枚数）</td><td>5枚想定</td></tr>
+    <tr><td>変数（墓地/デッキ）</td><td>手動調整</td></tr>
+  </table>
+
+</div>
   <div id="cdm-edit-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <span style="font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:0.1em;color:var(--gold);" id="cdm-edit-title">新規カード作成</span>
-      <button class="gbtn danger" id="cdm-edit-del" onclick="cdmDeleteFromEdit()" style="font-size:11px;padding:4px 12px;display:none;">🗑 削除</button>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="gbtn secondary" onclick="toggleCostGuide()" style="font-size:11px;padding:4px 8px;" title="能力コスト早見表">📋 コスト表</button>
+        <button class="gbtn danger" id="cdm-edit-del" onclick="cdmDeleteFromEdit()" style="font-size:11px;padding:4px 12px;display:none;">🗑 削除</button>
+      </div>
     </div>
     <div class="hint-bar" style="font-size:10px;">
       <strong>基本スタッツ：</strong>xマナ ＝ P/T x/x（例：3マナ→3/3）&nbsp;
@@ -1584,6 +1683,7 @@ textarea.finput{resize:vertical;min-height:64px;}
   window._FB={db:fbDb,ref,set,get,push,onChildAdded,onValue,update,serverTimestamp,increment,runTransaction,onDisconnect,remove};
   window.dispatchEvent(new Event('fb-ready'));
 </script>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 // ABILITY SYSTEM
@@ -1629,6 +1729,7 @@ const TRIG_LABELS={
   on_enter:'登場時',on_attack:'攻撃時',on_battle:'交戦時',
   on_death:'破壊時',on_turn_start:'ターン開始',on_turn_end:'ターン終了',
   on_ally_death:'味方破壊時',on_ally_enter:'味方登場時',
+  on_arcana_reversed:'アルカナ逆転時（自分）',on_enemy_arcana_reversed:'アルカナ逆転時（相手）',
   on_enemy_enter:'相手登場時',on_enemy_death:'相手破壊時',on_damage_taken:'被ダメージ時',
 };
 
@@ -3354,6 +3455,11 @@ function _populateTypeSelectors(){
   });
 }
 
+function toggleCostGuide(){
+  const el=document.getElementById('cost-guide');
+  el.style.display=el.style.display==='none'?'flex':'none';
+  el.style.flexDirection='column';
+}
 function eRenderTable(){eRenderGrid();}
 function eRenderGrid(){
   const grid=document.getElementById('e-card-grid');
@@ -3385,7 +3491,7 @@ function eDownloadJSON(){
 
 // ── Ability Builder ──────────────────────────────────
 const ALL_KEYWORDS=['rush','haste','guard','deathtouch','drain','pierce'];
-const ALL_TRIGGERS=['on_enter','on_attack','on_battle','on_death','on_turn_start','on_turn_end','on_ally_death','on_ally_enter'];
+const ALL_TRIGGERS=['on_enter','on_attack','on_battle','on_death','on_turn_start','on_turn_end','on_ally_death','on_ally_enter','on_arcana_reversed','on_enemy_arcana_reversed'];
 const ALL_EFFECTS=[
   // ── ドロー・手札 ──
   {id:'draw',              label:'カードを引く',              params:[{key:'n',label:'枚数',def:1},{key:'target',label:'対象',type:'select',opts:['self','enemy'],def:'self'}]},
@@ -4374,6 +4480,17 @@ async function onArcanaClick(pid){
   showMidNotif(`✦ ${arc.name}: ${arc.reversed?.desc||'逆位置発動'}`, 'rgba(251,191,36,0.9)', 2000);
   animateArcanaCard(pid);
   await arcanaApplyReversedEffect(pid, arc);
+  // 自分フィールドの on_arcana_reversed トリガーを発火
+  const opp2=pid===1?2:1;
+  for(const fc of [...G.p[pid].field]){
+    if((fc.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_arcana_reversed'))
+      await triggerAbility(pid,fc,pid===2,'on_arcana_reversed');
+  }
+  // 相手フィールドの on_enemy_arcana_reversed トリガーを発火
+  for(const fc of [...G.p[opp2].field]){
+    if((fc.abilities||[]).some(a=>a.type==='trigger'&&a.trigger==='on_enemy_arcana_reversed'))
+      await triggerAbility(opp2,fc,opp2===2,'on_enemy_arcana_reversed');
+  }
   renderArcana();
 }
 
@@ -4744,12 +4861,15 @@ let summonProcessing=false; // true while queue is being drained
 // Fire on_ally_enter for all existing allies when a new unit (newUid) enters
 const _allyEnterFired=new Set();
 async function _fireAllyEnter(pid, newUid, isAI){
+  const entering=G.p[pid].field.find(c=>c._uid===newUid);
+  const enteringOrder=entering?._entryOrder||0;
   for(const ally of [...G.p[pid].field]){
     if(ally._uid===newUid)continue;
+    // 自分より後に入ったユニットはon_ally_enterをスキップ（蘇生チェーン対策）
+    if((ally._entryOrder||0)>enteringOrder)continue;
     const key=`${ally._uid}:${newUid}`;
     if(_allyEnterFired.has(key))continue;
     _allyEnterFired.add(key);
-    // 登場したユニットのUIDを一時的にセット（対象指定で参照できるように）
     ally._enteringUid=newUid;
     try{await triggerAbility(pid,ally,isAI,'on_ally_enter');}catch(e){}
     delete ally._enteringUid;
@@ -5231,8 +5351,9 @@ async function _execEffect(pid, fc, ab, isAI){
       const base=CARDS.find(c=>c.name===entry.name);
       if(!base)continue;
       for(let i=0;i<(entry.n||1);i++){
+        if(G.over)break;
         if(G.p[tgtPid].field.length<7){ // stale参照を避けて毎回直接参照
-          const nfc=mkCard(base);G.p[tgtPid].field.push(nfc);
+          const nfc=mkCard(base);nfc._entryOrder=++_fieldEntryCounter;G.p[tgtPid].field.push(nfc);
           spawnedUids.push(nfc._uid);
           log(`${pCol(fc.name,pid)}→${pCol(base.name,tgtPid)}を召喚`,'ll-s');
           render();await animateSummon(tgtPid,nfc._uid);
@@ -6006,7 +6127,7 @@ async function _execEffect(pid, fc, ab, isAI){
     if(toField){
       if(p.field.length>=7){log(`${pCol(fc.name,pid)}→ 場が満杯`,'');render();return;}
       removeFn(chosen,srcPid,fromZone);
-      const nfc=mkCard(base);nfc._sick=true;
+      const nfc=mkCard(base);nfc._sick=true;nfc._entryOrder=++_fieldEntryCounter;
       p.field.push(nfc);
       log(`${pCol(fc.name,pid)}→ ${zoneLabel}から${pCol(base.name,pid)}を召喚`,'ll-s');
       render();await animateSummon(pid,nfc._uid);
