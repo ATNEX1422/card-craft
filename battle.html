@@ -7447,13 +7447,15 @@ async function _onlinePushState(){
 // ── 状態スナップショットを G.p に復元 ──
 function _onlineApplyStateSnap(st){
   if(!st)return;
-  const restore=(snap)=>snap.map(s=>{
+  // Firebaseが配列→オブジェクトに変換する場合の対策
+  const toArr=v=>v?(Array.isArray(v)?v:Object.values(v)):[];
+  const restore=(snap)=>toArr(snap).map(s=>{
     const base=CARDS.find(c=>c.id===s.id)||{};
     const mc={...base,...s};mc._hp=s._hp??s.toughness??base.toughness??1;
-    if(s.abilities)mc.abilities=s.abilities;
+    if(s.abilities)mc.abilities=toArr(s.abilities);
     return mc;
   });
-  const restoreHand=(snap)=>snap.map(s=>{
+  const restoreHand=(snap)=>toArr(snap).map(s=>{
     const base=CARDS.find(c=>c.id===s.id)||{};
     return {...base,_uid:s._uid,_handCostMod:s._handCostMod||0,
       abilities:JSON.parse(JSON.stringify(base.abilities||[]))};
@@ -7462,9 +7464,9 @@ function _onlineApplyStateSnap(st){
     const key=`p${pid}`;const d=st[key];if(!d)return;
     G.p[pid].life=d.life;
     G.p[pid].mana=d.mana;G.p[pid].maxMana=d.maxMana;
-    G.p[pid].hand=restoreHand(d.hand||[]);
-    G.p[pid].field=restore(d.field||[]);
-    G.p[pid].grave=d.grave||[];
+    G.p[pid].hand=restoreHand(d.hand);
+    G.p[pid].field=restore(d.field);
+    G.p[pid].grave=toArr(d.grave);
     G.p[pid].turnCount=d.turnCount||0;
     if(d.arcana)G.p[pid].arcana=d.arcana;
   });
@@ -7604,11 +7606,11 @@ async function _execOnlineAction(action){
         break;
       }
       case 'end_turn':{
-        // 相手がターン終了 → 状態を同期してから自分のターンに進める
         const pid=action.pid;
-        if(pid===_onlineRoom.myPid)break; // 自分の送信は無視
-        // アクションに埋め込まれたstateを直接適用
-        if(action.state)_onlineApplyStateSnap(action.state);
+        if(pid===_onlineRoom.myPid)break;
+        // stateを別try-catchで囲み、失敗してもターンが必ず進む
+        try{if(action.state)_onlineApplyStateSnap(action.state);}
+        catch(e){console.warn('[online] state apply failed:',e);}
         const next=pid===1?2:1;
         G.cp=next;
         await startTurn(next);
