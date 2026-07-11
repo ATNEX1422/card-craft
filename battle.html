@@ -2480,44 +2480,108 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
 
 function _buildImmRow(arr, i){
   const ab=arr[i];
-  const row=document.createElement('div');
-  row.className='trigger-row';row.style.gap='6px';
+  // params形式に正規化（旧形式 {val, target} → params移行）
+  if(!ab.params){
+    ab.params={};
+    if(ab.val!==undefined) ab.params.dmg=ab.val;
+    if(ab.target) ab.params.target=ab.target;
+  }
+  if(!ab.type) ab.type='trigger';
+  if(!ab.trigger) ab.trigger='on_arcana_reversed';
 
-  const selEff=document.createElement('select');
-  selEff.className='finput';selEff.style.cssText='flex:1;font-size:11px;';
-  ARC_IMM_EFFECTS.forEach(ef=>{
-    const o=document.createElement('option');o.value=ef.id;o.textContent=ef.label;
-    if(ab.effect===ef.id)o.selected=true;
-    selEff.appendChild(o);
-  });
+  // ユニットエディターと同じeditAbilities互換で行を生成
+  const tmpAbils=[ab];
+  const savedEdit=editAbilities;
+  editAbilities=tmpAbils;
+  // eRenderTriggerList の内部ロジックを流用
+  const el=document.createElement('div');el.className='trigger-row';
 
-  const inpVal=document.createElement('input');
-  inpVal.type='number';inpVal.min=0;inpVal.max=20;inpVal.value=ab.val??2;
-  inpVal.style.cssText='width:48px;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
-  inpVal.oninput=e=>{arr[i].val=parseInt(e.target.value)||0;};
+  // トリガータイプ（固定: on_arcana_reversed）
+  const trigLbl=document.createElement('span');
+  trigLbl.style.cssText='font-size:10px;color:rgba(167,139,250,0.6);padding:2px 6px;background:rgba(167,139,250,0.1);border-radius:4px;white-space:nowrap;';
+  trigLbl.textContent='逆転時';
 
-  const inpDesc=document.createElement('input');
-  inpDesc.type='text';inpDesc.value=ab.desc||'';inpDesc.placeholder='説明';
-  inpDesc.style.cssText='flex:1;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);outline:none;';
-  inpDesc.oninput=e=>{arr[i].desc=e.target.value;};
+  // 効果セレクター
+  const effSel=document.createElement('select');
+  effSel.style.cssText='flex:1;padding:4px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:5px;color:var(--parchment);';
+  ALL_EFFECTS.forEach(ef=>{const o=document.createElement('option');o.value=ef.id;o.textContent=ef.label;if(ab.effect===ef.id)o.selected=true;effSel.appendChild(o);});
+  effSel.onchange=e=>{const newEff=ALL_EFFECTS.find(ef=>ef.id===e.target.value);if(!newEff)return;const p={};newEff.params.forEach(pp=>p[pp.key]=pp.def);arr[i]={...arr[i],effect:newEff.id,params:p};arcanaRenderAbilLists();};
 
-  const del=document.createElement('button');
-  del.type='button';del.className='trigger-del';del.textContent='削除';
+  // 削除ボタン
+  const del=document.createElement('button');del.type='button';del.className='trigger-del';del.textContent='削除';
   del.onclick=()=>{arr.splice(i,1);arcanaRenderAbilLists();};
 
-  const extrasEl=document.createElement('div');
-  extrasEl.style.cssText='margin-top:2px;';
-  _updateArcRowExtras(ab,extrasEl,ARC_IMM_EFFECTS,inpVal);
+  const selRow=document.createElement('div');selRow.style.cssText='display:flex;gap:5px;align-items:center;';
+  selRow.appendChild(trigLbl);selRow.appendChild(effSel);selRow.appendChild(del);
+  el.appendChild(selRow);
 
-  selEff.onchange=e=>{arr[i].effect=e.target.value;_updateArcRowExtras(arr[i],extrasEl,ARC_IMM_EFFECTS,inpVal);};
+  // パラメーター行（ユニット能力と共通ロジック）
+  const effDef=ALL_EFFECTS.find(ef=>ef.id===ab.effect);
+  if(effDef&&effDef.params.length){
+    const prow=document.createElement('div');prow.style.cssText='display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-top:4px;';
+    effDef.params.forEach(pDef=>{
+      const lbl=document.createElement('label');lbl.style.cssText='display:flex;align-items:center;gap:3px;font-size:10px;color:rgba(240,230,204,0.45);';
+      lbl.textContent=pDef.label+':';
+      if(pDef.type==='select'){
+        const sel=document.createElement('select');sel.style.cssText='padding:2px 5px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--gold);';
+        (pDef.opts||[]).forEach(ov=>{const o=document.createElement('option');o.value=ov;o.textContent=ov;if((ab.params||{})[pDef.key]===ov)o.selected=true;sel.appendChild(o);});
+        sel.onchange=e=>{arr[i].params[pDef.key]=e.target.value;};
+        prow.appendChild(lbl);prow.appendChild(sel);
+      } else if(pDef.type==='type_select'){
+        const sel=document.createElement('select');sel.style.cssText='padding:2px 5px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--parchment);';
+        const eo=document.createElement('option');eo.value='';eo.textContent='種族: すべて';sel.appendChild(eo);
+        (_cardTypes||[]).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;if((ab.params||{})[pDef.key]===t)o.selected=true;sel.appendChild(o);});
+        sel.onchange=e=>{arr[i].params[pDef.key]=e.target.value;};
+        prow.appendChild(lbl);prow.appendChild(sel);
+      } else if(pDef.type==='text'){
+        const inp=document.createElement('input');inp.type='text';inp.value=(ab.params||{})[pDef.key]||pDef.def||'';inp.placeholder=pDef.label;inp.style.cssText='width:100px;padding:3px 6px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--parchment);';
+        inp.oninput=e=>{arr[i].params[pDef.key]=e.target.value;};
+        prow.appendChild(lbl);prow.appendChild(inp);
+      } else {
+        // 数値 + 変数トグル（ユニットと同じ）
+        const varKey=pDef.key+'_var';const varDef=(ab.params||{})[varKey];
+        const numWrap=document.createElement('div');numWrap.style.cssText='display:flex;gap:3px;align-items:center;flex-wrap:wrap;';
+        const inp=document.createElement('input');inp.type='number';inp.value=(ab.params||{})[pDef.key]??pDef.def??0;inp.min=0;inp.max=99;
+        inp.style.cssText='width:48px;padding:3px 5px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--parchment);';
+        inp.oninput=e=>{if(!arr[i].params)arr[i].params={};arr[i].params[pDef.key]=parseInt(e.target.value)||0;};
+        const _VT2=[{v:'field_count',l:'場の枚数'},{v:'hand_count',l:'手札枚数'},{v:'grave_count',l:'墓地枚数'},{v:'deck_count',l:'デッキ枚数'}];
+        const _VS2=[{v:'self',l:'自分'},{v:'enemy',l:'相手'}];
+        const varBtn=document.createElement('button');varBtn.type='button';varBtn.textContent='≈';varBtn.style.cssText='font-size:9px;padding:2px 5px;border-radius:4px;border:1px solid rgba(201,168,76,0.3);background:rgba(8,6,16,0.7);color:rgba(240,230,204,0.5);cursor:pointer;';
+        const varArea=document.createElement('div');varArea.style.cssText=`display:${varDef?'flex':'none'};gap:3px;align-items:center;`;
+        const vTS=document.createElement('select');vTS.style.cssText='padding:2px 4px;font-size:10px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.3);border-radius:4px;color:var(--gold);';
+        _VT2.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(varDef?.type===t.v)o.selected=true;vTS.appendChild(o);});
+        const vSS=document.createElement('select');vSS.style.cssText=vTS.style.cssText;
+        _VS2.forEach(t=>{const o=document.createElement('option');o.value=t.v;o.textContent=t.l;if(varDef?.side===t.v)o.selected=true;vSS.appendChild(o);});
+        const saveV=()=>{if(!arr[i].params)arr[i].params={};arr[i].params[varKey]={type:vTS.value,side:vSS.value};inp.style.opacity='0.3';inp.disabled=true;varBtn.style.background='rgba(201,168,76,0.2)';varBtn.style.color='var(--gold)';};
+        const clearV=()=>{if(arr[i].params)delete arr[i].params[varKey];inp.style.opacity='';inp.disabled=false;varBtn.style.background='rgba(8,6,16,0.7)';varBtn.style.color='rgba(240,230,204,0.5)';varArea.style.display='none';};
+        [vTS,vSS].forEach(e=>e.addEventListener('input',saveV));
+        varBtn.onclick=()=>{const show=varArea.style.display==='none';varArea.style.display=show?'flex':'none';if(!show)clearV();else saveV();};
+        if(varDef){inp.style.opacity='0.3';inp.disabled=true;varBtn.style.background='rgba(201,168,76,0.2)';varBtn.style.color='var(--gold)';}
+        varArea.appendChild(vTS);varArea.appendChild(vSS);
+        numWrap.appendChild(inp);numWrap.appendChild(varBtn);
+        prow.appendChild(lbl);prow.appendChild(numWrap);prow.appendChild(varArea);
+      }
+    });
+    el.appendChild(prow);
+  }
 
-  const top=document.createElement('div');
-  top.style.cssText='display:flex;gap:5px;align-items:center;';
-  top.appendChild(selEff);top.appendChild(inpVal);top.appendChild(del);
-  row.appendChild(top);
-  row.appendChild(inpDesc);
-  row.appendChild(extrasEl);
-  return row;
+  // フッター行（繰り返し・ターン1・発動条件）
+  const foot=document.createElement('div');foot.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;';
+  // 繰り返し
+  const repLbl=document.createElement('label');repLbl.style.cssText='display:flex;align-items:center;gap:3px;font-size:10px;color:rgba(240,230,204,0.4);white-space:nowrap;';repLbl.textContent='繰り返し:';
+  const repInp=document.createElement('input');repInp.type='number';repInp.min=1;repInp.max=20;repInp.value=(ab.params||{}).repeat||1;repInp.style.cssText='width:40px;padding:2px 4px;font-size:11px;background:rgba(8,6,16,0.9);border:1px solid rgba(201,168,76,0.25);border-radius:4px;color:var(--parchment);';
+  repInp.oninput=e=>{const v=parseInt(e.target.value)||1;if(!arr[i].params)arr[i].params={};if(v<=1)delete arr[i].params.repeat;else arr[i].params.repeat=v;};
+  repLbl.appendChild(repInp);repLbl.appendChild(Object.assign(document.createElement('span'),{textContent:'回',style:'font-size:10px;color:rgba(240,230,204,0.3);'}));
+  foot.appendChild(repLbl);
+  // ターン1
+  const onceChk2=document.createElement('input');onceChk2.type='checkbox';onceChk2.style.cssText='accent-color:var(--gold);width:11px;height:11px;cursor:pointer;';onceChk2.checked=!!(ab.params||{}).once_per_turn;
+  onceChk2.onchange=e=>{if(!arr[i].params)arr[i].params={};if(e.target.checked)arr[i].params.once_per_turn=true;else delete arr[i].params.once_per_turn;};
+  const onceLbl2=document.createElement('span');onceLbl2.style.cssText='font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;';onceLbl2.textContent='ターン1';onceLbl2.onclick=()=>onceChk2.click();
+  foot.appendChild(onceChk2);foot.appendChild(onceLbl2);
+  el.appendChild(foot);
+
+  editAbilities=savedEdit;
+  return el;
 }
 
 function arcanaRenderAbilLists(){
@@ -2541,7 +2605,9 @@ function arcanaAddPassive(side){
   arcanaRenderAbilLists();
 }
 function arcanaAddRevImm(){
-  _arcRevImms.push({effect:'dmg_enemy_all',val:2,desc:''});
+  const defEff2=ALL_EFFECTS.find(e=>e.id==='dmg_unit_all')||ALL_EFFECTS[0];
+  const p2={};if(defEff2)defEff2.params.forEach(p=>p2[p.key]=p.def);
+  _arcRevImms.push({type:'trigger',trigger:'on_arcana_reversed',effect:defEff2?.id||'dmg_unit_all',params:p2,desc:''});
   arcanaRenderAbilLists();
 }
 
