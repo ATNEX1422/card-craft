@@ -2808,7 +2808,20 @@ async function initData(){
         const data=snap.val();
         const arr=Array.isArray(data)?data:Object.values(data);
         if(arr.length){
-          CARDS=arr.map(c=>({...c,abilities:JSON.parse(JSON.stringify(c.abilities||[])),imageDataUrl:null}));
+          CARDS=arr.map(c=>{
+            // Firebaseがabilitiesを配列→オブジェクトに変換する場合の対策
+            const abs=c.abilities?(Array.isArray(c.abilities)?c.abilities:Object.values(c.abilities)):[];
+            // 各abilityのparamsも再帰的に正規化
+            const normAbs=abs.map(a=>{
+              if(!a)return a;
+              const p=a.params||{};
+              const normP={...p};
+              if(p.cards&&!Array.isArray(p.cards))normP.cards=Object.values(p.cards);
+              if(p.kws&&!Array.isArray(p.kws))normP.kws=Object.values(p.kws);
+              return {...a,params:normP};
+            });
+            return {...c,abilities:JSON.parse(JSON.stringify(normAbs)),imageDataUrl:null};
+          });
         }
       } else {
       }
