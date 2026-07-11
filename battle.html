@@ -4659,6 +4659,7 @@ function buildDeckFromEntries(entries){
 
 function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;}
 
+let _fieldEntryCounter=0;
 function mkCard(base){
   const rush=isRush(base),haste=isHaste(base);
   return{...base,
@@ -4898,25 +4899,28 @@ async function _processSummonQueue(){
   try{
     while(summonQueue.length>0){
       const {pid,base,cost,preTargets}=summonQueue.shift();
+      console.log('[summon] processing:', base?.name, 'pid:', pid);
       const p=G.p[pid];
       if(p.field.length>=7){showMidNotif('フィールドが満員です','#f87171',1400);continue;}
       const fc=mkCard(base);
+      console.log('[summon] mkCard done, abilities type:', Array.isArray(fc.abilities)?'array':'object', fc.abilities);
       fc._preTargets=preTargets;
       fc._entryOrder=++_fieldEntryCounter;
       p.field.push(fc);
+      console.log('[summon] pushed to field, field length:', p.field.length);
       log(`P${pid}: 「${fc.name}」を召喚`,'ll-s');
       deselectAtk();
-      render();
-      try{await animateSummon(pid,fc._uid);}catch(e){console.warn('animateSummon error',e);}
-      try{await triggerAbility(pid,fc,false,'on_enter');}catch(e){console.warn('triggerAbility error',e);}
+      try{render();console.log('[summon] render OK');}catch(re){console.error('[summon] render ERROR:', re);}
+      try{await animateSummon(pid,fc._uid);}catch(e){console.warn('[summon] animateSummon error',e);}
+      try{await triggerAbility(pid,fc,false,'on_enter');}catch(e){console.warn('[summon] triggerAbility error',e);}
       delete fc._preTargets;
-      await _fireAllyEnter(pid,fc._uid,false);
-      await _fireAllyEnterArcana(pid,fc._uid);
+      try{await _fireAllyEnter(pid,fc._uid,false);}catch(e){console.warn('[summon] fireAllyEnter error',e);}
+      try{await _fireAllyEnterArcana(pid,fc._uid);}catch(e){console.warn('[summon] fireAllyEnterArcana error',e);}
       render();
       if(G.over)break;
     }
   }catch(e){
-    console.error('_processSummonQueue error',e);
+    console.error('[summon] _processSummonQueue FATAL error:',e);
   }finally{
     summonProcessing=false;
     unlockAnim();
@@ -4950,8 +4954,13 @@ async function summonCard(pid,idx){
         if(typeFilter&&c.type!==typeFilter)return false;
         return true;
       });
+      if(!eligible.length){
+        // 墓地に対象なし → 効果放棄してそのままプレイ
+        preTargets['revive_'+onEnterAbs.indexOf(ab)]=null;
+        continue;
+      }
       const r=await selectFromGrave(pid,eligible,`${base.name}: 蘇生するカードを選択`);
-      if(!r) return;
+      if(!r){preTargets['revive_'+onEnterAbs.indexOf(ab)]=null;continue;} // キャンセル→放棄
       preTargets['revive_'+onEnterAbs.indexOf(ab)]=r;
     }
     if(needsChoice){
@@ -4967,7 +4976,7 @@ async function summonCard(pid,idx){
                    steal_one:`${base.name}: 強奪対象を選択`,
                   }[ab.effect]||`${base.name}: 対象を選択`;
       const r=await selectTarget(label,G.p[opp].field.map(c=>({card:c,pid:opp})));
-      if(!r) return; // cancelled → card stays in hand
+      if(!r){preTargets[ab.effect+'_'+onEnterAbs.indexOf(ab)]=null;continue;} // キャンセル→放棄
       preTargets[ab.effect+'_'+onEnterAbs.indexOf(ab)]=r;
     }
     if(needsHandChoice){
@@ -4979,7 +4988,7 @@ async function summonCard(pid,idx){
       if(!elig.length){preTargets[ab.effect+'_'+onEnterAbs.indexOf(ab)]=null;continue;}
       render();
       const r=await selectTarget(`${base.name}: 召喚するユニットを選択`,elig.map(c=>({card:c})));
-      if(!r) return;
+      if(!r){preTargets[ab.effect+'_'+onEnterAbs.indexOf(ab)]=null;continue;} // キャンセル→放棄
       preTargets[ab.effect+'_'+onEnterAbs.indexOf(ab)]=r;
     }
   }
