@@ -4902,14 +4902,16 @@ async function _processSummonQueue(){
       if(p.field.length>=7){showMidNotif('フィールドが満員です','#f87171',1400);continue;}
       const fc=mkCard(base);
       fc._preTargets=preTargets;
+      fc._entryOrder=++_fieldEntryCounter;
       p.field.push(fc);
-    log(`P${pid}: 「${fc.name}」を召喚`,'ll-s');
+      log(`P${pid}: 「${fc.name}」を召喚`,'ll-s');
       deselectAtk();
       render();
       try{await animateSummon(pid,fc._uid);}catch(e){console.warn('animateSummon error',e);}
-      try{await triggerAbility(pid,fc,false);}catch(e){console.warn('triggerAbility error',e);}
-      await _fireAllyEnter(pid,fc._uid,false);
+      try{await triggerAbility(pid,fc,false,'on_enter');}catch(e){console.warn('triggerAbility error',e);}
       delete fc._preTargets;
+      await _fireAllyEnter(pid,fc._uid,false);
+      await _fireAllyEnterArcana(pid,fc._uid);
       render();
       if(G.over)break;
     }
