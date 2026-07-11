@@ -4917,8 +4917,16 @@ async function _processSummonQueue(){
       try{await _fireAllyEnter(pid,fc._uid,false);}catch(e){console.warn('[summon] fireAllyEnter error',e);}
       try{await _fireAllyEnterArcana(pid,fc._uid);}catch(e){console.warn('[summon] fireAllyEnterArcana error',e);}
       render();
-      // オンライン: on_enter完了後にstate送信
-      // （_waitUid側の送信は削除し、こちらで確実に送信）
+      // オンライン: on_enter完了後にstate書き込み→action送信
+      if(_onlineRoom&&_onlineRoom.myPid===pid){
+        try{
+          const fb2=_fb();if(fb2){
+            const snap=_buildStateSnap();
+            await fb2.set(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`),snap);
+          }
+        }catch(e){console.warn('[online] summon state push failed',e);}
+        await _onlineSendAction({type:'summon',cardId:base.id,uid:fc._uid,preTargets});
+      }
       if(G.over)break;
     }
   }catch(e){
@@ -5004,23 +5012,7 @@ async function summonCard(pid,idx){
 
   // Enqueue: actual placement happens after current ability processing finishes
   summonQueue.push({pid,base,cost,preTargets});
-  // Online: broadcast summon action with assigned uid
-  if(_onlineRoom&&_onlineRoom.myPid===pid){
-    // uid will be assigned in _processSummonQueue, send after
-    const _qIdx=summonQueue.length-1;
-    const _waitUid=setInterval(()=>{
-      const q=summonQueue[_qIdx];
-      if(!q)return; // already processed
-      const fc=G.p[pid].field.find(c=>c.id===base.id&&!summonQueue.some(sq=>sq.base.id===c.id));
-      if(fc){clearInterval(_waitUid);
-        (async()=>{
-        const fb2=_fb();if(fb2&&_onlineRoom){
-          try{await fb2.set(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`),_buildStateSnap());}catch(e){}
-        }
-        await _onlineSendAction({type:'summon',cardId:base.id,uid:fc._uid,preTargets});
-      })();}
-    },50);
-  }
+  // オンライン: 送信は _processSummonQueue 内で on_enter 完了後に行う
   _processSummonQueue(); // starts only if not already running
 }
 
