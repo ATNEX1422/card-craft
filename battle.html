@@ -1308,6 +1308,22 @@ textarea.finput{resize:vertical;min-height:64px;}
   <span class="cost-guide-close" onclick="toggleCostGuide()">✕</span>
   <h3>📋 能力コスト早見表</h3>
 
+  <h4>基本スタッツ適正（攻撃力＋体力の合計）</h4>
+  <table>
+    <tr><td>コスト</td><td>種族あり</td><td>種族なし</td></tr>
+    <tr><td>1</td><td>2</td><td>1</td></tr>
+    <tr><td>2</td><td>4</td><td>3</td></tr>
+    <tr><td>3</td><td>6</td><td>5</td></tr>
+    <tr><td>4</td><td>9</td><td>8</td></tr>
+    <tr><td>5</td><td>11</td><td>10</td></tr>
+    <tr><td>6</td><td>14</td><td>13</td></tr>
+    <tr><td>7</td><td>17</td><td>16</td></tr>
+    <tr><td>8</td><td>19</td><td>18</td></tr>
+    <tr><td>9</td><td>22</td><td>21</td></tr>
+    <tr><td>10</td><td>25</td><td>24</td></tr>
+  </table>
+  <div style="font-size:10px;color:rgba(240,230,204,0.4);margin-bottom:4px;">式: floor(コスト×2×コスト^0.1)　能力コストを差し引いた値が残りスタッツ</div>
+
   <h4>キーワード能力</h4>
   <table>
     <tr><td>突進</td><td>1pt</td></tr>
@@ -1389,8 +1405,9 @@ textarea.finput{resize:vertical;min-height:64px;}
       </div>
     </div>
     <div class="hint-bar" style="font-size:10px;">
-      <strong>基本スタッツ：</strong>xマナ ＝ P/T x/x（例：3マナ→3/3）&nbsp;
-      <strong>能力あり：</strong>P/Tを下方調整
+      <strong>基本スタッツ：</strong>コスト×2×スケール（小数切捨て）&nbsp;
+      <strong>種族なし：</strong>-1補正&nbsp;
+      <strong>能力あり：</strong>能力コスト分を差し引く
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
