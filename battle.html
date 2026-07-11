@@ -1861,9 +1861,13 @@ function buildAbilityText(card){
       return `${side(t)}${h}${nStr}`;
     };
     const kwTxt=(()=>{
-      const _rawKws=p.kws?(Array.isArray(p.kws)?p.kws:Object.values(p.kws)):(p.kw?[p.kw]:[]);
-      const kws2=_rawKws.filter(Boolean).map(k=>KW_LABELS[k]||k);
-      return kws2.join('・')||'キーワード';
+      const _rawKws=p.kws?(Array.isArray(p.kws)?p.kws:Object.values(p.kws))
+                   :(p.kw?[p.kw]:[]);
+      const kws2=_rawKws.filter(Boolean).map(k=>{
+        if(k==='multi_attack') return `連続攻撃${p.kw_n||2}回`;
+        return KW_LABELS[k]||k;
+      });
+      return kws2.join('・')||'(キーワード未設定)';
     })();
     const excludeTxt=p.exclude_self?' (自身除く)':'';
 
@@ -3834,6 +3838,23 @@ function eRenderTriggerList(){
     rvArea.appendChild(rvTypeSel);rvArea.appendChild(rvSideSel);rvArea.appendChild(rvFilter);
     repeatWrap.appendChild(repeatInp);repeatWrap.appendChild(rvBtn);repeatWrap.appendChild(repeatLbl);
     footerRow.appendChild(repeatWrap);footerRow.appendChild(rvArea);
+
+    // ターン1チェックボックス
+    const onceWrap=document.createElement('label');
+    onceWrap.style.cssText='display:flex;align-items:center;gap:3px;font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;white-space:nowrap;';
+    const onceChk=document.createElement('input');onceChk.type='checkbox';
+    onceChk.style.cssText='accent-color:var(--gold);width:11px;height:11px;';
+    onceChk.checked=!!(ab.params||{}).once_per_turn;
+    onceChk.onchange=e=>{
+      const idx=editAbilities.indexOf(ab);if(idx<0)return;
+      if(!editAbilities[idx].params)editAbilities[idx].params={};
+      if(e.target.checked)editAbilities[idx].params.once_per_turn=true;
+      else delete editAbilities[idx].params.once_per_turn;
+      eUpdateAbilPreview();
+    };
+    const onceLbl=document.createElement('span');onceLbl.textContent='ターン1';
+    onceWrap.appendChild(onceChk);onceWrap.appendChild(onceLbl);
+    footerRow.appendChild(onceWrap);
 
     // 発動条件チェックボックス
     const condChk=document.createElement('input');condChk.type='checkbox';
@@ -6726,6 +6747,7 @@ async function startTurn(pid){
   p.maxMana=Math.min(10,p.turnCount);
   p.mana=p.maxMana;
   p.field.forEach(c=>{clearTurnFlags(c);});
+  p._onceTriggers={};
   log(`── ${pid===1?'あなた':'相手'} のターン開始 (マナ ${p.mana}/${p.maxMana})`,'ll-sys');
   drawCard(pid);
   // fire on_turn_start triggers first
