@@ -2489,11 +2489,7 @@ function _buildImmRow(arr, i){
   if(!ab.type) ab.type='trigger';
   if(!ab.trigger) ab.trigger='on_arcana_reversed';
 
-  // ユニットエディターと同じeditAbilities互換で行を生成
-  const tmpAbils=[ab];
-  const savedEdit=editAbilities;
-  editAbilities=tmpAbils;
-  // eRenderTriggerList の内部ロジックを流用
+  // ユニットエディターと同じパラメーターUIを流用（editAbilitiesは使わない）
   const el=document.createElement('div');el.className='trigger-row';
 
   // トリガータイプ（固定: on_arcana_reversed）
@@ -2579,8 +2575,6 @@ function _buildImmRow(arr, i){
   const onceLbl2=document.createElement('span');onceLbl2.style.cssText='font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;';onceLbl2.textContent='ターン1';onceLbl2.onclick=()=>onceChk2.click();
   foot.appendChild(onceChk2);foot.appendChild(onceLbl2);
   el.appendChild(foot);
-
-  editAbilities=savedEdit;
   return el;
 }
 
