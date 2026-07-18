@@ -2475,6 +2475,16 @@ function _buildPassiveRow(listId, arr, i, effectOptions){
   row.appendChild(top);
   row.appendChild(inpDesc);
   row.appendChild(extrasEl);
+
+  // ターン1チェックボックス
+  const onceRow=document.createElement('div');onceRow.style.cssText='display:flex;align-items:center;gap:4px;margin-top:3px;';
+  const onceChk=document.createElement('input');onceChk.type='checkbox';
+  onceChk.style.cssText='accent-color:var(--gold);width:11px;height:11px;cursor:pointer;';
+  onceChk.checked=!!ab.once_per_turn;
+  onceChk.onchange=e=>{arr[i].once_per_turn=e.target.checked||undefined;if(!e.target.checked)delete arr[i].once_per_turn;};
+  const onceLbl=document.createElement('span');onceLbl.textContent='ターン1回';onceLbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;';onceLbl.onclick=()=>onceChk.click();
+  onceRow.appendChild(onceChk);onceRow.appendChild(onceLbl);
+  row.appendChild(onceRow);
   return row;
 }
 
@@ -2908,7 +2918,7 @@ async function initData(){
       }
     }
   }catch(e){
-    console.log('Firebase cards 読み込み失敗 → デフォルト使用', e.message);
+    console.error('[init] Firebase cards load FAILED:', e);
   }
 
   // ── 2. Load decks: defaultDecks from Firebase + own decks from localStorage ──
@@ -3311,8 +3321,10 @@ function showScreen(id){
 // 起動時にデータ読み込み後メニューを表示
 (async()=>{
   try{
+    console.log('[init] initData start');
     await initData();
-  }catch(e){console.error('initData failed',e);}
+    console.log('[init] initData done, CARDS:', CARDS.length);
+  }catch(e){console.error('[init] initData FAILED:',e);}
   try{
     typeRenderSelect();
     _populateTypeSelectors();
@@ -4537,8 +4549,15 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
 }
 
 async function arcanaFirePassives(pid, arc, passives, label, context){
+  if(!G.p[pid]._onceTriggers)G.p[pid]._onceTriggers={};
   for(const ab of passives){
     if(arcanaConditionMet(ab.condition, pid, context)){
+      // ターン1チェック
+      if(ab.once_per_turn){
+        const oKey=`arc_pass:${arc.id}:${ab.condition}:${ab.effect}`;
+        if(G.p[pid]._onceTriggers[oKey])continue;
+        G.p[pid]._onceTriggers[oKey]=true;
+      }
       await arcanaApplyPassiveEffect(pid, arc, ab, label);
     }
   }
@@ -4608,8 +4627,15 @@ async function onArcanaClick(pid){
 
 async function arcanaApplyReversedEffect(pid, arc){
   const imms=arc.revImmediate||[];
+  if(!G.p[pid]._onceTriggers)G.p[pid]._onceTriggers={};
   for(const ab of imms){
     if(!ab.effect||ab.effect==='none')continue;
+    // ターン1チェック
+    if(ab.params?.once_per_turn){
+      const oKey=`arc:${arc.id}:${ab.effect}`;
+      if(G.p[pid]._onceTriggers[oKey])continue;
+      G.p[pid]._onceTriggers[oKey]=true;
+    }
     const val=ab.val||ab.amount||2;
     const isAI=pid===2;
     const fakeFc={name:arc.name, _uid:-1, abilities:[]};
