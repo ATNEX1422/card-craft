@@ -1837,18 +1837,21 @@ function buildAbilityText(card){
     const isAll=tgt.endsWith('_all')||tgt==='both';
     const side=t=>{
       if(!t||t==='self'||t==='ally_self') return '自分';
+      if(t==='both') return '全';
       if(t.startsWith('ally')) return '味方';
       if(t.startsWith('enemy')||t==='opp') return '相手';
-      if(t==='both') return '全体';
       return t;
     };
     const how=t=>{
+      if(!t) return '';
       if(t.includes('random')) return 'ランダム';
       if(t.includes('choose')) return '（選択）';
-      if(t.includes('self')) return '';
-      if(t.includes('entering')) return '（登場したユニット）';
+      if(t.includes('entering')) return '（登場ユニット）';
       if(t.includes('highest_atk')) return '（最大攻撃力）';
-      if(t.includes('lowest_hp')) return '（最少体力）';
+      if(t.includes('lowest_atk')) return '（最小攻撃力）';
+      if(t.includes('highest_hp')) return '（最大体力）';
+      if(t.includes('lowest_hp')) return '（最小体力）';
+      if(t.includes('self')) return '';
       return '';
     };
     const tgtTxt=(t,defSide,n)=>{
@@ -2137,7 +2140,7 @@ const ARC_EFF_LABELS={
 };
 function arcEffText(ab, showCond=true){
   let eff=ARC_EFF_LABELS[ab.effect]||ab.effect;
-  const val=ab.val||ab.amount||1;
+  const val=ab.params?.dmg??ab.params?.amount??ab.val??ab.amount??1;
   const tgt=ab.params?.target||ab.target||'';
   let tgtLbl=ARC_TARGET_LABELS[tgt]||'';
   const n=ab.params?.n;
@@ -2530,7 +2533,7 @@ function _buildImmRow(arr, i){
       lbl.textContent=pDef.label+':';
       if(pDef.type==='select'){
         const sel=document.createElement('select');sel.style.cssText='padding:2px 5px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--gold);';
-        (pDef.opts||[]).forEach(ov=>{const o=document.createElement('option');o.value=ov;o.textContent=ov;if((ab.params||{})[pDef.key]===ov)o.selected=true;sel.appendChild(o);});
+        (pDef.opts||[]).forEach(ov=>{const o=document.createElement('option');o.value=ov;o.textContent=ARC_TARGET_LABELS[ov]||ov;if((ab.params||{})[pDef.key]===ov)o.selected=true;sel.appendChild(o);});
         sel.onchange=e=>{arr[i].params[pDef.key]=e.target.value;};
         prow.appendChild(lbl);prow.appendChild(sel);
       } else if(pDef.type==='type_select'){
@@ -4549,10 +4552,12 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label, context={}){
   const val=ab.val||ab.amount||1;
   const fakeFc={name:arc.name, _uid:-1, abilities:[]};
   if(context.enteringUid) fakeFc._enteringUid=context.enteringUid;
+  const p0=ab.params||{};
   const params={
-    ...(ab.params||{}),
-    n:val, dmg:val, amount:val, pow:(ab.params?.pow??val), tuf:(ab.params?.tuf??val),
-    target:(ab.params?.target||ab.target),
+    ...p0,
+    n:p0.n??val, dmg:p0.dmg??val, amount:p0.amount??val,
+    pow:p0.pow??val, tuf:p0.tuf??val,
+    target:p0.target||ab.target,
   };
   const abEx={effect:ab.effect, params, _triggerType:'arcana'};
   log(`✦ ${arc.name} [${label}]`,'ll-sys');
@@ -4649,12 +4654,13 @@ async function arcanaApplyReversedEffect(pid, arc){
     const val=ab.val||ab.amount||2;
     const isAI=pid===2;
     const fakeFc={name:arc.name, _uid:-1, abilities:[]};
+    const p0=ab.params||{};
     const params={
-      ...(ab.params||{}),
-      dmg:val, amount:val,
-      pow:(ab.params?.pow??val), tuf:(ab.params?.tuf??val),
-      n:(ab.params?.n||(ab.effect==='draw'||ab.effect==='discard'?val:1)),
-      target:(ab.params?.target||ab.target),
+      ...p0,
+      dmg:p0.dmg??val, amount:p0.amount??val,
+      pow:p0.pow??val, tuf:p0.tuf??0,
+      n:p0.n??val,
+      target:p0.target||ab.target,
     };
     const abEx={effect:ab.effect, params, _triggerType:'arcana'};
     await _execEffect(pid, fakeFc, abEx, isAI);
