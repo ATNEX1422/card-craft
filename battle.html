@@ -2234,11 +2234,11 @@ const ARC_PASSIVE_EFFECTS=[
   {id:'heal_unit_one',      label:'ユニットを回復',         unit:'点', target_opts:['ally_choose','ally_random','ally_lowest_hp','ally_highest_hp','ally_self','ally_entering','enemy_random']},
   {id:'heal_unit_all',      label:'ユニット全体を回復',        unit:'点', target_opts:['ally_all','enemy_all','both']},
   // ── バフ・デバフ ──
-  {id:'buff_unit_one',      label:'ユニットをバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_self','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_choose','enemy_random']},
+  {id:'buff_unit_one',      label:'ユニットをバフ',         unit:'',   target_opts:['ally_choose','ally_random','ally_self','ally_entering','ally_highest_atk','ally_lowest_atk','ally_lowest_hp','ally_highest_hp','enemy_choose','enemy_random']},
   {id:'buff_unit_all',      label:'ユニット全体をバフ',        unit:'',   target_opts:['ally_all','enemy_all','both']},
-  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','enemy_choose','enemy_random']},
+  {id:'set_stats',          label:'ユニットスタッツを指定値に',unit:'',   target_opts:['ally_choose','ally_random','ally_entering','enemy_choose','enemy_random']},
   {id:'set_leader_life',    label:'リーダーHPを指定値に',      unit:'',   target_opts:['self','enemy']},
-  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
+  {id:'grant_kw_unit',      label:'ユニットにキーワード付与',  unit:'',   target_opts:['ally_entering','ally_all','ally_choose','ally_random','enemy_all','enemy_choose','enemy_random']},
   // ── ダメージ ──
   {id:'dmg_unit_one',       label:'ユニットにダメージ',     unit:'点', target_opts:['enemy_choose','enemy_random','enemy_highest_atk','enemy_lowest_atk','enemy_lowest_hp','enemy_highest_hp','ally_choose','ally_random','ally_self']},
   {id:'dmg_unit_all',       label:'ユニット全体にダメージ',    unit:'点', target_opts:['enemy_all','ally_all','both']},
@@ -4533,11 +4533,22 @@ function arcanaConditionMet(condition, pid, context={}){
   }
 }
 
-async function arcanaApplyPassiveEffect(pid, arc, ab, label){
-  // アルカナ効果を _execEffect 経由で実行（ユニットと同じ処理に統一）
+// ユニットが登場したときにアルカナパッシブを発火
+async function _fireAllyEnterArcana(entryPid, newUid){
+  const opp=entryPid===1?2:1;
+  // 自分・相手両方のアルカナを確認
+  for(const pid of [1,2]){
+    const arc=getArcana(pid);if(!arc)continue;
+    const ctx={event:'unit_enter',pid:entryPid,enteringUid:newUid};
+    const passives=arc.reversed?(arc.revPassive||[]):(arc.upright||[]);
+    await arcanaFirePassives(pid,arc,passives,arc.reversed?'逆位置':'正位置',ctx);
+  }
+}
+
+async function arcanaApplyPassiveEffect(pid, arc, ab, label, context={}){
   const val=ab.val||ab.amount||1;
   const fakeFc={name:arc.name, _uid:-1, abilities:[]};
-  // ab.params を構築（val を各種パラメータ名にマッピング）
+  if(context.enteringUid) fakeFc._enteringUid=context.enteringUid;
   const params={
     ...(ab.params||{}),
     n:val, dmg:val, amount:val, pow:(ab.params?.pow??val), tuf:(ab.params?.tuf??val),
@@ -4548,17 +4559,16 @@ async function arcanaApplyPassiveEffect(pid, arc, ab, label){
   await _execEffect(pid, fakeFc, abEx, pid===2);
 }
 
-async function arcanaFirePassives(pid, arc, passives, label, context){
+async function arcanaFirePassives(pid, arc, passives, label, context={}){
   if(!G.p[pid]._onceTriggers)G.p[pid]._onceTriggers={};
   for(const ab of passives){
     if(arcanaConditionMet(ab.condition, pid, context)){
-      // ターン1チェック
       if(ab.once_per_turn){
         const oKey=`arc_pass:${arc.id}:${ab.condition}:${ab.effect}`;
         if(G.p[pid]._onceTriggers[oKey])continue;
         G.p[pid]._onceTriggers[oKey]=true;
       }
-      await arcanaApplyPassiveEffect(pid, arc, ab, label);
+      await arcanaApplyPassiveEffect(pid, arc, ab, label, context);
     }
   }
 }
