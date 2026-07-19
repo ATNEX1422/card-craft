@@ -1833,8 +1833,10 @@ function buildAbilityText(card){
     }
 
     // 対象テキスト生成
-    const nVal=p.n_all?'全体':vLabel('n', p.n||1);
-    const isAll=tgt.endsWith('_all')||tgt==='both';
+    // ── 対象テキスト生成 ──
+    const nVal=p.n_all?'全':vLabel('n', p.n||1);
+    const isAll=p.n_all||tgt.endsWith('_all')||tgt==='both';
+
     const side=t=>{
       if(!t||t==='self'||t==='ally_self') return '自分';
       if(t==='both') return '全';
@@ -1845,84 +1847,80 @@ function buildAbilityText(card){
     const how=t=>{
       if(!t) return '';
       if(t.includes('random')) return 'ランダム';
-      if(t.includes('choose')) return '（選択）';
+      if(t.includes('choose')) return '選択';
       if(t.includes('entering')) return '（登場ユニット）';
-      if(t.includes('highest_atk')) return '（最大攻撃力）';
-      if(t.includes('lowest_atk')) return '（最小攻撃力）';
-      if(t.includes('highest_hp')) return '（最大体力）';
-      if(t.includes('lowest_hp')) return '（最小体力）';
-      if(t.includes('self')) return '';
+      if(t.includes('highest_atk')) return '（攻撃力最大）';
+      if(t.includes('lowest_atk')) return '（攻撃力最小）';
+      if(t.includes('highest_hp')) return '（体力最大）';
+      if(t.includes('lowest_hp')) return '（体力最小）';
       return '';
     };
     const tgtTxt=(t,defSide,n)=>{
-      if(!t) return `${defSide}${n}体`;
+      if(!t) return `${defSide}${n==='全'?'全体':`${n}体`}`;
       if(t==='ally_entering') return '登場したユニット';
       if(t==='ally_self'||t==='self') return '自身';
-      if(isAll) return `${side(t)}ユニット全体`;
+      if(isAll||t.endsWith('_all')||t==='both') return `${side(t)}ユニット全体`;
       const h=how(t);
-      const nStr=n&&n!=='1'?`${n}体`:(h?'1体':'1体');
-      return `${side(t)}${h}${nStr}`;
+      const nStr=n==='全'?'全体':`${n}体`;
+      return h?`${side(t)}${h}${nStr}`:`${side(t)}${nStr}`;
     };
+    const excludeTxt=p.exclude_self?'（自身除く）':'';
     const kwTxt=(()=>{
-      const _rawKws=p.kws?(Array.isArray(p.kws)?p.kws:Object.values(p.kws))
-                   :(p.kw?[p.kw]:[]);
+      const _rawKws=p.kws?(Array.isArray(p.kws)?p.kws:Object.values(p.kws)):(p.kw?[p.kw]:[]);
       const kws2=_rawKws.filter(Boolean).map(k=>{
         if(k==='multi_attack') return `連続攻撃${p.kw_n||2}回`;
         return KW_LABELS[k]||k;
       });
-      return kws2.join('・')||'(キーワード未設定)';
+      return kws2.join('・')||'（キーワード未設定）';
     })();
-    const excludeTxt=p.exclude_self?' (自身除く)':'';
+    const buffTxt=(pow,tuf)=>{const ps=[];if(pow)ps.push(`攻撃力+${pow}`);if(tuf)ps.push(`体力+${tuf}`);return ps.join('・')||'バフ';};
+    const debuffTxt=(pow,tuf)=>{const ps=[];if(pow)ps.push(`攻撃力-${pow}`);if(tuf)ps.push(`体力-${tuf}`);return ps.join('・')||'デバフ';};
 
-    let desc=`【${trig}】${condTxt}${repeatTxt}`;
+    let desc=`【${trig}】${_onceTxt}${condTxt}${_repeatTxt}`;
     switch(a.effect){
-      // ドロー・手札
       case 'draw':
-        desc+=tgt.startsWith('enemy')?`相手が${nVal}枚ドローする`:`${nVal}枚ドロー`; break;
+        desc+=tgt.startsWith('enemy')?`相手が${nVal}枚ドロー`:`${nVal}枚ドロー`; break;
       case 'discard':
-        desc+=isAll?`${side(tgt||'enemy')}の手札を全て捨てさせる`:`${side(tgt||'enemy')}の手札をランダムに${nVal}枚捨てさせる`; break;
+        desc+=isAll?`${side(tgt||'enemy')}の手札を全て捨てさせる`:`${side(tgt||'enemy')}の手札を${nVal}枚捨てさせる（ランダム）`; break;
       case 'discard_hand_draw':
-        desc+=`${side(tgt||'self')}の手札を全て捨て、同じ枚数ドローする`; break;
+        desc+=`${side(tgt||'self')}の手札を全て捨て、同枚数ドロー`; break;
       case 'add_to_hand':{
-        const cards=(p.cards||[]);
-        const cardsTxt=cards.length?cards.map(x=>`「${x.name}」×${x.n||1}`).join('・'):'カード';
+        const _rawC=p.cards?(Array.isArray(p.cards)?p.cards:Object.values(p.cards)):[];
+        const cardsTxt=_rawC.length?_rawC.map(x=>`「${x.name}」×${x.n||1}`).join('・'):'カード';
         desc+=`${cardsTxt}を${side(tgt||'self')}の手札に加える`; break;
       }
-      // ダメージ
       case 'dmg_unit_one':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`:`${tgtTxt(tgt,'相手',nVal)}に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_unit_n':
-        desc+=`${side(tgt||'enemy')}${how(tgt||'enemy_random')}${nVal}体に各${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`:`${tgtTxt(tgt,'相手',nVal)}に各${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_unit_all':
         desc+=tgt==='both'?`全ユニットに${vLabel('dmg',p.dmg||1)}ダメージ`:`${side(tgt||'enemy')}ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_leader':
         desc+=`${side(tgt||'enemy')}リーダーに${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_any':
-        desc+=`任意の対象に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+        desc+=`任意対象に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_enemy_one':
-        desc+=`相手${how(tgt||'enemy_random')}1体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
+        desc+=isAll?`相手ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`:`相手${how(tgt||'enemy_random')}1体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
       case 'dmg_enemy_all':
         desc+=`相手ユニット全体に${vLabel('dmg',p.dmg||1)}ダメージ`; break;
-      // 回復
       case 'heal_leader':
         desc+=`${side(tgt||'self')}リーダーを${vLabel('amount',p.amount||1)}回復`; break;
       case 'heal_unit_one':
-        desc+=`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}を${vLabel('amount',p.amount||1)}回復`; break;
+        desc+=isAll?`${side(tgt||'ally')}ユニット全体を${vLabel('amount',p.amount||1)}回復`:`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}を${vLabel('amount',p.amount||1)}回復`; break;
       case 'heal_unit_all':
         desc+=`${side(tgt||'ally')}ユニット全体を${vLabel('amount',p.amount||1)}回復`; break;
-      // 除去
       case 'destroy_unit_one':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}を破壊`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を破壊`:`${tgtTxt(tgt,'相手',nVal)}を破壊`; break;
       case 'destroy_unit_all':
         desc+=`${side(tgt||'enemy')}ユニット全体を破壊`; break;
       case 'destroy_one':
         desc+=`相手${how(tgt||'enemy_random')}1体を破壊`; break;
       case 'exile_unit_one':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}を除外`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を除外`:`${tgtTxt(tgt,'相手',nVal)}を除外`; break;
       case 'exile_unit_all':
         desc+=`${side(tgt||'enemy')}ユニット全体を除外`; break;
       case 'return_unit_one':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}を手札に戻す`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を手札に戻す`:`${tgtTxt(tgt,'相手',nVal)}を手札に戻す`; break;
       case 'return_unit_all':
         desc+=`${side(tgt||'enemy')}ユニット全体を手札に戻す`; break;
       case 'return_one':
@@ -1930,64 +1928,61 @@ function buildAbilityText(card){
       case 'return_all':
         desc+=`相手ユニット全体を手札に戻す`; break;
       case 'steal_unit_one':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}を強奪（自分の場に加える）`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を強奪`:`${tgtTxt(tgt,'相手',nVal)}を強奪`; break;
       case 'steal_one':
         desc+=`相手${how(tgt||'enemy_random')}1体を強奪`; break;
-      // 状態異常
       case 'bind_unit':
-        desc+=isAll?`${side(tgt)}ユニット全体を呪縛（攻撃不可）`:`${tgtTxt(tgt,'相手',nVal)}を呪縛（攻撃不可）`; break;
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を呪縛（攻撃不可）`:`${tgtTxt(tgt,'相手',nVal)}を呪縛（攻撃不可）`; break;
       case 'silence_unit':
-        desc+=isAll?`${side(tgt)}ユニット全体を沈黙（能力無効）`:`${tgtTxt(tgt,'相手',nVal)}を沈黙（能力無効）`; break;
-      // バフ・デバフ
+        desc+=isAll?`${side(tgt||'enemy')}ユニット全体を沈黙（能力無効）`:`${tgtTxt(tgt,'相手',nVal)}を沈黙（能力無効）`; break;
       case 'buff_unit_one':
-        desc+=`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+        desc+=isAll?`${side(tgt||'ally')}ユニット全体の${buffTxt(p.pow,p.tuf)}`:`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}の${buffTxt(p.pow,p.tuf)}`; break;
       case 'buff_unit_all':
-        desc+=`${side(tgt||'ally')}ユニット全体の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+        desc+=`${side(tgt||'ally')}ユニット全体の${buffTxt(p.pow,p.tuf)}`; break;
       case 'buff_ally_one':
-        desc+=`味方ユニット1体（選択）の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+        desc+=`味方1体（選択）の${buffTxt(p.pow,p.tuf)}`; break;
       case 'buff_ally_all':
-        desc+=`自分ユニット全体の攻撃力/体力+${p.pow||0}/+${p.tuf||0}`; break;
+        desc+=`自分ユニット全体の${buffTxt(p.pow,p.tuf)}`; break;
       case 'debuff_enemy_one':
-        desc+=`相手ユニット1体の攻撃力/体力-${p.pow||0}/-${p.tuf||0}`; break;
+        desc+=`相手1体の${debuffTxt(p.pow,p.tuf)}`; break;
       case 'reduce_atk_all':
         desc+=`相手ユニット全体の攻撃力-${vLabel('amount',p.amount||1)}`; break;
       case 'set_stats':
-        desc+=`${tgtTxt(tgt,'相手',nVal)}のステータスを${p.pow||1}/${p.tuf||1}に変更`; break;
+        desc+=`${tgtTxt(tgt,'相手',nVal)}のスタッツを${p.pow||1}/${p.tuf||1}に変更`; break;
       case 'set_leader_life':
         desc+=`${side(tgt||'enemy')}リーダーのHPを${vLabel('amount',p.amount||10)}にする`; break;
-      // キーワード付与
       case 'grant_kw_unit':
-        desc+=tgt==='ally_entering'?`登場したユニットに${kwTxt}を付与`
-          :isAll?`${side(tgt)}ユニット全体に${kwTxt}を付与`
-          :`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}に${kwTxt}を付与`; break;
-      case 'grant_kw_all':    desc+=`自分ユニット全体に${kwTxt}を付与`; break;
-      case 'grant_kw_one':    desc+=`自分ユニット1体（選択）に${kwTxt}を付与`; break;
-      case 'grant_kw_summoned':desc+=`この能力で召喚したユニットに${kwTxt}を付与`; break;
-      // リソース
+        if(tgt==='ally_entering') desc+=`登場したユニットに${kwTxt}付与`;
+        else if(isAll) desc+=`${side(tgt||'ally')}ユニット全体に${kwTxt}付与`;
+        else desc+=`${tgtTxt(tgt,'味方',nVal)}${excludeTxt}に${kwTxt}付与`;
+        break;
+      case 'grant_kw_all':    desc+=`自分ユニット全体に${kwTxt}付与`; break;
+      case 'grant_kw_one':    desc+=`自分1体（選択）に${kwTxt}付与`; break;
+      case 'grant_kw_summoned':desc+=`召喚したユニットに${kwTxt}付与`; break;
       case 'change_mana':{
         const t2=p.target||'self_restore';const amt=vLabel('amount',p.amount||1);
         const m={self_restore:`自分のマナ+${amt}`,self_add_max:`自分の最大マナ+${amt}`,
           self_sub_current:`自分のマナ-${amt}`,self_sub_max:`自分の最大マナ-${amt}`,
           enemy_restore:`相手のマナ+${amt}`,enemy_add_max:`相手の最大マナ+${amt}`,
           enemy_sub_current:`相手のマナ-${amt}`,enemy_sub_max:`相手の最大マナ-${amt}`};
-        desc+=m[t2]||`マナ変更${amt}`; break;
+        desc+=m[t2]||`マナを${amt}変動`; break;
       }
       case 'change_ap':{
         const t2=p.target||'self_add';const amt=vLabel('amount',p.amount||1);
         const m={self_add:`自分のAP+${amt}`,self_subtract:`自分のAP-${amt}`,
           enemy_add:`相手のAP+${amt}`,enemy_subtract:`相手のAP-${amt}`};
-        desc+=m[t2]||`AP変更${amt}`; break;
+        desc+=m[t2]||`APを${amt}変動`; break;
       }
-      // 召喚・蘇生・サーチ
       case 'summon_free':{
         const costCond=p.cost_max||p.cost_max_var?`コスト${vLabel('cost_max',p.cost_max)}以下の`:'';
         const abilCond=p.filter==='no_ability'?'能力なしの':'';
         const typeCond=p.type?`${p.type}の`:'';
-        desc+=`手札から${costCond}${typeCond}${abilCond}ユニットをコストなしで召喚`; break;
+        desc+=`手札から${costCond}${typeCond}${abilCond}ユニットを無コスト召喚`; break;
       }
       case 'summon_card':{
         const toSide=tgt==='enemy'?'相手の場に':'';
-        if(p.cards&&p.cards.length) desc+=`${toSide}`+(p.cards.map(e=>`「${e.name}」×${e.n||1}`).join('と'))+`を召喚`;
+        const _rawC2=p.cards?(Array.isArray(p.cards)?p.cards:Object.values(p.cards)):[];
+        if(_rawC2.length) desc+=`${toSide}${_rawC2.map(e=>`「${e.name}」×${e.n||1}`).join('と')}を召喚`;
         else if(p.name) desc+=`${toSide}「${p.name}」を${nVal}体召喚`;
         else desc+=`${toSide}ユニットを召喚`;
         break;
@@ -1997,27 +1992,25 @@ function buildAbilityText(card){
         let rcond='';
         if(p.name) rcond=`「${p.name}」`;
         else{
-          const costCond2=p.cost_max||p.cost_max_var?`コスト${vLabel('cost_max',p.cost_max)}以下の`:'';
-          rcond+=costCond2+(p.type?`${p.type}の`:'')+'ユニット';
+          const cc=p.cost_max||p.cost_max_var?`コスト${vLabel('cost_max',p.cost_max)}以下の`:'';
+          rcond=cc+(p.type?`${p.type}の`:'')+'ユニット';
         }
-        const hw=tgt?.includes('random')?'をランダムに':tgt?.includes('choose')?'を（選択して）':'を';
-        desc+=`${fromWho}から${rcond}${hw}蘇生`; break;
+        const hw=tgt?.includes('choose')?'（選択）':tgt?.includes('random')?'（ランダム）':'';
+        desc+=`${fromWho}から${rcond}を蘇生${hw}`; break;
       }
       case 'fetch_to_hand':{
-        const fromZ={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札',hand_any:'相手の手札'}[p.from]||p.from||'デッキ';
-        const filters=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
-        const filterTxt=filters.length?filters.join('・')+'の':'';
+        const fromZ={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札',hand_any:'相手の手札'}[p.from]||'デッキ';
+        const ff=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
         const hw2=p.target==='choose'?'（選択）':'（ランダム）';
-        desc+=`${fromZ}から${filterTxt}カードを手札に加える${hw2}`; break;
+        desc+=`${fromZ}から${ff.join('・')||''}カードを手札に加える${hw2}`; break;
       }
       case 'fetch_to_field':{
-        const fromZ2={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札'}[p.from]||p.from||'デッキ';
-        const filters2=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
-        const filterTxt2=filters2.length?filters2.join('・')+'の':'';
+        const fromZ2={deck:'デッキ',grave:'自分の墓地',enemy_grave:'相手の墓地',hand:'手札'}[p.from]||'デッキ';
+        const ff2=[p.name?`「${p.name}」`:null,(p.cost_max||p.cost_max_var)?`コスト${vLabel('cost_max',p.cost_max)}以下`:null,p.type||null].filter(Boolean);
         const hw3=p.target==='choose'?'（選択）':'（ランダム）';
-        desc+=`${fromZ2}から${filterTxt2}カードをコストなしで場に出す${hw3}`; break;
+        desc+=`${fromZ2}から${ff2.join('・')||''}カードを場に出す${hw3}（コストなし）`; break;
       }
-      default: desc+=EFF_LABELS?.[a.effect]||a.effect||'（不明な効果）';
+      default: desc+=EFF_LABELS?.[a.effect]||a.effect||'（不明）';
     }
     parts.push(desc);
   });
@@ -2944,7 +2937,6 @@ async function initData(){
     });
   }catch(e){
     const s=localStorage.getItem('cg_decks');if(s)DECKS=JSON.parse(s);
-    console.log('デッキ読み込み失敗 → localStorage使用', e.message);
   }
   // Load arcanas
   await loadArcanas();
@@ -3326,9 +3318,7 @@ function showScreen(id){
 // 起動時にデータ読み込み後メニューを表示
 (async()=>{
   try{
-    console.log('[init] initData start');
     await initData();
-    console.log('[init] initData done, CARDS:', CARDS.length);
   }catch(e){console.error('[init] initData FAILED:',e);}
   try{
     typeRenderSelect();
@@ -3866,6 +3856,22 @@ function eRenderTriggerList(){
           if(varDef){inp.style.opacity='0.3';inp.disabled=true;varBtn.style.background='rgba(201,168,76,0.2)';varBtn.style.color='var(--gold)';varArea.style.display='flex';}
           varArea.appendChild(vTypeSel);varArea.appendChild(vSideSel);varArea.appendChild(vFilter);
           numWrap.appendChild(inp);numWrap.appendChild(varBtn);
+          // n パラメーターにのみ「全」チェックを追加
+          if(pDef.key==='n'){
+            const allChk=document.createElement('input');allChk.type='checkbox';allChk.title='全て';
+            allChk.style.cssText='accent-color:var(--gold);width:12px;height:12px;cursor:pointer;';
+            allChk.checked=!!((ab.params||{}).n_all);
+            if(allChk.checked){inp.disabled=true;inp.style.opacity='0.3';}
+            allChk.onchange=e=>{
+              const idx=editAbilities.indexOf(ab);if(idx<0)return;
+              if(!editAbilities[idx].params)editAbilities[idx].params={};
+              if(e.target.checked){editAbilities[idx].params.n_all=true;inp.disabled=true;inp.style.opacity='0.3';}
+              else{delete editAbilities[idx].params.n_all;inp.disabled=false;inp.style.opacity='';}
+              eUpdateAbilPreview();
+            };
+            const allLbl=document.createElement('span');allLbl.textContent='全';allLbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.45);cursor:pointer;';allLbl.onclick=()=>allChk.click();
+            numWrap.appendChild(allChk);numWrap.appendChild(allLbl);
+          }
           prow.appendChild(numWrap);prow.appendChild(varArea);
         }
       });
@@ -5034,18 +5040,15 @@ async function _processSummonQueue(){
   try{
     while(summonQueue.length>0){
       const {pid,base,cost,preTargets}=summonQueue.shift();
-      console.log('[summon] processing:', base?.name, 'pid:', pid);
       const p=G.p[pid];
       if(p.field.length>=7){showMidNotif('フィールドが満員です','#f87171',1400);continue;}
       const fc=mkCard(base);
-      console.log('[summon] mkCard done, abilities type:', Array.isArray(fc.abilities)?'array':'object', fc.abilities);
       fc._preTargets=preTargets;
       fc._entryOrder=++_fieldEntryCounter;
       p.field.push(fc);
-      console.log('[summon] pushed to field, field length:', p.field.length);
       log(`P${pid}: 「${fc.name}」を召喚`,'ll-s');
       deselectAtk();
-      try{render();console.log('[summon] render OK');}catch(re){console.error('[summon] render ERROR:', re);}
+      try{render();}catch(re){console.error('[summon] render ERROR:', re);}
       try{await animateSummon(pid,fc._uid);}catch(e){console.warn('[summon] animateSummon error',e);}
       try{await triggerAbility(pid,fc,false,'on_enter');}catch(e){console.warn('[summon] triggerAbility error',e);}
       delete fc._preTargets;
@@ -6538,9 +6541,7 @@ async function endTurn(){
     try{
       const fb2=_fb();if(fb2){
         const snap=_buildStateSnap();
-        console.log('[online] writing state, field sizes:', snap.p1.field.length, snap.p2.field.length);
         await fb2.set(fb2.ref(fb2.db,`rooms/${_onlineRoom.roomId}/state`),snap);
-        console.log('[online] state written OK');
       }
     }catch(e){console.error('[online] state push FAILED:',e);}
     await _onlineSendAction({type:'end_turn'});
@@ -7329,7 +7330,6 @@ async function onlineCreateRoom(){
   let _hostDsShown=false;
   fb.onValue(fb.ref(db,`rooms/${roomId}/guest/status`),snap=>{
     const v=snap.val();
-    console.log('[online] host sees guest status=',v);
     if((v==='ready'||v==='deck_ready')&&!_hostDsShown){
       _hostDsShown=true;
       document.getElementById('online-host-status').textContent='相手が参加しました！デッキを選択してください';
@@ -7421,7 +7421,6 @@ async function onlineSelectDeck(deck){
   fb.onValue(fb.ref(db,`rooms/${roomId}`),snap=>{
     const d=snap.val();
     if(!d)return;
-    console.log('[online] room update: host=',d.host?.status,'guest=',d.guest?.status,'started=',window._onlineBattleStarted);
     if(d.host?.status==='deck_ready'&&d.guest?.status==='deck_ready'){
       if(window._onlineBattleStarted)return;
       // 両者準備完了 → ホストのみが initState を生成、両者が initState 監視で開始
@@ -7437,7 +7436,6 @@ async function _onlineStartGame(roomData,key){
   _onlineStartGameCalled=true;
   const fb=_fb();const {roomId,myPid,role}=_onlineRoom;
   const db=fb.db;
-  console.log('[online] _onlineStartGame role=',role);
 
   // Only host initializes the game state
   if(role==='host'){
@@ -7461,7 +7459,6 @@ async function _onlineStartGame(roomData,key){
       const initState={firstPid,p1deck,p2deck,uidCtr,
         p1ArcanaId:roomData.host.arcanaId||null,
         p2ArcanaId:roomData.guest.arcanaId||null};
-      console.log('[online] host writing initState',initState);
       await fb.set(fb.ref(db,`rooms/${roomId}/initState`),initState);
       await fb.set(fb.ref(db,`rooms/${roomId}/turn`),firstPid);
     }catch(e){console.error('[online] host init error',e);}
@@ -7476,7 +7473,6 @@ async function _onlineStartGame(roomData,key){
     _initFired=true;
     window._onlineBattleStarted=true;
     const init=snap.val();
-    console.log('[online] initState received, starting battle. firstPid=',init.firstPid);
     _onlineInitBattle(init);
   });
 }
