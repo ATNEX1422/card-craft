@@ -2405,7 +2405,6 @@ function _buildArcNInput(ab, extrasEl){
 
 function _updateArcRowExtras(ab, extrasEl, effectList, valInputRef){
   extrasEl.innerHTML='';
-  // valを初期表示（対象セレクターで再制御）
   if(valInputRef) valInputRef.style.display='';
   // 体数入力（全体・自身指定でない場合のみ）
   if(_ARC_N_CAPABLE.includes(ab.effect)){
@@ -2413,6 +2412,21 @@ function _updateArcRowExtras(ab, extrasEl, effectList, valInputRef){
     if(!tgt.endsWith('_all')&&!tgt.endsWith('self')&&tgt!=='self'&&tgt!=='enemy'&&tgt!=='both'){
       _buildArcNInput(ab, extrasEl);
     }
+  }
+  // バフ・デバフ: 攻撃力/体力 入力
+  const _BUFF_EFFS=['buff_unit_one','buff_unit_all','buff_ally_one','buff_ally_all','debuff_enemy_one','reduce_atk_all','set_stats'];
+  if(_BUFF_EFFS.includes(ab.effect)){
+    if(valInputRef)valInputRef.style.display='none'; // val非表示
+    const powRow=document.createElement('div');powRow.style.cssText='display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap;';
+    [['pow','攻撃力'],['tuf','体力']].forEach(([key,label])=>{
+      const lbl=document.createElement('span');lbl.textContent=label+':';lbl.style.cssText='font-size:10px;color:rgba(240,230,204,0.5);';
+      const inp=document.createElement('input');inp.type='number';inp.min=-99;inp.max=99;
+      inp.value=(ab.params||{})[key]??1;
+      inp.style.cssText='width:48px;padding:2px 5px;font-size:11px;background:rgba(8,6,16,0.7);border:1px solid rgba(201,168,76,0.18);border-radius:4px;color:var(--parchment);';
+      inp.oninput=e=>{if(!ab.params)ab.params={};ab.params[key]=parseInt(e.target.value)||0;};
+      powRow.appendChild(lbl);powRow.appendChild(inp);
+    });
+    extrasEl.appendChild(powRow);
   }
   // キーワードチップ
   const needsKw=['grant_kw_unit','grant_kw_all','grant_kw_one','grant_kw_summoned'].includes(ab.effect);
