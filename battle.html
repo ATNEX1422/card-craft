@@ -137,7 +137,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* editor: full-screen card grid */
 #screen-editor .editor-grid-area{
   flex:1;overflow-y:auto;padding:12px 16px 14px;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;
   align-content:start;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;
 }
@@ -268,7 +268,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 .deck-tab.active{background:rgba(201,168,76,0.18);border-color:var(--gold);color:var(--gold);}
 .deck-tab:hover{background:rgba(201,168,76,0.12);}
 /* deck card pool */
-.card-pool{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:8px;align-content:start;padding:12px 6px 12px;
+.card-pool{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;align-content:start;padding:12px 6px 12px;
   scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.15) transparent;}
 /* deck contents */
 .deck-contents{background:linear-gradient(135deg,var(--ink-mid),var(--ink-light));border:1px solid rgba(201,168,76,0.22);border-radius:10px;
@@ -293,9 +293,9 @@ textarea.finput{resize:vertical;min-height:64px;}
 .entry-btn.rm:hover{background:rgba(192,57,43,0.25);}
 /* pool card */
 .pool-card{
-  width:100%;aspect-ratio:68/86;border-radius:8px;overflow:visible;cursor:pointer;
-  background:var(--ink-card);border:1px solid rgba(201,168,76,0.18);
-  display:flex;flex-direction:column;position:relative;transition:transform 0.13s,border-color 0.13s;
+  width:100%;aspect-ratio:68/86;border-radius:8px;overflow:hidden;cursor:pointer;
+  background:var(--ink-card);border:1px solid rgba(201,168,76,0.28);
+  position:relative;transition:transform 0.13s,border-color 0.13s,box-shadow 0.13s;
 }
 .pool-card:hover{transform:translateY(-4px);}
 .pool-card.max-copies{opacity:0.45;cursor:not-allowed;}
@@ -384,7 +384,7 @@ textarea.finput{resize:vertical;min-height:64px;}
 #screen-battle{
   display:none; /* hidden by default; showScreen sets display:grid */
   overflow:visible;
-  grid-template-rows: 177px 1fr 44px 1fr 177px 40px;
+  grid-template-rows: 178px 1fr 44px 1fr 178px 40px;
   grid-template-columns: 1fr 176px;
   grid-template-areas:
     "p2hand  log"
@@ -507,15 +507,15 @@ textarea.finput{resize:vertical;min-height:64px;}
 .ll.ll-dmg{color:#f87171;}.ll.ll-s{color:#a78bfa;}.ll.ll-sys{color:rgba(201,168,76,0.58);}.ll.ll-ai{color:rgba(239,68,68,0.55);}.ll.ll-p1{color:#60a5fa;}.ll.ll-p2{color:#f87171;}
 
 /* ── BATTLE CARDS ── */
-.card{position:relative;flex-shrink:0;border-radius:8px;overflow:visible;cursor:pointer;
+.card{position:relative;flex-shrink:0;border-radius:8px;overflow:hidden;cursor:pointer;
   transition:transform 0.12s,box-shadow 0.12s,border-color 0.12s;
-  background:var(--ink-card);border:1px solid rgba(201,168,76,0.18);display:flex;flex-direction:column;}
+  background:var(--ink-card);border:1px solid rgba(201,168,76,0.28);}
 .card:hover:not(.no-hv){transform:translateY(-4px);}
-.hcard{width:122px;height:157px;}
+.hcard{width:108px;height:157px;}
 .hcard.unafford{opacity:0.35;cursor:not-allowed;}
 .hcard.unafford:hover{transform:none!important;}
-.fcard{width:122px;height:157px;}
-.back-card{width:122px;height:157px;flex-shrink:0;border-radius:8px;background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
+.fcard{width:108px;height:157px;}
+.back-card{width:108px;height:157px;flex-shrink:0;border-radius:8px;background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(239,68,68,0.18);display:flex;align-items:center;justify-content:center;font-size:26px;opacity:0.55;}
 .card.sel{border-color:var(--sel)!important;box-shadow:0 0 12px var(--selg),0 0 3px var(--selg) inset!important;transform:translateY(-5px) scale(1.04)!important;}
 .card.sick{border-color:rgba(100,100,100,0.22)!important;opacity:0.62;}
@@ -526,24 +526,29 @@ textarea.finput{resize:vertical;min-height:64px;}
 .card.sel-tgt{border-color:var(--green)!important;box-shadow:0 0 12px rgba(34,197,94,0.48)!important;animation:pulse-g 0.8s infinite alternate;}
 @keyframes pulse-g{from{box-shadow:0 0 5px rgba(34,197,94,0.32);}to{box-shadow:0 0 15px rgba(34,197,94,0.68);}}
 .c-cost{
-  position:absolute;top:0;left:0;
+  position:absolute;top:4px;left:4px;
   width:26px;height:26px;
-  border-radius:8px 0 26px 0;
-  background:linear-gradient(135deg,#f0d080,#c9a84c);
-  font-family:'Bebas Neue',cursive;font-size:18px;color:#0e0c14;
+  border-radius:50%;
+  background:rgba(14,12,20,0.85);
+  border:1.5px solid rgba(201,168,76,0.8);
+  font-family:'Bebas Neue',cursive;font-size:16px;color:#f0d080;
   display:flex;align-items:center;justify-content:center;
-  padding:2px 4px 0 0;
-  z-index:20;box-shadow:2px 2px 4px rgba(201,168,76,0.4);}
-.c-img{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,rgba(201,168,76,0.03),rgba(100,50,150,0.04));overflow:hidden;margin-top:0;padding:4px;border-radius:5px 5px 0 0;}
-.c-img img{width:100%;height:100%;object-fit:contain;}
-.c-img-ph{font-size:24px;opacity:0.26;}
-.c-name{background:rgba(0,0,0,0.72);padding:1px 3px;font-size:11px;font-weight:700;
-  text-align:center;color:var(--parchment);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.c-stats{display:flex;justify-content:space-between;align-items:center;padding:1px 6px;background:rgba(0,0,0,0.55);font-family:'Bebas Neue',cursive;font-size:18px;}
-.cpow{color:#60a5fa;}.ctuf{color:#f87171;}
+  z-index:20;box-shadow:0 2px 6px rgba(0,0,0,0.6);}
+.c-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.c-img img{width:100%;height:100%;object-fit:cover;}
+.c-img-ph{font-size:28px;opacity:0.22;}
+.c-name{display:none;}
+.c-stats{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;
+  padding:2px 6px;background:rgba(0,0,0,0.72);font-family:'Bebas Neue',cursive;font-size:16px;z-index:20;
+  border-top:1px solid rgba(255,255,255,0.08);}
+.cpow{color:#93c5fd;}.ctuf{color:#fca5a5;}
 .ctuf.dmgd{color:#fbbf24!important;}
 .c-abil-dot{display:none;}
+.c-abil-badge{position:absolute;top:4px;right:4px;z-index:20;
+  font-size:9px;color:rgba(167,139,250,0.9);
+  background:rgba(14,12,20,0.75);border-radius:50%;
+  width:14px;height:14px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(167,139,250,0.4);}
 /* keyword overlay marks (潜伏・障壁) */
 .c-kw-mark{
   position:absolute;top:8px;left:0;right:0;bottom:32px;
@@ -967,12 +972,12 @@ textarea.finput{resize:vertical;min-height:64px;}
 
 /* ── Arcana editor screen ── */
 #e-arcana-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;
   align-content:start;
   scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent;
 }
 .arcana-pool-card{
-  width:122px;height:157px;border-radius:8px;overflow:hidden;cursor:pointer;
+  width:108px;height:157px;border-radius:8px;overflow:hidden;cursor:pointer;
   background:linear-gradient(135deg,#1a0e2e,#0e0c1e);
   border:1px solid rgba(167,139,250,0.3);
   position:relative;transition:transform 0.13s,border-color 0.13s;
@@ -4044,7 +4049,7 @@ function cdmOpen(id){
   // card visual
   const wrap=document.getElementById('cdm-mini-card');
   const d=document.createElement('div');
-  d.className='pool-card';d.style.cssText='width:122px;height:157px;pointer-events:none;flex-shrink:0;';
+  d.className='pool-card';d.style.cssText='width:108px;height:157px;pointer-events:none;flex-shrink:0;';
   d.innerHTML=buildPoolCard(card,0,false);
   wrap.innerHTML='';wrap.appendChild(d);
   document.getElementById('cdm-mini-name').textContent=card.name;
@@ -7092,9 +7097,12 @@ function buildCardInner(card,displayCost,isField){
   const tuf=isField?(card._hp!==undefined?card._hp:card.toughness):card.toughness;
   // keyword overlay marks for field cards
   const kwBadgeHtml=isField?buildKWMarkHtml(card):'';
-  return `<div class="c-cost">${displayCost}</div>${abilDot}${guardIco}${kwBadgeHtml}
-<div class="c-img">${img}</div>
-<div class="c-name">${esc(card.name)}</div>
+  // 能力ありインジケーター（右上の小ドット）
+  const hasAbil=!!(card.ability||(card.abilities||[]).filter(a=>a.type!=='keyword').length);
+  const abilDotHtml=hasAbil?'<div class="c-abil-badge" title="能力あり">✦</div>':'';
+  return `<div class="c-img">${img}</div>
+<div class="c-cost">${displayCost}</div>
+${abilDotHtml}${guardIco}${kwBadgeHtml}
 <div class="c-stats"><span class="cpow">⚔${card.power}</span><span class="ctuf">🛡${tuf}</span></div>`;
 }
 
