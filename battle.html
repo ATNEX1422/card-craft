@@ -4201,30 +4201,6 @@ function deckRenderPool(){
   });
 }
 
-function buildPoolCard(card,cnt,maxed){
-  const _src=imgPath(card);
-  const img=_src?`<div style="width:100%;height:100%;background:url('${_src}') center/contain no-repeat;"></div>`:`<div class="c-img-ph">🃏</div>`;
-  const cntBadge=cnt>0?`<div style="position:absolute;top:2px;right:2px;background:rgba(240,230,204,0.92);color:#1a1228;border-radius:4px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:11px;padding:0 3px;z-index:5;box-shadow:0 1px 4px rgba(0,0,0,0.5);">×${cnt}</div>`:'';
-  const tokenBadge=card.isToken?'<span style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:0.06em;background:rgba(167,139,250,0.2);border-radius:3px;padding:0 4px;margin:0 3px;">TOKEN</span>':''; 
-  const _hasNKA=!!(card.ability||(card.abilities||[]).filter(a=>a.type!=='keyword').length);
-  const guardIco=isGuard(card)?'<div class="c-guard"></div>':'';
-  // 呪縛オーバーレイ（紫の鎖SVG）
-  const _bndBadge=card._bound?`<div class="c-bound-field"><svg viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="36" stroke="rgba(167,139,250,0.7)" stroke-width="5" stroke-dasharray="14 8" stroke-linecap="round"/>
-    <circle cx="50" cy="50" r="18" stroke="rgba(167,139,250,0.5)" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"/>
-  </svg></div>`:'';
-  // 沈黙オーバーレイ（グレーの斜線×SVG）
-  const _silBadge=card._silenced?`<div class="c-silenced-field"><svg viewBox="0 0 100 100" fill="none">
-    <line x1="20" y1="20" x2="80" y2="80" stroke="rgba(180,180,200,0.65)" stroke-width="7" stroke-linecap="round"/>
-    <line x1="80" y1="20" x2="20" y2="80" stroke="rgba(180,180,200,0.65)" stroke-width="7" stroke-linecap="round"/>
-  </svg></div>`:'';
-  const abilDot2=_hasNKA?'<div class="c-abil-dot"></div>':'';
-  const abilDot=_hasNKA?'<div class="c-abil-dot"></div>':'';
-  return `<div class="c-cost">${card.cost}</div>${cntBadge}${guardIco}${abilDot2}${_silBadge||''}${_bndBadge||''}
-<div class="c-img">${img}</div>
-<div class="c-name">${esc(card.name)}</div>
-<div class="c-stats"><span class="cpow">⚔${card.power}</span>${tokenBadge}<span class="ctuf">🛡${card.toughness}</span></div>`;
-}
 
 function getDeckTypes(deck){
   const types=new Set();
